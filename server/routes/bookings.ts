@@ -11,11 +11,24 @@ const router = express.Router();
 // Create a new booking with initial proof and delivery method
 router.post("/", authenticateToken, (req, res) => {
   try {
-    const { artisanId, serviceId, deliveryMethod, proofBeforeClient, materialHandling, scheduledAt, isUrgent, locationLat, locationLng, city, attachments } = req.body;
+    const { 
+      artisanId, 
+      serviceId, 
+      deliveryMethod, 
+      proofBeforeClient, 
+      materialHandling, 
+      scheduledAt, 
+      isUrgent, 
+      locationLat, 
+      locationLng, 
+      city, 
+      attachments,
+      paymentMethod
+    } = req.body;
     const clientId = (req as any).user.id;
 
-    if (!serviceId || !deliveryMethod || !proofBeforeClient) {
-      return res.status(400).json({ error: "Missing required fields: serviceId, deliveryMethod, proofBeforeClient" });
+    if (!serviceId) {
+      return res.status(400).json({ error: "Missing required fields: serviceId" });
     }
 
     // 1. Create booking in 'pending' status
@@ -24,9 +37,25 @@ router.post("/", authenticateToken, (req, res) => {
       INSERT INTO bookings (
         id, client_id, artisan_id, service_id, delivery_method, 
         proof_before_client, material_handling, booking_status, 
-        scheduled_at, is_urgent, location_lat, location_lng, city, attachments
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
-    `).run(id, clientId, artisanId || null, serviceId, deliveryMethod, proofBeforeClient, materialHandling || 'client_provides', scheduledAt || null, isUrgent ? 1 : 0, locationLat || null, locationLng || null, city || null, attachments || null);
+        scheduled_at, is_urgent, location_lat, location_lng, city, attachments,
+        payment_method
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, 
+      clientId, 
+      artisanId || null, 
+      serviceId, 
+      deliveryMethod || 'home_service', 
+      proofBeforeClient || 'photo', 
+      materialHandling || 'client_provides', 
+      scheduledAt || null, 
+      isUrgent ? 1 : 0, 
+      locationLat || null, 
+      locationLng || null, 
+      city || null, 
+      attachments ? JSON.stringify(attachments) : null,
+      paymentMethod || 'cash'
+    );
 
     // 2. Notify artisan(s)
     try {

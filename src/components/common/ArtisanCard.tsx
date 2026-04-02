@@ -9,7 +9,14 @@ export default function ArtisanCard({ name, category, rating, reviews, price, im
       className="card overflow-hidden group hover:border-[var(--accent)]/30 transition-all flex flex-col bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl shadow-sm hover:shadow-xl"
     >
       <div className="h-48 md:h-64 relative overflow-hidden shrink-0">
-        <img src={image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={name} referrerPolicy="no-referrer" />
+        <img 
+          src={image} 
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+          alt={name} 
+          referrerPolicy="no-referrer" 
+          loading="lazy"
+          decoding="async"
+        />
         
         {/* Status Indicator */}
         <div className="absolute top-4 left-4 flex items-center gap-2">

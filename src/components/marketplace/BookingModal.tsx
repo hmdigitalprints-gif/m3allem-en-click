@@ -43,7 +43,9 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
     address: '',
     city: 'Casablanca',
     description: '',
-    paymentMethod: 'escrow',
+    paymentMethod: 'cash',
+    deliveryMethod: 'home_service',
+    proofBeforeClient: 'photo',
     isUrgent: false,
     proposedPrice: '',
     attachments: [] as string[],
@@ -69,6 +71,7 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
   const [estimating, setEstimating] = useState(false);
   const [suggestingService, setSuggestingService] = useState(false);
   const [showLiveDiagnostic, setShowLiveDiagnostic] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const currentUser = JSON.parse(localStorage.getItem('m3allem_user') || '{}');
 
@@ -130,6 +133,7 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
   };
 
   const handleBooking = async () => {
+    setShowConfirmDialog(false);
     setLoading(true);
     setError(null);
     try {
@@ -145,7 +149,10 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
         proposedPrice: formData.proposedPrice ? parseFloat(formData.proposedPrice) : undefined,
         attachments: formData.attachments,
         location: formData.location,
-        usePoints: formData.usePoints
+        usePoints: formData.usePoints,
+        paymentMethod: formData.paymentMethod,
+        deliveryMethod: formData.deliveryMethod,
+        proofBeforeClient: formData.proofBeforeClient
       });
 
       if (res.error) {
@@ -471,18 +478,18 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
                 <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ml-4">Payment Method</label>
                 
                 <button 
-                  onClick={() => setFormData({...formData, paymentMethod: 'escrow'})}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all ${formData.paymentMethod === 'escrow' ? 'bg-[var(--accent)]/10 border-[var(--accent)]' : 'bg-[var(--card-bg)]/5 border-[var(--border)] hover:border-[var(--border)]/20'}`}
+                  onClick={() => setFormData({...formData, paymentMethod: 'card'})}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all ${formData.paymentMethod === 'card' ? 'bg-[var(--accent)]/10 border-[var(--accent)]' : 'bg-[var(--card-bg)]/5 border-[var(--border)] hover:border-[var(--border)]/20'}`}
                 >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.paymentMethod === 'escrow' ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--card-bg)]/10 text-[var(--text)]'}`}>
-                    <ShieldCheck size={24} />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.paymentMethod === 'card' ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--card-bg)]/10 text-[var(--text)]'}`}>
+                    <CreditCard size={24} />
                   </div>
                   <div className="text-left flex-1">
-                    <h4 className="font-bold text-[var(--text)]">Secure Escrow</h4>
-                    <p className="text-xs text-[var(--text-muted)]">Funds locked until job is done</p>
+                    <h4 className="font-bold text-[var(--text)]">Credit / Debit Card</h4>
+                    <p className="text-xs text-[var(--text-muted)]">Visa, Mastercard, CMI</p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.paymentMethod === 'escrow' ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}>
-                    {formData.paymentMethod === 'escrow' && <div className="w-3 h-3 bg-[var(--accent)] rounded-full" />}
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.paymentMethod === 'card' ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}>
+                    {formData.paymentMethod === 'card' && <div className="w-3 h-3 bg-[var(--accent)] rounded-full" />}
                   </div>
                 </button>
 
@@ -494,8 +501,8 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
                     <Wallet size={24} />
                   </div>
                   <div className="text-left flex-1">
-                    <h4 className="font-bold text-[var(--text)]">M3allem En Click Wallet</h4>
-                    <p className="text-xs text-[var(--text-muted)]">Balance: 1,250 MAD</p>
+                    <h4 className="font-bold text-[var(--text)]">M3allem Wallet</h4>
+                    <p className="text-xs text-[var(--text-muted)]">Pay using your app balance</p>
                   </div>
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.paymentMethod === 'wallet' ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}>
                     {formData.paymentMethod === 'wallet' && <div className="w-3 h-3 bg-[var(--accent)] rounded-full" />}
@@ -575,7 +582,7 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
 
               <div className="flex gap-4 pt-4">
                 <button 
-                  onClick={handleBooking}
+                  onClick={() => setShowConfirmDialog(true)}
                   disabled={loading}
                   className="flex-1 bg-[var(--card-bg)]/5 text-[var(--text)] py-4 rounded-2xl font-bold hover:bg-[var(--card-bg)]/10 transition-all text-sm"
                 >
@@ -583,7 +590,7 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
                 </button>
                 <button 
                   disabled={loading}
-                  onClick={handleBooking}
+                  onClick={() => setShowConfirmDialog(true)}
                   className="flex-[2] bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold text-lg hover:bg-[var(--accent)]/90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? 'Processing...' : `Book & Add ${selectedMaterials.length} Items`}
@@ -774,6 +781,47 @@ export default function BookingModal({ artisan, onClose, onSuccess, onAction }: 
           )}
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {showConfirmDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-sm:max-w-xs max-w-sm bg-[var(--bg)] border border-[var(--border)] rounded-[32px] p-8 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck size={32} />
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-[var(--text)]">Confirm Booking</h3>
+              <p className="text-[var(--text-muted)] text-sm mb-8 leading-relaxed">
+                Are you sure you want to book <span className="text-[var(--text)] font-bold">{artisan.name}</span> for this service? 
+                The artisan will be notified immediately.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleBooking}
+                  className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95"
+                >
+                  Yes, Confirm Booking
+                </button>
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="w-full bg-[var(--card-bg)]/5 text-[var(--text-muted)] py-4 rounded-2xl font-bold hover:bg-[var(--card-bg)]/10 transition-all"
+                >
+                  No, Go Back
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showLiveDiagnostic && (

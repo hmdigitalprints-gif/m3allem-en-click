@@ -33,6 +33,7 @@ import {
   ShoppingBag,
   Search as SearchIcon,
   CreditCard,
+  Banknote,
   Package,
   ArrowRight,
   Info,
@@ -1773,6 +1774,12 @@ function BookingsSection({ onAction, onNavigate, onTrackArtisan }: {
                 <div className="flex items-center justify-center md:justify-start gap-4 text-xs text-[var(--text-muted)] opacity-70">
                   <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(booking.scheduled_at).toLocaleDateString()}</span>
                   <span className="flex items-center gap-1"><Clock size={12} /> {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="flex items-center gap-1 capitalize">
+                    {booking.payment_method === 'card' ? <CreditCard size={12} /> : 
+                     booking.payment_method === 'wallet' ? <Wallet size={12} /> : 
+                     <Banknote size={12} />}
+                    {booking.payment_method || 'cash'}
+                  </span>
                 </div>
               </div>
               <div className="text-center md:text-right">

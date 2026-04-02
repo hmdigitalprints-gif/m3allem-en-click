@@ -26,7 +26,9 @@ import {
   Sparkles,
   Sun,
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  Banknote,
+  CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -895,8 +897,14 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                     <div>
                       <h4 className="font-bold text-[var(--text)]">{booking.other_party_name}</h4>
                       <p className="text-sm text-[var(--text-muted)]">{booking.service_name}</p>
-                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
+                      <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] mt-1">
                         <Calendar size={12} /> {new Date(booking.scheduled_at).toLocaleString()}
+                        <span className="flex items-center gap-1 capitalize">
+                          {booking.payment_method === 'card' ? <CreditCard size={12} /> : 
+                           booking.payment_method === 'wallet' ? <Wallet size={12} /> : 
+                           <Banknote size={12} />}
+                          {booking.payment_method || 'cash'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -958,8 +966,16 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                       <div>
                         <h4 className="font-bold text-[var(--text)]">{job.service_name}</h4>
                         <p className="text-sm text-[var(--text-muted)]">{job.address}</p>
-                        <div className="flex items-center gap-2 text-xs text-[var(--success)] mt-1 font-bold">
-                          <Zap size={12} /> {job.distance.toFixed(1)} km away
+                        <div className="flex items-center gap-4 text-xs text-[var(--success)] mt-1 font-bold">
+                          <div className="flex items-center gap-1">
+                            <Zap size={12} /> {job.distance.toFixed(1)} km away
+                          </div>
+                          <span className="flex items-center gap-1 capitalize text-[var(--text-muted)] font-normal">
+                            {job.payment_method === 'card' ? <CreditCard size={12} /> : 
+                             job.payment_method === 'wallet' ? <Wallet size={12} /> : 
+                             <Banknote size={12} />}
+                            {job.payment_method || 'cash'}
+                          </span>
                         </div>
                       </div>
                     </div>
