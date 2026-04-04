@@ -1,8 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { initDb } from "./db.ts";
-import db from "./db.ts";
+import { initDb, db } from "./db.ts";
 import { getPreferredLanguage, t } from './lib/i18n.ts';
 import { v4 as uuidv4 } from "uuid";
 import authRoutes from "./routes/auth.ts";

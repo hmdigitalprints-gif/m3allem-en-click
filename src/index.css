@@ -35,6 +35,7 @@
   --glass-bg: rgba(0, 0, 0, 0.03);
   --glass-border: rgba(0, 0, 0, 0.05);
   --accent: #EAB308;
+  --accent-rgb: 234, 179, 8;
   --accent-glow: rgba(234, 179, 8, 0.2);
   --accent-foreground: #FFFFFF;
   --accent-muted: #CA8A04;
@@ -54,6 +55,7 @@
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
   --accent: #FFD700;
+  --accent-rgb: 255, 215, 0;
   --accent-glow: rgba(255, 215, 0, 0.3);
   --accent-foreground: #000000;
   --accent-muted: #B8860B;

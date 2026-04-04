@@ -1,4 +1,4 @@
-import db from '../db.ts';
+import { db } from '../db.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 export function generateOTP() {
@@ -27,7 +27,7 @@ export async function registerUser(name: string, phone: string, role: 'client' |
   const otpId = uuidv4();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   
-  db.prepare("INSERT INTO otp (id, user_id, code, expires_at) VALUES (?, ?, ?, ?)")
+  db.prepare("INSERT INTO otps (id, user_id, code, expires_at) VALUES (?, ?, ?, ?)")
     .run(otpId, userId, otpCode, expiresAt);
 
   // Step 5: send OTP (simulate)
@@ -37,7 +37,7 @@ export async function registerUser(name: string, phone: string, role: 'client' |
 }
 
 export async function verifyOTP(userId: string, code: string) {
-  const otp = db.prepare("SELECT * FROM otp WHERE user_id = ? AND code = ? AND expires_at > CURRENT_TIMESTAMP")
+  const otp = db.prepare("SELECT * FROM otps WHERE user_id = ? AND code = ? AND expires_at > CURRENT_TIMESTAMP")
     .get(userId, code) as any;
 
   if (!otp) {
@@ -48,7 +48,7 @@ export async function verifyOTP(userId: string, code: string) {
   db.prepare("UPDATE users SET verified = 1 WHERE id = ?").run(userId);
 
   // Delete OTP
-  db.prepare("DELETE FROM otp WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM otps WHERE user_id = ?").run(userId);
 
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
   return { user, token: "mock-jwt-token" };

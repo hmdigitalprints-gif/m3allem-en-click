@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Lock, User, ShieldCheck, ArrowRight, CheckCircle, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { Phone, Lock, User, ShieldCheck, ArrowRight, CheckCircle, AlertCircle, Loader2, Sparkles, MessageSquare, Mail } from 'lucide-react';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,15 +9,18 @@ interface AuthScreensProps {
 }
 
 export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
-  const [step, setStep] = useState<'login' | 'otp' | 'register' | 'role'>('login');
+  const [step, setStep] = useState<'login' | 'otp' | 'register' | 'role' | 'channel'>('login');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'client' | 'artisan' | 'seller' | 'company'>('client');
   const [userId, setUserId] = useState<string | null>(null);
+  const [otpChannel, setOtpChannel] = useState<'sms' | 'whatsapp' | 'email'>('sms');
+  const [pendingAction, setPendingAction] = useState<'login' | 'register' | null>(null);
   
   // Role-specific fields
   const [storeName, setStoreName] = useState('');
@@ -35,7 +38,40 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
     setError(null);
     try {
       const res: any = await login(identifier, password);
-      setUserId(res.userId);
+      if (res.requiresOtp || res.requiresVerification) {
+        setUserId(res.userId);
+        setPendingAction('login');
+        setStep('channel');
+      } else if (res.token) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendOtp = async (channel: 'sms' | 'whatsapp' | 'email') => {
+    if (pendingAction === 'register') {
+      await executeRegister(channel);
+      return;
+    }
+
+    if (!userId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, channel }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to send OTP');
+      }
+      setOtpChannel(channel);
       setStep('otp');
     } catch (err: any) {
       setError(err.message);
@@ -59,8 +95,17 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const prepareRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setPendingAction('register');
+    executeRegister(otpChannel);
+  };
+
+  const executeRegister = async (channel: 'sms' | 'whatsapp' | 'email') => {
     setIsLoading(true);
     setError(null);
     try {
@@ -73,12 +118,15 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
         storeName,
         companyName,
         categoryId,
-        idDocument
+        idDocument,
+        otpChannel: channel
       });
       setUserId(res.userId);
+      setOtpChannel(channel);
       setStep('otp');
     } catch (err: any) {
       setError(err.message);
+      setStep('register');
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +210,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
             >
               <div className="text-center space-y-2">
                 <h1 className="text-5xl font-bold tracking-tighter">VERIFY <span className="text-[var(--accent)]">OTP.</span></h1>
-                <p className="text-[var(--text-muted)]">Enter the 6-digit code sent to {phone}.</p>
+                <p className="text-[var(--text-muted)]">Enter the 6-digit code sent via {otpChannel.toUpperCase()}.</p>
               </div>
 
               <form onSubmit={handleVerify} className="space-y-6">
@@ -194,14 +242,97 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
                   {isLoading ? <Loader2 className="animate-spin" /> : <>Verify & Login <CheckCircle size={20} /></>}
                 </button>
                 
-                <button 
-                  type="button"
-                  onClick={() => setStep('login')}
-                  className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
-                >
-                  Change Phone Number
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setStep('channel')}
+                    className="w-full text-[var(--accent)] font-bold py-2"
+                  >
+                    Resend Code / Change Channel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setStep('login')}
+                    className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
+                  >
+                    Back to Login
+                  </button>
+                </div>
               </form>
+            </motion.div>
+          )}
+
+          {step === 'channel' && (
+            <motion.div
+              key="channel"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <h1 className="text-5xl font-bold tracking-tighter">CHOOSE <span className="text-[var(--accent)]">CHANNEL.</span></h1>
+                <p className="text-[var(--text-muted)]">Select how you want to receive your verification code.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => handleSendOtp('sms')}
+                  disabled={isLoading}
+                  className="p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[30px] text-left hover:border-[var(--accent)]/50 transition-all group active:scale-95 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl group-hover:bg-[var(--accent)] group-hover:text-[var(--accent-foreground)] transition-all">
+                    <Phone size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">SMS</h3>
+                    <p className="text-[var(--text-muted)] text-xs">Receive code via text message.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleSendOtp('whatsapp')}
+                  disabled={isLoading}
+                  className="p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[30px] text-left hover:border-[var(--accent)]/50 transition-all group active:scale-95 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                    <MessageSquare size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">WhatsApp</h3>
+                    <p className="text-[var(--text-muted)] text-xs">Receive code via WhatsApp.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleSendOtp('email')}
+                  disabled={isLoading}
+                  className="p-6 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[30px] text-left hover:border-[var(--accent)]/50 transition-all group active:scale-95 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-all">
+                    <Mail size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Email</h3>
+                    <p className="text-[var(--text-muted)] text-xs">Receive code via email address.</p>
+                  </div>
+                </button>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
+                  <AlertCircle size={16} />
+                  {error}
+                </div>
+              )}
+
+              <button 
+                type="button"
+                onClick={() => setStep('login')}
+                className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2 text-center"
+              >
+                Cancel
+              </button>
             </motion.div>
           )}
 
@@ -287,7 +418,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
                 <p className="text-[var(--text-muted)]">Register as a {role}.</p>
               </div>
 
-              <form onSubmit={handleRegister} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <form onSubmit={prepareRegister} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <div className="relative group">
                   <User className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
                   <input
@@ -403,12 +534,49 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess }) => {
                   </div>
                 </div>
 
+                <div className="relative group">
+                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
+                  <input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none focus:border-[var(--accent)]/50 transition-all"
+                    required
+                  />
+                </div>
+
                 {error && (
                   <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
                     <AlertCircle size={16} />
                     {error}
                   </div>
                 )}
+
+                <div className="space-y-3 px-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)] ml-2">Verification Channel</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { id: 'sms', icon: Phone, label: 'SMS' },
+                      { id: 'whatsapp', icon: MessageSquare, label: 'WhatsApp' },
+                      { id: 'email', icon: Mail, label: 'Email' }
+                    ].map((ch) => (
+                      <button
+                        key={ch.id}
+                        type="button"
+                        onClick={() => setOtpChannel(ch.id as any)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
+                          otpChannel === ch.id 
+                            ? 'bg-[var(--accent)]/10 border-[var(--accent)] text-[var(--accent)]' 
+                            : 'bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-muted)] hover:border-[var(--accent)]/30'
+                        }`}
+                      >
+                        <ch.icon size={20} />
+                        <span className="text-xs font-bold">{ch.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <button
                   type="submit"

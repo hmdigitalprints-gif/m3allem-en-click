@@ -1,4 +1,4 @@
-import db from '../db.ts';
+import { db } from '../db.ts';
 
 /**
  * Translates a key into the specified language.

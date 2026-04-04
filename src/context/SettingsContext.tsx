@@ -37,18 +37,36 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = async () => {
+    const token = localStorage.getItem('m3allem_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/settings', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('m3allem_token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
+      
       if (response.ok) {
         const data = await response.json();
         setSettings(prev => ({ ...prev, ...data }));
+      } else if (response.status === 401 || response.status === 403) {
+        // Silently fail for unauthorized access to admin settings
+        console.log('Not authorized to fetch admin settings');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Failed to fetch settings:', response.status, errorData);
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      // Only log as error if it's a real network failure
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.warn('Network error fetching settings. Server might be starting up.');
+      } else {
+        console.error('Error fetching settings:', error);
+      }
     } finally {
       setLoading(false);
     }

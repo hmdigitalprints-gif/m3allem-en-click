@@ -3,7 +3,8 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
-const db = new Database('m3allem.db');
+export const db = new Database('m3allem.db');
+export default db;
 
 // Initialize Database Schema
 export function initDb() {
@@ -58,6 +59,7 @@ export function initDb() {
   try { db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT;"); } catch(e) {}
   try { db.exec("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0;"); } catch(e) {}
   try { db.exec("ALTER TABLE users ADD COLUMN preferred_language TEXT DEFAULT 'fr';"); } catch(e) {}
+  try { db.exec("ALTER TABLE users ADD COLUMN last_verified DATETIME;"); } catch(e) {}
   try { db.exec("ALTER TABLE translations ADD COLUMN language_code TEXT REFERENCES languages(code);"); } catch(e) {}
   try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_translations_key_lang ON translations(key, language_code);"); } catch(e) {}
 
@@ -113,6 +115,8 @@ export function initDb() {
   try { db.exec("ALTER TABLE otps ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"); } catch(e) {}
   try { db.exec("ALTER TABLE otps ADD COLUMN verified BOOLEAN DEFAULT 0;"); } catch(e) {}
   try { db.exec("ALTER TABLE otps ADD COLUMN attempts INTEGER DEFAULT 0;"); } catch(e) {}
+  try { db.exec("ALTER TABLE otps ADD COLUMN otp_hash TEXT;"); } catch(e) {}
+  try { db.exec("ALTER TABLE otps ADD COLUMN channel TEXT CHECK(channel IN ('sms', 'whatsapp', 'email'));"); } catch(e) {}
   try { db.exec("ALTER TABLE artisan_verifications ADD COLUMN professional_license TEXT;"); } catch(e) {}
   try { db.exec("ALTER TABLE services ADD COLUMN artisan_id TEXT REFERENCES artisans(id);"); } catch(e) {}
 
@@ -813,5 +817,3 @@ export function initDb() {
   }
   }
 }
-
-export default db;

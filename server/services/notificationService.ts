@@ -1,4 +1,4 @@
-import db from "../db.ts";
+import { db } from "../db.ts";
 import { v4 as uuidv4 } from "uuid";
 import { Server } from "socket.io";
 import { t } from "../lib/i18n.ts";

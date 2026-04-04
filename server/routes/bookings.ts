@@ -1,5 +1,5 @@
 import express from "express";
-import db from "../db.ts";
+import { db } from "../db.ts";
 import { authenticateToken } from "./auth.ts";
 import { v4 as uuidv4 } from "uuid";
 import { sendNotification, io } from "../services/notificationService.ts";

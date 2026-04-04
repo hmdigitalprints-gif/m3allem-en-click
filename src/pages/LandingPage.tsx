@@ -21,6 +21,7 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
+import HeroAnimation from '../components/marketplace/HeroAnimation';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -159,39 +160,62 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.2 }}
-              className="relative hidden sm:block"
+              className="relative hidden lg:block"
             >
-              <div className="relative z-10 bg-gradient-to-br from-[var(--card-bg)] to-transparent p-4 rounded-[48px] border border-[var(--border)] backdrop-blur-3xl shadow-2xl">
-
-              </div>
-              
-              {/* Floating Cards */}
-              <motion.div 
-                animate={{ y: [0, -20, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-8 -right-8 z-20 bg-[var(--card-bg)] p-6 rounded-3xl shadow-2xl text-[var(--text)] border border-[var(--accent)]/30 max-w-[200px] hidden lg:block"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-[var(--success)]/10 text-[var(--success)] rounded-xl flex items-center justify-center">
-                    <ShieldCheck size={20} />
-                  </div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-[var(--success)]">Verified</span>
+              {/* Main Illustration Container */}
+              <div className="relative z-10 p-1.5 rounded-[48px] bg-gradient-to-b from-white/20 via-white/5 to-transparent border border-white/10 backdrop-blur-3xl shadow-[0_0_100px_-20px_rgba(var(--accent-rgb),0.3)] overflow-hidden group">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(var(--accent-rgb),0.15),transparent)] opacity-50" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-[var(--accent)]/10 via-transparent to-transparent opacity-30" />
+                <div className="relative rounded-[42px] overflow-hidden border border-white/10 bg-[#050505] aspect-video flex items-center justify-center shadow-inner">
+                  <HeroAnimation />
                 </div>
-                <p className="text-sm font-bold leading-tight">Artisan Identity & Skills Verified</p>
+                
+                {/* Decorative UI Elements */}
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-[var(--accent)]/10 blur-[100px] rounded-full animate-pulse" />
+                <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-[var(--accent)]/5 blur-[120px] rounded-full animate-pulse delay-1000" />
+              </div>
+
+              {/* Floating SaaS UI Cards */}
+              <motion.div 
+                animate={{ y: [0, -15, 0], x: [0, 5, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -top-6 -right-12 z-30 bg-white/10 backdrop-blur-2xl border border-white/20 p-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[220px]"
+              >
+                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center">
+                  <CheckCircle size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-0.5">Booking Confirmed</p>
+                  <p className="text-xs font-medium text-white/80">Artisan is on the way</p>
+                </div>
               </motion.div>
 
               <motion.div 
-                animate={{ y: [0, 20, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute -bottom-8 -left-8 z-20 bg-[var(--accent)] p-6 rounded-3xl shadow-2xl text-[var(--accent-foreground)] hidden lg:block"
+                animate={{ y: [0, 15, 0], x: [0, -5, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute -bottom-8 -left-12 z-30 bg-white/10 backdrop-blur-2xl border border-white/20 p-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[200px]"
               >
-                <div className="flex items-center gap-4">
-                  <div className="text-3xl font-bold">4.9</div>
-                  <div className="h-8 w-px bg-[var(--border)]" />
-                  <div className="text-xs font-bold uppercase tracking-widest leading-tight">
-                    Average<br />Rating
-                  </div>
+                <div className="w-10 h-10 bg-[var(--accent)]/20 text-[var(--accent)] rounded-xl flex items-center justify-center">
+                  <ShieldCheck size={20} />
                 </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] mb-0.5">Verified Pro</p>
+                  <p className="text-xs font-medium text-white/80">Identity & Skills Checked</p>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute top-1/2 -right-20 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-xl border border-white/10 p-3 rounded-2xl shadow-xl flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                </div>
+                <div className="w-32 h-2 bg-white/10 rounded-full" />
+                <div className="w-20 h-2 bg-white/10 rounded-full" />
               </motion.div>
             </motion.div>
           </div>
@@ -230,24 +254,31 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {categories?.map((cat, i) => (
               <motion.div
                 key={i}
-                whileHover={{ y: -10 }}
+                whileHover={{ y: -8 }}
                 onClick={() => {
                   onAction?.(`Searching for ${cat.name} services...`);
                   navigate(`/find-pro?category=${encodeURIComponent(cat.name)}`);
                 }}
-                className="bg-[var(--card-bg)] border border-[var(--border)] p-8 rounded-[32px] hover:border-[var(--accent)]/50 transition-all cursor-pointer group"
+                className="relative bg-[var(--card-bg)] border border-[var(--border)] p-10 rounded-[40px] hover:border-[var(--accent)]/30 transition-all cursor-pointer group overflow-hidden"
               >
-                <div className={`w-16 h-16 ${cat.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  {React.cloneElement(cat.icon as React.ReactElement<any>, { size: 32 })}
+                {/* Hover Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <div className={`relative z-10 w-20 h-20 ${cat.color} rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-lg shadow-[var(--accent)]/5`}>
+                  {React.cloneElement(cat.icon as React.ReactElement<any>, { size: 36, strokeWidth: 1.5 })}
                 </div>
-                <h3 className="text-2xl font-bold mb-2">{cat.name}</h3>
-                <p className="text-[var(--text-muted)] mb-6">{cat.desc}</p>
-                <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
-                  Book Now <ArrowRight size={16} />
+                
+                <div className="relative z-10">
+                  <h3 className="text-3xl font-bold mb-3 tracking-tight">{cat.name}</h3>
+                  <p className="text-[var(--text-muted)] text-lg leading-relaxed mb-8">{cat.desc}</p>
+                  
+                  <div className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-[var(--accent)] group-hover:translate-x-2 transition-transform">
+                    Explore Services <ArrowRight size={18} />
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -258,40 +289,50 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
       {/* Features Section */}
       <section id="features" className="py-20 md:py-32 bg-[var(--card-bg)]/50 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
             <div className="order-2 lg:order-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[
                   { title: 'Verified Pros', desc: 'Every artisan undergoes a strict background check.', icon: <ShieldCheck /> },
                   { title: 'Secure Payments', desc: 'Your money is safe with our escrow payment system.', icon: <Zap /> },
                   { title: 'Instant Booking', desc: 'Book a service in seconds, not hours.', icon: <ArrowRight /> },
                   { title: 'Support 24/7', desc: 'Our team is here to help you anytime.', icon: <Users /> },
                 ]?.map((feature, i) => (
-                  <div key={i} className="space-y-4">
-                    <div className="w-12 h-12 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl flex items-center justify-center">
-                      {React.cloneElement(feature.icon as React.ReactElement<any>, { size: 24 })}
+                  <motion.div 
+                    key={i} 
+                    whileHover={{ scale: 1.02 }}
+                    className="p-8 bg-[var(--bg)] border border-[var(--border)] rounded-[32px] shadow-sm hover:shadow-xl hover:border-[var(--accent)]/20 transition-all"
+                  >
+                    <div className="w-14 h-14 bg-[var(--accent)]/10 text-[var(--accent)] rounded-2xl flex items-center justify-center mb-6">
+                      {React.cloneElement(feature.icon as React.ReactElement<any>, { size: 28, strokeWidth: 1.5 })}
                     </div>
-                    <h4 className="text-xl font-bold">{feature.title}</h4>
-                    <p className="text-[var(--text-muted)] text-sm leading-relaxed">{feature.desc}</p>
-                  </div>
+                    <h4 className="text-2xl font-bold mb-3 tracking-tight">{feature.title}</h4>
+                    <p className="text-[var(--text-muted)] text-base leading-relaxed">{feature.desc}</p>
+                  </motion.div>
                 ))}
               </div>
             </div>
             <div className="order-1 lg:order-2">
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tighter mb-8 leading-tight">
-                Why Choose <span className="text-[var(--accent)]">M3allem En Click</span> for Your Next Project?
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] mb-8">
+                <Sparkles size={14} />
+                Why M3allem En Click
+              </div>
+              <h2 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tighter mb-8 leading-[0.9]">
+                The <span className="text-[var(--accent)]">Standard</span> for Home Services.
               </h2>
-              <p className="text-lg md:text-xl text-[var(--text-muted)] mb-12 leading-relaxed">
-                We've built a platform that prioritizes trust, quality, and speed. No more searching through classifieds or asking for recommendations.
+              <p className="text-xl md:text-2xl text-[var(--text-muted)] mb-12 leading-relaxed font-medium">
+                We've built a platform that prioritizes trust, quality, and speed. No more searching through classifieds.
               </p>
-              <ul className="space-y-4">
+              <div className="space-y-6">
                 {['Transparent Pricing', 'Quality Guarantee', 'Easy Communication']?.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-lg font-medium">
-                    <CheckCircle className="text-[var(--accent)]" size={24} />
+                  <div key={i} className="flex items-center gap-4 text-xl font-bold">
+                    <div className="w-8 h-8 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center">
+                      <CheckCircle size={20} />
+                    </div>
                     {item}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>
