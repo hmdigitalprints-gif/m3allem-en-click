@@ -1,0 +1,9 @@
+{
+  "name": "M3allem En Click",
+  "description": "A premium marketplace connecting clients with professional artisans for home services like plumbing, electricity, and more.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera",
+    "microphone"
+  ]
+}

@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --primary-font: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+html[lang^="ar"] {
+  --primary-font: "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Tajawal", ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme {
+  --font-sans: var(--primary-font);
+  --font-display: var(--display-font);
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--primary-font);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  @media (min-width: 768px) {
+    html {
+      font-size: 18px;
+    }
+  }
+  
+  /* Support for RTL using logical properties */
+  body {
+    text-align: start;
+    @apply bg-[var(--bg)] text-[var(--text)] antialiased transition-colors duration-300;
+  }
+
+  select option {
+    @apply bg-[var(--card-bg)] text-[var(--text)];
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply max-w-[1440px] mx-auto px-6 sm:px-8 lg:px-12;
+  }
+  
+  .card-luxury {
+    @apply bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.04)] relative;
+  }
+  
+  .micro-label {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)];
+  }
+  
+  .gold-text {
+    @apply text-[var(--accent)];
+  }
+  
+  .italic-serif {
+    @apply italic font-serif;
+  }
+}
+
+:root {
+  --bg: #FAFAFA;
+  --sidebar-bg: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --text: #050505;
+  --text-muted: #666666;
+  --border: #E5E5E5;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --accent: #FF4500;
+  --accent-rgb: 255, 69, 0;
+  --accent-glow: rgba(255, 69, 0, 0.12);
+  --accent-foreground: #FFFFFF;
+  --accent-muted: #E63E00;
+  --success: #00B368;
+  --warning: #F59E0B;
+  --danger: #E53E3E;
+  --destructive: #E53E3E;
+}
+
+.dark {
+  --bg: #050505;
+  --sidebar-bg: #0A0A0A;
+  --card-bg: #111111; 
+  --text: #F5F5F5;
+  --text-muted: #A1A1A1; 
+  --border: #2A2A2A; 
+  --glass-bg: rgba(10, 10, 10, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --accent: #FF4500;
+  --accent-rgb: 255, 69, 0;
+  --accent-glow: rgba(255, 69, 0, 0.20);
+  --accent-foreground: #FFFFFF;
+  --accent-muted: #E63E00;
+  --destructive: #FC8181;
+  --success: #38A169;
+  --warning: #ECC94B;
+}
+
+.hynex-card {
+  @apply bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.04)];
+}
+
+.tech-label {
+  @apply text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)];
+}
+
+.tech-value {
+  @apply font-mono font-black italic;
+}
+
+.tech-header {
+  @apply font-black italic tracking-tighter;
+}
+
+.glass {
+  @apply bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl;
+}
+
+.hynex-sidebar-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200;
+}
+
+.hynex-sidebar-item.active {
+  @apply bg-[var(--glass-bg)] text-[var(--accent)] shadow-[inset_0_0_20px_rgba(255,215,0,0.05)];
+}
+
+.hynex-sidebar-item:not(.active) {
+  @apply text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--glass-bg)];
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.wave-container {
+  position: relative;
+  height: 100px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: repeat-x;
+}

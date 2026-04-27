@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "mohammedboucherouite@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Data Validation
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'created_at']) &&
+             data.keys().hasOnly(['id', 'name', 'email', 'phone', 'role', 'avatar_url', 'verified', 'points', 'city', 'address', 'created_at']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role in ['client', 'artisan', 'seller', 'company', 'admin'] &&
+             (!('email' in data) || (data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))) &&
+             (!('avatar_url' in data) || (data.avatar_url is string && data.avatar_url.size() < 500)) &&
+             (!('city' in data) || (data.city is string && data.city.size() < 100));
+    }
+
+    function isValidArtisan(data) {
+      return data.keys().hasAll(['id', 'user_id', 'category_id']) &&
+             data.keys().hasOnly(['id', 'user_id', 'category_id', 'bio', 'expertise', 'years_experience', 'rating', 'review_count', 'is_verified', 'is_online', 'latitude', 'longitude']) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() < 2000)) &&
+             (!('expertise' in data) || (data.expertise is string && data.expertise.size() < 500));
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['id', 'client_id', 'artisan_id', 'status', 'created_at']) &&
+             data.status in ['pending', 'proposal_submitted', 'proposal_approved', 'en_route', 'in_progress', 'completed', 'cancelled'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId && 
+                      isValidUser(request.resource.data) &&
+                      (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isOwner(userId) && 
+                      isValidUser(request.resource.data) && 
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.id == resource.data.id;
+      allow delete: if isAdmin();
+    }
+
+    // Artisans Collection
+    match /artisans/{artisanId} {
+      allow read: if true; 
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == request.resource.data.user_id &&
+                      isValidArtisan(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.user_id || isAdmin()) &&
+                      isValidArtisan(request.resource.data) &&
+                      request.resource.data.user_id == resource.data.user_id;
+      allow delete: if isAdmin();
+    }
+
+    // Bookings Collection
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.client_id || 
+                     request.auth.uid == resource.data.artisan_user_id || 
+                     isAdmin());
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == request.resource.data.client_id &&
+                      isValidBooking(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.client_id || 
+                       request.auth.uid == resource.data.artisan_user_id || 
+                       isAdmin()) &&
+                      isValidBooking(request.resource.data);
+    }
+
+    // Messages Collection
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.sender_id || 
+                     request.auth.uid == resource.data.receiver_id || 
+                     isAdmin());
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == request.resource.data.sender_id &&
+                      request.resource.data.content is string &&
+                      request.resource.data.content.size() < 5000;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

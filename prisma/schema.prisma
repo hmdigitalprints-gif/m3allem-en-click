@@ -1,0 +1,598 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "sqlite"
+  url = "file:./dev.db"
+}
+
+model Language {
+  code         String        @id
+  name         String
+  nativeName   String        @map("native_name")
+  isRtl        Boolean       @default(false) @map("is_rtl")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  translations Translation[]
+
+  @@map("languages")
+}
+
+model Translation {
+  id           String   @id @default(uuid())
+  key          String
+  languageCode String?  @map("language_code")
+  value        String
+  language     Language? @relation(fields: [languageCode], references: [code])
+
+  @@unique([key, languageCode])
+  @@map("translations")
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+
+
+model User {
+  id                String    @id @default(uuid())
+  name              String?
+  email             String?   @unique
+  phone             String?   @unique
+  role              String?
+  passwordHash      String?   @map("password_hash")
+  verified          Boolean   @default(false)
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  verificationToken String?   @map("verification_token")
+  resetToken        String?   @map("reset_token")
+  resetTokenExpires DateTime? @map("reset_token_expires")
+  avatarUrl         String?   @map("avatar_url")
+  points            Int       @default(0)
+  preferredLanguage String?   @default("en") @map("preferred_language")
+  city              String?
+  address           String?
+  lastVerified      DateTime? @map("last_verified")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  stores               Store[]
+  companies            Company[]
+  otps                 Otp[]
+  artisanVerifications ArtisanVerification[]
+  artisan              Artisan? @relation("UserArtisan")
+  favorites            Favorite[]
+  bookings             Booking[]
+  orders               Order[]
+  wallet               Wallet?
+  messagesSent         Message[]             @relation("SentMessages")
+  messagesReceived     Message[]             @relation("ReceivedMessages")
+  notifications        Notification[]
+  ratings              Rating[]
+  disputes             Dispute[]
+  groupRequestsCreated GroupRequest[]        @relation("CreatedGroupRequests")
+  groupParticipations  GroupRequestParticipant[]
+  fraudAlerts          FraudAlert[]
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+model Store {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  name        String?
+  description String?
+  logoUrl     String?  @map("logo_url")
+  city        String?
+  address     String?
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User?    @relation(fields: [userId], references: [id])
+  products    Product[]
+
+  @@map("stores")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  storeId     String?  @map("store_id")
+  name        String?
+  description String?
+  price       Float?
+  category    String?
+  imageUrl    String?  @map("image_url")
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  store       Store?   @relation(fields: [storeId], references: [id])
+
+  @@map("products")
+}
+
+model Company {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  name        String?
+  description String?
+  logoUrl     String?  @map("logo_url")
+  city        String?
+  address     String?
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@map("companies")
+}
+
+
+
+model Otp {
+  id        String      @id @default(uuid())
+  userId    String?     @map("user_id")
+  code      String?
+  expiresAt DateTime?   @map("expires_at")
+  verified  Boolean     @default(false)
+  attempts  Int         @default(0)
+  otpHash   String?     @map("otp_hash")
+  channel   String?
+  createdAt DateTime    @default(now()) @map("created_at")
+  user      User?       @relation(fields: [userId], references: [id])
+
+  @@map("otps")
+}
+
+model PhoneVerification {
+  id          String    @id @default(uuid())
+  phoneNumber String?   @map("phone_number")
+  otpHash     String?   @map("otp_hash")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+  attempts    Int       @default(0)
+  verified    Boolean   @default(false)
+
+  @@map("phone_verifications")
+}
+
+
+
+model ArtisanVerification {
+  id                  String              @id @default(uuid())
+  userId              String?             @map("user_id")
+  idDocument          String?             @map("id_document")
+  videoUrl            String?             @map("video_url")
+  skills              String?
+  professionalLicense String?             @map("professional_license")
+  status              String? @default("pending")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  user                User?               @relation(fields: [userId], references: [id])
+
+  @@map("artisan_verifications")
+}
+
+model Category {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  icon           String?
+  commissionRate Float?  @map("commission_rate")
+  isActive       Boolean   @default(true) @map("is_active")
+  translations   Json?
+  artisans       Artisan[]
+  services       Service[]
+
+  @@map("categories")
+}
+
+model Artisan {
+  id              String    @id @default(uuid())
+  userId          String?   @unique @map("user_id")
+  categoryId      String?   @map("category_id")
+  bio             String?
+  expertise       String?
+  yearsExperience Int       @default(0) @map("years_experience")
+  certifications  String?
+  rating          Float?  @default(0)
+  reviewCount     Int       @default(0) @map("review_count")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  isFeatured      Boolean   @default(false) @map("is_featured")
+  isOnline        Boolean   @default(false) @map("is_online")
+  city            String?
+  latitude        Float?
+  longitude       Float?
+  serviceRadius   Float?  @default(10) @map("service_radius")
+  preferredCities Json?     @map("preferred_cities")
+  workingHours    Json?     @map("working_hours")
+  user            User?     @relation("UserArtisan", fields: [userId], references: [id])
+  category        Category? @relation(fields: [categoryId], references: [id])
+  favorites       Favorite[]
+  portfolio       ArtisanPortfolio[]
+  services        Service[]
+  bookings        Booking[]
+  orders          Order[]
+  proposals       Proposal[]
+  groupRequests   GroupRequest[]
+  disputes        Dispute[]
+  ratings         Rating[]
+
+  @@map("artisans")
+  @@index([categoryId, city])
+  @@index([isVerified, rating])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  artisanId String?  @map("artisan_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id])
+  artisan   Artisan? @relation(fields: [artisanId], references: [id])
+
+  @@map("favorites")
+}
+
+model ArtisanPortfolio {
+  id          String   @id @default(uuid())
+  artisanId   String?  @map("artisan_id")
+  title       String?
+  description String?
+  imageUrl    String?  @map("image_url")
+  videoUrl    String?  @map("video_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  artisan     Artisan? @relation(fields: [artisanId], references: [id])
+
+  @@map("artisan_portfolio")
+}
+
+model Service {
+  id           String    @id @default(uuid())
+  categoryId   String?   @map("category_id")
+  artisanId    String?   @map("artisan_id")
+  title        String?
+  description  String?
+  price        Float?
+  categoryName String?   @map("category_name")
+  imageUrl     String?   @map("image_url")
+  translations Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  category     Category? @relation(fields: [categoryId], references: [id])
+  artisan      Artisan?  @relation(fields: [artisanId], references: [id])
+  bookings     Booking[]
+  orders       Order[]
+  packages     PackageService[]
+  groupRequests GroupRequest[]
+
+  @@map("services")
+}
+
+
+
+
+
+
+
+
+
+model Booking {
+  id                      String            @id @default(uuid())
+  clientId                String?           @map("client_id")
+  artisanId               String?           @map("artisan_id")
+  serviceId               String?           @map("service_id")
+  deliveryMethod          String?   @map("delivery_method")
+  locationLat             Float?          @map("location_lat")
+  locationLng             Float?          @map("location_lng")
+  city                    String?
+  proofBeforeClient       String?           @map("proof_before_client")
+  materialHandling        String? @default("client_provides") @map("material_handling")
+  materialCost            Float?          @default(0) @map("material_cost")
+  artisanProposedPrice    Float?          @map("artisan_proposed_price")
+  artisanProposalComments String?           @map("artisan_proposal_comments")
+  requiredMaterials       Json?             @map("required_materials")
+  clientApprovedProposal  Boolean           @default(false) @map("client_approved_proposal")
+  proofDuringService      String?           @map("proof_during_service")
+  proofAfterService       String?           @map("proof_after_service")
+  price                   Float?
+  paymentMethod           String?           @default("cash") @map("payment_method")
+  paymentStatus           String?    @default("pending") @map("payment_status")
+  bookingStatus           String?    @default("pending") @map("booking_status")
+  adminAmount             Float?          @map("admin_amount")
+  artisanAmount           Float?          @map("artisan_amount")
+  scheduledAt             DateTime?         @map("scheduled_at")
+  isUrgent                Boolean           @default(false) @map("is_urgent")
+  attachments             Json?
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+  ratings                 Rating[]
+
+  client  User?    @relation(fields: [clientId], references: [id])
+  artisan Artisan? @relation(fields: [artisanId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
+
+  @@map("bookings")
+}
+
+
+
+
+
+model Order {
+  id               String            @id @default(uuid())
+  clientId         String?           @map("client_id")
+  artisanId        String?           @map("artisan_id")
+  serviceId        String?           @map("service_id")
+  status           String?
+  price            Float?
+  commissionAmount Float?          @map("commission_amount")
+  locationLat      Float?          @map("location_lat")
+  locationLng      Float?          @map("location_lng")
+  address          String?
+  city             String?
+  description      String?
+  isUrgent         Boolean           @default(false) @map("is_urgent")
+  proposedPrice    Float?          @map("proposed_price")
+  attachments      Json?
+  pointsEarned     Int               @default(0) @map("points_earned")
+  pointsUsed       Int               @default(0) @map("points_used")
+  discountAmount   Float?          @default(0) @map("discount_amount")
+  packageId        String?           @map("package_id")
+  groupRequestId   String?           @map("group_request_id")
+  commissionStatus String? @default("pending") @map("commission_status")
+  scheduledAt      DateTime?         @map("scheduled_at")
+  startedAt        DateTime?         @map("started_at")
+  finishedAt       DateTime?         @map("finished_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  ratings          Rating[]
+
+  client  User?    @relation(fields: [clientId], references: [id])
+  artisan Artisan? @relation(fields: [artisanId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
+  payments Payment[]
+  proposals Proposal[]
+
+  @@map("orders")
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String?  @unique @map("user_id")
+  balance   Float? @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+
+
+
+
+model Transaction {
+  id          String             @id @default(uuid())
+  walletId    String?            @map("wallet_id")
+  amount      Float?
+  type        String?
+  status      String?
+  description String?
+  referenceId String?            @map("reference_id")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  wallet      Wallet?            @relation(fields: [walletId], references: [id])
+
+  @@map("transactions")
+}
+
+
+
+model Payment {
+  id            String         @id @default(uuid())
+  orderId       String?        @map("order_id")
+  amount        Float?
+  method        String?
+  status        String?
+  transactionId String?        @map("transaction_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  order         Order?         @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  orderId   String?  @map("order_id")
+  clientId  String?  @map("client_id")
+  artisanId String?  @map("artisan_id")
+  stars     Int?
+  review    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  client    User?    @relation(fields: [clientId], references: [id])
+  artisan   Artisan? @relation(fields: [artisanId], references: [id])
+  order     Order?   @relation(fields: [orderId], references: [id])
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  bookingId String?  @map("booking_id")
+
+  @@map("ratings")
+}
+
+
+
+
+
+model Message {
+  id          String         @id @default(uuid())
+  orderId     String?        @map("order_id")
+  senderId    String?        @map("sender_id")
+  receiverId  String?        @map("receiver_id")
+  content     String?
+  type        String?   @default("text")
+  audioUrl    String?        @map("audio_url")
+  imageUrl    String?        @map("image_url")
+  latitude    Float?
+  longitude   Float?
+  status      String? @default("sent")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  sender      User?          @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User?          @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@map("messages")
+}
+
+
+
+model Notification {
+  id        String            @id @default(uuid())
+  userId    String?           @map("user_id")
+  title     String?
+  message   String?
+  type      String?
+  isRead    Boolean           @default(false) @map("is_read")
+  link      String?
+  createdAt DateTime          @default(now()) @map("created_at")
+  user      User?             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model Proposal {
+  id        String       @id @default(uuid())
+  orderId   String?      @map("order_id")
+  artisanId String?      @map("artisan_id")
+  price     Float?
+  status    String? @default("pending")
+  createdAt DateTime     @default(now()) @map("created_at")
+  order     Order?       @relation(fields: [orderId], references: [id])
+  artisan   Artisan?     @relation(fields: [artisanId], references: [id])
+
+  @@map("proposals")
+}
+
+model Package {
+  id                 String           @id @default(uuid())
+  name               String?
+  description        String?
+  price              Float?
+  discountPercentage Float?         @map("discount_percentage")
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  services           PackageService[]
+
+  @@map("packages")
+}
+
+model PackageService {
+  packageId String  @map("package_id")
+  serviceId String  @map("service_id")
+  package   Package @relation(fields: [packageId], references: [id])
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  @@id([packageId, serviceId])
+  @@map("package_services")
+}
+
+
+
+model GroupRequest {
+  id                  String              @id @default(uuid())
+  creatorId           String?             @map("creator_id")
+  artisanId           String?             @map("artisan_id")
+  serviceId           String?             @map("service_id")
+  title               String?
+  description         String?
+  status              String? @default("recruiting")
+  minParticipants     Int                 @default(2) @map("min_participants")
+  maxParticipants     Int?                @map("max_participants")
+  currentPricePerUser Float?            @map("current_price_per_user")
+  locationLat         Float?            @map("location_lat")
+  locationLng         Float?            @map("location_lng")
+  address             String?
+  scheduledAt         DateTime?           @map("scheduled_at")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  creator             User?               @relation("CreatedGroupRequests", fields: [creatorId], references: [id])
+  artisan             Artisan?            @relation(fields: [artisanId], references: [id])
+  service             Service?            @relation(fields: [serviceId], references: [id])
+  participants        GroupRequestParticipant[]
+
+  @@map("group_requests")
+}
+
+
+
+model GroupRequestParticipant {
+  groupRequestId String            @map("group_request_id")
+  userId         String            @map("user_id")
+  status         String @default("joined")
+  joinedAt       DateTime          @default(now()) @map("joined_at")
+  groupRequest   GroupRequest      @relation(fields: [groupRequestId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
+
+  @@id([groupRequestId, userId])
+  @@map("group_request_participants")
+}
+
+
+
+model Dispute {
+  id          String         @id @default(uuid())
+  orderId     String?        @map("order_id")
+  clientId    String?        @map("client_id")
+  artisanId   String?        @map("artisan_id")
+  reason      String?
+  description String?
+  status      String? @default("open")
+  resolution  String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  client      User?          @relation(fields: [clientId], references: [id])
+  artisan     Artisan?       @relation(fields: [artisanId], references: [id])
+
+  @@map("disputes")
+}
+
+model City {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("cities")
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(uuid())
+  name         String?
+  description  String?
+  price        Float?
+  durationDays Int?     @map("duration_days")
+  features     Json?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("subscription_plans")
+}
+
+model FraudAlert {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  reason    String?
+  riskLevel String?  @map("risk_level")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("fraud_alerts")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String?
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  details    String?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
