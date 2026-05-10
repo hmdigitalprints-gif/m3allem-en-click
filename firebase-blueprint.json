@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "artisan", "seller", "company", "admin"] },
+        "avatar_url": { "type": "string", "format": "uri" },
+        "verified": { "type": "boolean" },
+        "points": { "type": "number" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "role"]
+    },
+    "Artisan": {
+      "title": "Artisan",
+      "description": "Artisan profile and professional details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "category_id": { "type": "string" },
+        "bio": { "type": "string" },
+        "expertise": { "type": "string" },
+        "years_experience": { "type": "number" },
+        "rating": { "type": "number" },
+        "review_count": { "type": "number" },
+        "is_verified": { "type": "boolean" },
+        "is_online": { "type": "boolean" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      },
+      "required": ["id", "user_id", "category_id"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Service booking details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "artisan_id": { "type": "string" },
+        "service_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "proposal_submitted", "proposal_approved", "en_route", "in_progress", "completed", "cancelled"] },
+        "price": { "type": "number" },
+        "scheduled_at": { "type": "string", "format": "date-time" },
+        "payment_status": { "type": "string", "enum": ["pending", "paid", "failed"] }
+      },
+      "required": ["id", "client_id", "artisan_id", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/artisans/{artisanId}": {
+      "schema": "Artisan",
+      "description": "Artisan profile documents"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Booking records"
+    }
+  }
+}
