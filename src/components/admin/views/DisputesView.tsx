@@ -15,7 +15,10 @@ export default function DisputesView({ isDarkMode, cardClasses, textMutedClasses
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/disputes', { credentials: 'include'});
+      const res = await fetch('/api/admin/disputes', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setDisputes(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -33,10 +36,12 @@ export default function DisputesView({ isDarkMode, cardClasses, textMutedClasses
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/disputes/${id}/resolve`, { credentials: 'include', 
+      const res = await fetch(`/api/admin/disputes/${id}/resolve`, { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ resolution })
       });

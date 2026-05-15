@@ -12,6 +12,8 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useProductFilterStore } from '../../store/productFilterStore';
 
+import { fetchJson } from '../../services/marketplaceService';
+
 export default function StoreSection({ onAction }: { onAction: (msg: string) => void }) {
   const { t } = useTranslation();
   const { filters, setFilters, resetFilters } = useProductFilterStore();
@@ -27,11 +29,11 @@ export default function StoreSection({ onAction }: { onAction: (msg: string) => 
           Object.entries(filters).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
         );
         const queryParams = new URLSearchParams(cleanFilters as any).toString();
-        const response = await fetch(`/api/marketplace/products?${queryParams}`, { credentials: 'include' });
-        if (response.ok) {
-          const data = await response.json();
-          setProducts(data);
-        }
+        const token = localStorage.getItem('m3allem_token');
+        const data = await fetchJson(`/api/marketplace/products?${queryParams}`, { 
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        setProducts(data);
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {
@@ -200,7 +202,7 @@ export default function StoreSection({ onAction }: { onAction: (msg: string) => 
                     
                     <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                       <div>
-                        <span className="text-2xl font-bold">{product.price}</span>
+                        <span className="text-2xl font-bold">{Number(product.price).toFixed(2)}</span>
                         <span className="text-xs text-[var(--accent)] font-bold ml-1">MAD</span>
                       </div>
                       <button 

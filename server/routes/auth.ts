@@ -27,8 +27,8 @@ const DISABLE_OTP = process.env.ENABLE_OTP === "false";
 const setTokenCookie = (res: any, token: string) => {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -48,7 +48,7 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
     try {
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        select: { id: true, role: true, preferredLanguage: true },
+        select: { id: true, role: true, preferredLanguage: true, name: true, avatarUrl: true },
       });
       if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -84,8 +84,8 @@ async function cleanupUnverifiedUser(userId: string) {
 router.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
   });
   res.json({ message: "Logout successful" });
 });
@@ -114,6 +114,76 @@ function parseIdentifier(identifier: string) {
 }
 
 // --- Registration ---
+
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, phone, role, password } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email || undefined },
+          { phone: phone || undefined }
+        ].filter(Boolean) as any
+      }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    const passwordHash = await bcrypt.hash(password || "password123", 10);
+    const preferredLanguage = await getPreferredLanguage(req);
+
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email: email || null,
+          phone: phone || null,
+          role: (role as Role) || "client",
+          passwordHash,
+          verified: true,
+          emailVerified: true,
+          preferredLanguage
+        }
+      });
+
+      if (role === 'artisan') {
+        const category = await tx.category.findFirst();
+        await tx.artisan.create({
+          data: {
+            userId: newUser.id,
+            categoryId: req.body.categoryId || category?.id || null,
+            bio: ""
+          }
+        });
+      } else if (role === 'seller') {
+        await tx.store.create({
+          data: {
+            userId: newUser.id,
+            name: name || "My Store"
+          }
+        });
+      } else if (role === 'company') {
+        await tx.company.create({
+          data: {
+            userId: newUser.id,
+            name: name || "My Company"
+          }
+        });
+      }
+      
+      return newUser;
+    });
+
+    res.status(201).json({ message: "User created successfully", user });
+  } catch (error) {
+    console.error("Generic registration error:", error);
+    res.status(500).json({ error: "Failed to create user" });
+  }
+});
 
 router.post("/register/client", async (req, res) => {
   try {
@@ -960,10 +1030,12 @@ router.patch(
       return res.status(403).json({ error: "Unauthorized" });
 
     try {
+      const standardLangs = ['en', 'fr', 'ar'];
       const langExists = await prisma.language.findFirst({
         where: { code: language, isActive: true },
       });
-      if (!langExists) {
+      
+      if (!langExists && !standardLangs.includes(language)) {
         return res.status(400).json({ error: "Invalid or inactive language" });
       }
 
@@ -1025,7 +1097,7 @@ router.get("/users/:id", authenticateToken, async (req: any, res) => {
 });
 
 router.put("/users/:id", authenticateToken, async (req: any, res) => {
-  const { name, avatarUrl, city, address } = req.body;
+  const { name, avatarUrl, city, address, phone } = req.body;
   if (req.user.id !== req.params.id)
     return res.status(403).json({ error: "Unauthorized" });
 
@@ -1037,6 +1109,7 @@ router.put("/users/:id", authenticateToken, async (req: any, res) => {
         avatarUrl,
         city: city || null,
         address: address || null,
+        phone: phone || null,
       },
     });
 

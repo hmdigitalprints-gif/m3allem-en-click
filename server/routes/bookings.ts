@@ -179,7 +179,7 @@ router.get("/", authenticateToken, async (req: any, res) => {
         where: { artisanId: artisan.id },
         include: {
           service: { select: { title: true } },
-          client: { select: { name: true, avatarUrl: true } },
+          client: { select: { name: true, avatarUrl: true, phone: true } },
           ratings: { select: { id: true } }
         },
         orderBy: { createdAt: 'desc' },
@@ -193,7 +193,7 @@ router.get("/", authenticateToken, async (req: any, res) => {
           service: { select: { title: true } },
           artisan: {
             include: {
-              user: { select: { name: true, avatarUrl: true } }
+              user: { select: { name: true, avatarUrl: true, phone: true } }
             }
           },
           ratings: { select: { id: true } }
@@ -207,17 +207,24 @@ router.get("/", authenticateToken, async (req: any, res) => {
     const nextCursor = bookings.length === 50 ? bookings[49].id : null;
     if (nextCursor) res.setHeader('X-Next-Cursor', nextCursor);
 
-    const formatted = await Promise.all(bookings.map(async (b: any) => ({
-      ...b,
-      status: b.bookingStatus,
-      service_title: b.service?.title,
-      client_name: b.client?.name,
-      client_avatar: b.client?.avatarUrl,
-      artisan_name: b.artisan?.user?.name,
-      artisan_avatar: b.artisan?.user?.avatarUrl,
-      has_review: b.ratings.length > 0,
-      status_label: await t(`status_${b.bookingStatus}`, lang)
-    })));
+    const approvedStatuses = ['proposal_approved', 'en_route', 'in_progress', 'client_review', 'completed'];
+
+    const formatted = await Promise.all(bookings.map(async (b: any) => {
+      const isApproved = approvedStatuses.includes(b.bookingStatus);
+      return {
+        ...b,
+        status: b.bookingStatus,
+        service_title: b.service?.title,
+        client_name: b.client?.name,
+        client_avatar: b.client?.avatarUrl,
+        client_phone: isApproved ? b.client?.phone : undefined,
+        artisan_name: b.artisan?.user?.name,
+        artisan_avatar: b.artisan?.user?.avatarUrl,
+        artisan_phone: isApproved ? b.artisan?.user?.phone : undefined,
+        has_review: b.ratings.length > 0,
+        status_label: await t(`status_${b.bookingStatus}`, lang)
+      };
+    }));
 
     res.json(formatted);
   } catch (error) {

@@ -17,7 +17,10 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/cash-collections', { credentials: 'include'});
+      const res = await fetch('/api/admin/cash-collections', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setCollections(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -36,10 +39,12 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
     if (!selectedArtisan || !token) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/admin/cash-collections/${selectedArtisan.artisan_id}/record-payment`, { credentials: 'include', 
+      const res = await fetch(`/api/admin/cash-collections/${selectedArtisan.artisan_id}/record-payment`, { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ amount: parseFloat(amount) })
       });
@@ -47,7 +52,7 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
         setSelectedArtisan(null);
         setAmount('');
         fetchCollections();
-        onAction?.(`Payment of MAD ${amount} recorded for ${selectedArtisan.artisan_name}`);
+        onAction?.(`Payment of MAD ${Number(amount).toFixed(2)} recorded for ${selectedArtisan.artisan_name}`);
       }
     } catch (error) {
       onAction?.('Failed to record payment');
@@ -68,8 +73,8 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KpiCard title="Total Owed" value={`MAD ${totalOwed.toLocaleString()}`} trend="+5.2%" isPositive={false} isDarkMode={isDarkMode} />
-        <KpiCard title="Collected (MTD)" value="MAD 0" trend="0.0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Total Owed" value={`MAD ${Number(totalOwed).toFixed(2)}`} trend="+5.2%" isPositive={false} isDarkMode={isDarkMode} />
+        <KpiCard title="Collected (MTD)" value="MAD 0.00" trend="0.0%" isPositive={true} isDarkMode={isDarkMode} />
         <KpiCard title="Overdue Artisans" value={collections.length.toString()} trend="-2" isPositive={true} isDarkMode={isDarkMode} />
       </div>
 
@@ -103,8 +108,8 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
                       <span className="tech-header text-sm not-italic text-[var(--text)]">{c.artisan_name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 tech-value text-sm text-[var(--text)] not-italic">MAD {c.total_cash_handled.toLocaleString()}</td>
-                  <td className="px-6 py-4 tech-value text-sm text-[var(--destructive)] not-italic font-bold">MAD {c.commission_owed.toLocaleString()}</td>
+                  <td className="px-6 py-4 tech-value text-sm text-[var(--text)] not-italic">MAD {Number(c.total_cash_handled).toFixed(2)}</td>
+                  <td className="px-6 py-4 tech-value text-sm text-[var(--destructive)] not-italic font-bold">MAD {Number(c.commission_owed).toFixed(2)}</td>
                   <td className="px-6 py-4 text-right">
                     <button 
                       onClick={() => {
@@ -147,7 +152,7 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
                   </div>
                   <div>
                     <p className="tech-header text-sm not-italic text-[var(--text)]">{selectedArtisan.artisan_name}</p>
-                    <p className="tech-label opacity-70">Owed: MAD {selectedArtisan.commission_owed.toLocaleString()}</p>
+                    <p className="tech-label opacity-70">Owed: MAD {Number(selectedArtisan.commission_owed).toFixed(2)}</p>
                   </div>
                 </div>
 

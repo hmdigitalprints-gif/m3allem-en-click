@@ -41,8 +41,14 @@ export function AdminTranslationManager() {
     try {
       setLoading(true);
       const [transRes, langRes] = await Promise.all([
-        fetch('/api/admin/translations', { credentials: 'include'}),
-        fetch('/api/languages', { credentials: 'include' })
+        fetch('/api/admin/translations', { 
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/languages', { 
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
       ]);
       
       if (transRes.ok && langRes.ok) {
@@ -60,10 +66,12 @@ export function AdminTranslationManager() {
     e.preventDefault();
     if (!token) return;
     try {
-      const res = await fetch('/api/admin/translations', { credentials: 'include', 
+      const res = await fetch('/api/admin/translations', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify(newTranslation)
       });
@@ -85,10 +93,12 @@ export function AdminTranslationManager() {
   const handleUpdate = async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/translations/${id}`, { credentials: 'include', 
+      const res = await fetch(`/api/admin/translations/${id}`, { 
+        credentials: 'include', 
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ value: editValue })
       });
@@ -321,8 +331,11 @@ export function AdminTranslationManager() {
                       <button
                         onClick={async () => {
                           if (confirm('Are you sure you want to delete this translation?')) {
-                            await fetch(`/api/admin/translations/${t.id}`, { credentials: 'include',  
-                              method: 'DELETE'});
+                            await fetch(`/api/admin/translations/${t.id}`, { 
+                              credentials: 'include',  
+                              method: 'DELETE',
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
                             fetchData();
                           }
                         }}

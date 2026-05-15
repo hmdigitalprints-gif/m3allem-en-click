@@ -12,8 +12,10 @@ import adminRoutes from "./routes/admin.ts";
 import artisanRoutes from "./routes/artisans.ts";
 import walletRoutes from "./routes/wallet.ts";
 import sellerRoutes from "./routes/sellers.ts";
+import marketplaceRoutes from "./routes/marketplace.ts";
 import companyRoutes from "./routes/companies.ts";
 import aiRoutes from "./routes/ai.ts";
+import simulationRoutes from "./routes/simulation.ts";
 import {
   initNotificationService,
   sendNotification,
@@ -21,6 +23,7 @@ import {
 import { authenticateToken } from "./routes/auth.ts";
 import { sanitizeObject } from "./lib/sanitizer.ts";
 import helmet from "helmet";
+import cors from "cors";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
 import path from "path";
@@ -29,6 +32,7 @@ import NodeCache from "node-cache";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import * as Sentry from "@sentry/node";
+import compression from "compression";
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -44,6 +48,17 @@ const langCache = new NodeCache({ stdTTL: 300 });
 async function startServer() {
   const app = express();
   app.set("trust proxy", 1);
+
+  // Enable CORS
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept-Language", "Cookie"]
+  }));
+
+  // Gzip compression for faster transfers
+  app.use(compression());
 
   app.use(
     pinoHttp({
@@ -134,7 +149,7 @@ async function startServer() {
   // Rate Limiting
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Reduced for production
+    max: isDev ? 10000 : 2000, // Significantly increased for development
     message:
       "Too many requests from this IP, please try again after 15 minutes",
     standardHeaders: true,
@@ -148,7 +163,7 @@ async function startServer() {
   // Stricter rate limit for auth routes
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Stricter settings for production
+    max: 100, // Increased slightly but still limited for security
     message: "Too many login attempts, please try again after 15 minutes",
     validate: { trustProxy: false },
   });
@@ -216,7 +231,7 @@ async function startServer() {
         finalIsRTL = lang.isRtl === true;
       }
 
-      langCache.set(cacheKey, { lang: finalLang, isRTL: finalIsRTL }, 300);
+      langCache.set(cacheKey, { lang: finalLang, isRTL: finalIsRTL }, 3600);
       req.lang = finalLang;
       req.isRTL = finalIsRTL;
     } catch (error: any) {
@@ -279,6 +294,7 @@ async function startServer() {
         "image/png",
         "image/webp",
         "image/gif",
+        "image/svg+xml",
         "audio/webm",
         "audio/mp3",
         "audio/mpeg",
@@ -297,32 +313,44 @@ async function startServer() {
           .json({ error: "File size limit exceeded (5MB maximum)" });
       }
 
-      // Validate magic bytes
-      const { fileTypeFromBuffer } = await import("file-type");
-      const actualType = await fileTypeFromBuffer(buffer);
-
-      if (!actualType || !allowedMimes.includes(actualType.mime)) {
-        return res
-          .status(400)
-          .json({ error: "File content does not match allowed types" });
-      }
-
       let finalBuffer = buffer;
-      let ext =
-        actualType.ext ||
-        mimeType.split("/")[1] ||
-        (type === "audio" ? "webm" : "png");
+      let ext = "png";
 
-      if (
-        actualType.mime.startsWith("image/") &&
-        actualType.mime !== "image/gif"
-      ) {
-        const sharp = (await import("sharp")).default;
-        finalBuffer = await sharp(buffer)
-          .resize({ width: 1200, withoutEnlargement: true })
-          .webp({ quality: 80 })
-          .toBuffer();
-        ext = "webp";
+      if (mimeType === "image/svg+xml") {
+        // file-type package often misidentifies SVGs
+        const contentString = buffer.toString('utf-8');
+        if (!contentString.includes('<svg') && !contentString.includes('<SVG')) {
+          return res.status(400).json({ error: "Invalid SVG file" });
+        }
+        ext = "svg";
+      } else {
+        // Validate magic bytes
+        const { fileTypeFromBuffer } = await import("file-type");
+        const actualType = await fileTypeFromBuffer(buffer);
+  
+        if (!actualType || !allowedMimes.includes(actualType.mime)) {
+          return res
+            .status(400)
+            .json({ error: "File content does not match allowed types" });
+        }
+  
+        ext =
+          actualType.ext ||
+          mimeType.split("/")[1] ||
+          (type === "audio" ? "webm" : "png");
+  
+        if (
+          actualType.mime.startsWith("image/") &&
+          actualType.mime !== "image/gif"
+        ) {
+          const sharp = (await import("sharp")).default;
+          // Optimize to webp but preserve high original resolution (up to 4k basically)
+          finalBuffer = await sharp(buffer)
+            .resize({ width: 3840, withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer();
+          ext = "webp";
+        }
       }
 
       const filename = `${uuidv4()}.${ext}`;
@@ -430,6 +458,14 @@ async function startServer() {
         "show_categories_section",
         "show_features_section",
         "show_faq_section",
+        "branding_logo_light",
+        "branding_logo_dark",
+        "branding_symbol_light",
+        "branding_symbol_dark",
+        "branding_favicon",
+        "branding_navbar_animation",
+        "branding_primary_color",
+        "branding_gradient",
       ];
       const publicSettings = Object.keys(settingsMap)
         .filter((key) => publicKeys.includes(key))
@@ -454,73 +490,14 @@ async function startServer() {
   app.use("/api/sellers", sellerRoutes);
   app.use("/api/companies", companyRoutes);
   app.use("/api/ai", aiRoutes);
+  app.use("/api/simulation", simulationRoutes);
 
   // Custom auth / webhooks
   const { default: webhookRoutes } = await import("./routes/webhooks.ts");
   app.use("/api/webhooks", webhookRoutes);
 
-  app.use("/api/marketplace/artisans", artisanRoutes);
-  app.use("/api/marketplace/categories", async (req, res) => {
-    try {
-      const categories = await prisma.category.findMany();
-      res.json(categories);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch categories" });
-    }
-  });
-  app.get(
-    "/api/marketplace/my-favorites",
-    authenticateToken,
-    async (req: any, res) => {
-      try {
-        const favorites = await prisma.favorite.findMany({
-          where: { userId: req.user.id },
-          include: { artisan: true },
-        });
-        res.json(favorites);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch favorites" });
-      }
-    },
-  );
+  app.use("/api/marketplace", marketplaceRoutes);
 
-  app.post(
-    "/api/marketplace/favorites/add",
-    authenticateToken,
-    async (req: any, res) => {
-      try {
-        const { artisanId } = req.body;
-        if (!artisanId)
-          return res.status(400).json({ error: "artisanId is required" });
-
-        const favorite = await prisma.favorite.create({
-          data: { userId: req.user.id, artisanId },
-        });
-        res.json(favorite);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to add favorite" });
-      }
-    },
-  );
-
-  app.delete(
-    "/api/marketplace/favorites/remove",
-    authenticateToken,
-    async (req: any, res) => {
-      try {
-        const { artisanId } = req.body;
-        if (!artisanId)
-          return res.status(400).json({ error: "artisanId is required" });
-
-        await prisma.favorite.deleteMany({
-          where: { userId: req.user.id, artisanId },
-        });
-        res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to remove favorite" });
-      }
-    },
-  );
   app.use(
     "/api/admin",
     (req, res, next) => {
@@ -731,6 +708,77 @@ async function startServer() {
 
   // Chat
   app.get(
+    "/api/messages/conversations",
+    authenticateToken,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.id;
+        
+        // Find all users who sent messages to this user OR received messages from this user
+        const messages = await prisma.message.findMany({
+          where: {
+            OR: [
+              { senderId: userId },
+              { receiverId: userId }
+            ]
+          },
+          orderBy: { createdAt: 'desc' },
+          distinct: ['senderId', 'receiverId'] // This is tricky in Prisma, might need manually processing
+        });
+
+        // Unique set of other users
+        const otherUserIds = new Set<string>();
+        messages.forEach(m => {
+          if (m.senderId !== userId) otherUserIds.add(m.senderId);
+          if (m.receiverId !== userId) otherUserIds.add(m.receiverId);
+        });
+
+        const otherUsers = await prisma.user.findMany({
+          where: { id: { in: Array.from(otherUserIds) } },
+          select: { id: true, name: true, avatarUrl: true, role: true }
+        });
+
+        // Get last message and unread count for each
+        const conversations = await Promise.all(otherUsers.map(async (u) => {
+          const lastMsg = await prisma.message.findFirst({
+            where: {
+              OR: [
+                { senderId: userId, receiverId: u.id },
+                { senderId: u.id, receiverId: userId }
+              ]
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+
+          const unreadCount = await prisma.message.count({
+            where: {
+              senderId: u.id,
+              receiverId: userId,
+              status: { not: 'read' }
+            }
+          });
+
+          return {
+            id: u.id, // Using user ID as conversation ID
+            userId: u.id,
+            name: u.name,
+            avatarUrl: u.avatarUrl,
+            lastMessage: lastMsg?.content || (lastMsg?.type === 'voice' ? 'Voice message' : lastMsg?.type === 'image' ? 'Image message' : ''),
+            lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            unreadCount,
+            online: false // Could check a heartbeat service if we had one
+          };
+        }));
+
+        res.json(conversations);
+      } catch (error) {
+        console.error("Conversations error:", error);
+        res.status(500).json({ error: "Failed to fetch conversations" });
+      }
+    }
+  );
+
+  app.get(
     "/api/messages/:userId/:otherUserId",
     authenticateToken,
     async (req: any, res) => {
@@ -770,10 +818,37 @@ async function startServer() {
     },
   );
 
-  // 404 handler for API routes
-  app.use("/api/*", (req, res) => {
-    res.status(404).json({ error: "API endpoint not found" });
-  });
+  app.post(
+    "/api/messages",
+    authenticateToken,
+    async (req: any, res) => {
+      try {
+        const { receiverId, content, type, audioUrl, imageUrl } = req.body;
+        const senderId = req.user.id;
+
+        if (!receiverId) {
+          return res.status(400).json({ error: "receiverId is required" });
+        }
+
+        const message = await prisma.message.create({
+          data: {
+            senderId,
+            receiverId,
+            content: content || null,
+            type: type || "text",
+            audioUrl: audioUrl || null,
+            imageUrl: imageUrl || null,
+            status: "sent",
+          },
+        });
+
+        res.status(201).json(message);
+      } catch (error) {
+        console.error("Post message error:", error);
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  );
 
   // --- WebSockets ---
 
@@ -836,39 +911,40 @@ async function startServer() {
 
     socket.on("send_message", async (data) => {
       const {
-        sender_id,
-        receiver_id,
+        receiverId,
         content,
         type,
-        audio_url,
-        image_url,
+        audioUrl,
+        imageUrl,
         latitude,
         longitude,
-        order_id,
+        orderId,
       } = data;
-      if (sender_id !== socket.data.user.id) return;
+      const senderId = socket.data.user.id;
+      
       try {
         const message = await prisma.message.create({
           data: {
-            senderId: sender_id,
-            receiverId: receiver_id,
+            senderId,
+            receiverId,
             content: content || null,
             type: type || "text",
-            audioUrl: audio_url || null,
-            imageUrl: image_url || null,
+            audioUrl: audioUrl || null,
+            imageUrl: imageUrl || null,
             latitude: latitude || null,
             longitude: longitude || null,
-            orderId: order_id || null,
+            orderId: orderId || null,
             status: "sent",
           },
         });
 
-        io.to(receiver_id).emit("receive_message", message);
-        io.to(sender_id).emit("receive_message", message);
+        // Emit to both parties
+        io.to(receiverId).emit("receive_message", message);
+        io.to(senderId).emit("receive_message", message);
 
-        // Notify receiver if they are not in the chat
+        // Notify receiver
         sendNotification(
-          receiver_id,
+          receiverId,
           "New Message",
           type === "voice"
             ? "Sent a voice message"
@@ -878,7 +954,7 @@ async function startServer() {
                 ? "Shared their location"
                 : content,
           "push",
-          `/messages/${sender_id}`,
+          `/messages/${senderId}`,
         );
       } catch (error) {
         console.error("Send message error:", error);
@@ -886,15 +962,33 @@ async function startServer() {
     });
 
     socket.on("typing_start", (data) => {
-      if (!data) return;
-      const { to, from } = data;
-      io.to(to).emit("user_typing", { from, isTyping: true });
+      const { to } = data;
+      io.to(to).emit("user_typing", { from: socket.data.user.id, isTyping: true });
     });
 
     socket.on("typing_stop", (data) => {
+      const { to } = data;
+      io.to(to).emit("user_typing", { from: socket.data.user.id, isTyping: false });
+    });
+
+    socket.on("mark_delivered", async (data) => {
       if (!data) return;
-      const { to, from } = data;
-      io.to(to).emit("user_typing", { from, isTyping: false });
+      const { messageIds, senderId } = data;
+      if (messageIds && messageIds.length > 0) {
+        try {
+          await prisma.message.updateMany({
+            where: {
+              id: { in: messageIds },
+              receiverId: socket.data.user.id,
+              status: "sent"
+            },
+            data: { status: "delivered" },
+          });
+          io.to(senderId).emit("messages_delivered", { messageIds, receiverId: socket.data.user.id });
+        } catch (error) {
+          console.error("Mark delivered error:", error);
+        }
+      }
     });
 
     socket.on("mark_read", async (data) => {

@@ -18,7 +18,10 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users', { credentials: 'include'});
+      const res = await fetch('/api/admin/users', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setUsers(data.map((u: any) => ({
@@ -47,10 +50,12 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/auth/register', { credentials: 'include', 
+      const res = await fetch('/api/auth/register', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify(newUser)
       });
@@ -73,10 +78,12 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
   const handleVerifyUser = async (userId: string, currentStatus: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { credentials: 'include', 
+      const res = await fetch(`/api/admin/users/${userId}`, { 
+        credentials: 'include', 
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ verified: currentStatus !== 'Verified' })
       });
@@ -187,7 +194,7 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
                     </span>
                   </td>
                   <td className="px-8 py-6">
-                    <p className="tech-value text-[var(--accent)] text-base">MAD {user.balance.toLocaleString()}</p>
+                    <p className="tech-value text-[var(--accent)] text-base">MAD {Number(user.balance).toFixed(2)}</p>
                   </td>
                   <td className="px-8 py-6">
                     <span className={`px-3 py-1 rounded-full tech-label border border-[var(--glass-border)] ${

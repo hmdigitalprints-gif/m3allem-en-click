@@ -5,11 +5,18 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../../hooks/useTheme';
+import { useSettings } from '../../context/SettingsContext';
 import premiumLogo from '../../assets/images/m3allem_premium_logo_1778418407151.png';
 
 export default function PublicLayout({ children, onGetStarted }: { children: React.ReactNode, onGetStarted?: () => void }) {
   const { isDarkMode, toggleTheme } = useTheme();
   const { t } = useTranslation();
+  const { settings } = useSettings();
+
+  const logoUrl = isDarkMode ? (settings?.branding_logo_dark || settings?.branding_logo_light || premiumLogo) : (settings?.branding_logo_light || premiumLogo);
+  const symbolUrl = isDarkMode ? (settings?.branding_symbol_dark || settings?.branding_symbol_light || premiumLogo) : (settings?.branding_symbol_light || premiumLogo);
+
+  const hoverAnimClass = settings?.branding_navbar_animation === '1' ? 'transition-transform duration-500 hover:scale-105' : '';
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] selection:bg-[var(--accent)] selection:text-[var(--accent-foreground)] flex flex-col transition-colors duration-300">
@@ -18,10 +25,12 @@ export default function PublicLayout({ children, onGetStarted }: { children: Rea
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3 group cursor-pointer">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden transition-transform duration-500 hover:scale-105 shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5">
-                <img src={premiumLogo} alt="M3allem Logo" className="w-full h-full object-cover" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5 ${hoverAnimClass}`}>
+                <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
               </div>
-              <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance">M3allem <span className="text-[var(--accent)]">En Click</span></span>
+              <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance hidden sm:block">
+                {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
+              </span>
             </Link>
           </div>
           
@@ -55,11 +64,13 @@ export default function PublicLayout({ children, onGetStarted }: { children: Rea
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
             <div className="col-span-1 md:col-span-1">
-              <Link to="/" className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ring-1 ring-white/10 dark:ring-white/5">
-                  <img src={premiumLogo} alt="M3allem Logo" className="w-full h-full object-cover" />
+              <Link to="/" className="flex items-center gap-3 mb-6 group">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ring-1 ring-white/10 dark:ring-white/5 ${hoverAnimClass}`}>
+                  <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
                 </div>
-                <span className="text-lg font-bold tracking-tighter text-[var(--text)]">M3allem <span className="text-[var(--accent)]">En Click</span></span>
+                <span className="text-lg font-bold tracking-tighter text-[var(--text)]">
+                  {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
+                </span>
               </Link>
               <p className="text-[var(--text-muted)] text-sm leading-relaxed">
                 {t('footer_slogan')}

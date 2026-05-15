@@ -11,7 +11,15 @@ interface Settings {
   platform_name: string;
   contact_email: string;
   support_phone: string;
-  [key: string]: string;
+  [key: string]: string | undefined;
+  branding_logo_light?: string;
+  branding_logo_dark?: string;
+  branding_symbol_light?: string;
+  branding_symbol_dark?: string;
+  branding_favicon?: string;
+  branding_navbar_animation?: string;
+  branding_primary_color?: string;
+  branding_gradient?: string;
 }
 
 interface SettingsContextType {
@@ -56,7 +64,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Fetch both admin if possible
       const [adminRes, pubRes] = await Promise.all([
-        fetch('/api/admin/settings', { credentials: 'include'}).catch(() => null),
+        fetch('/api/admin/settings', { 
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).catch(() => null),
         fetch('/api/public/settings', { credentials: 'include' })
       ]);
 
@@ -73,7 +84,30 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.log('Not authorized to fetch admin settings');
       }
       
-      setSettings(prev => ({ ...prev, ...newSettings }));
+      setSettings(prev => {
+        const updated = { ...prev, ...newSettings };
+        
+        // Apply branding
+        if (updated.branding_primary_color) {
+          document.documentElement.style.setProperty('--accent', updated.branding_primary_color);
+        }
+        if (updated.branding_gradient) {
+          document.documentElement.style.setProperty('--accent-gradient', updated.branding_gradient);
+        }
+        if (updated.branding_favicon) {
+           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+           if (link) {
+             link.href = updated.branding_favicon;
+           } else {
+             const newLink = document.createElement("link");
+             newLink.rel = "icon";
+             newLink.href = updated.branding_favicon;
+             document.head.appendChild(newLink);
+           }
+        }
+        
+        return updated;
+      });
     } catch (error) {
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
         console.warn('Network error fetching settings. Server might be starting up.');
@@ -97,6 +131,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify(newSettings)
       });

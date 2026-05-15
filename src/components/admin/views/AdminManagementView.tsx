@@ -29,7 +29,10 @@ export default function AdminManagementView({
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users?role=admin', { credentials: 'include'});
+      const res = await fetch('/api/admin/users?role=admin', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setAdmins(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -48,10 +51,12 @@ export default function AdminManagementView({
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/auth/register', { credentials: 'include', 
+      const res = await fetch('/api/auth/register', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ ...formData, role: 'admin' })
       });

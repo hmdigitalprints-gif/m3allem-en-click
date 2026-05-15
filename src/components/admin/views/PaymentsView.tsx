@@ -14,7 +14,10 @@ export default function PaymentsView({ isDarkMode, cardClasses, textMutedClasses
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/transactions', { credentials: 'include'});
+      const res = await fetch('/api/admin/transactions', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setTransactions(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -54,9 +57,9 @@ export default function PaymentsView({ isDarkMode, cardClasses, textMutedClasses
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KpiCard title="Platform Revenue" value={`MAD ${totalRevenue.toLocaleString()}`} icon={<TrendingUp size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
-        <KpiCard title="Total Payouts" value={`MAD ${totalPayouts.toLocaleString()}`} icon={<ArrowUpRight size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
-        <KpiCard title="Pending Payouts" value={`MAD ${pendingPayouts.toLocaleString()}`} icon={<Clock size={20} />} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
+        <KpiCard title="Platform Revenue" value={`MAD ${Number(totalRevenue).toFixed(2)}`} icon={<TrendingUp size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Total Payouts" value={`MAD ${Number(totalPayouts).toFixed(2)}`} icon={<ArrowUpRight size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Pending Payouts" value={`MAD ${Number(pendingPayouts).toFixed(2)}`} icon={<Clock size={20} />} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
       </div>
 
       <div className="hynex-card overflow-hidden">
@@ -96,7 +99,7 @@ export default function PaymentsView({ isDarkMode, cardClasses, textMutedClasses
                   <td className="px-8 py-5 font-mono text-xs text-white/40">#{txn.id.substring(0, 8)}</td>
                   <td className="px-8 py-5 font-bold">{txn.user_name}</td>
                   <td className={`px-8 py-5 font-bold ${['topup', 'release'].includes(txn.type) ? 'text-[#10B981]' : 'text-rose-500'}`}>
-                    {['topup', 'release'].includes(txn.type) ? '+' : '-'} MAD {txn.amount.toLocaleString()}
+                    {['topup', 'release'].includes(txn.type) ? '+' : '-'} MAD {Number(txn.amount).toFixed(2)}
                   </td>
                   <td className="px-8 py-5 text-white/60 uppercase text-[10px] font-bold tracking-widest">{txn.type}</td>
                   <td className="px-8 py-5 text-right">

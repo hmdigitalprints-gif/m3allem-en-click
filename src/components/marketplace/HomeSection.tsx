@@ -300,7 +300,7 @@ export default function HomeSection({
                 category={t(artisan.category_name, artisan.category_name)} 
                 rating={artisan.rating} 
                 reviews={artisan.review_count} 
-                price={`${t('starting_from')} ${artisan.starting_price || 100} MAD`}
+                price={`${t('starting_from')} ${Number(artisan.starting_price || 100).toFixed(2)} MAD`}
                 image={artisan.avatar_url}
                 isOnline={!!artisan.is_online}
                 onAction={(type: string) => type === 'view' ? onSelectArtisan(artisan.id) : onBookArtisan(artisan, type === 'quick-book')}
@@ -369,7 +369,7 @@ export default function HomeSection({
               category={t(artisan.category_name, artisan.category_name)} 
               rating={artisan.rating} 
               reviews={artisan.review_count} 
-              price={`${t('starting_from')} ${artisan.starting_price || 150} MAD`}
+              price={`${t('starting_from')} ${Number(artisan.starting_price || 150).toFixed(2)} MAD`}
               image={artisan.avatar_url}
               isOnline={!!artisan.is_online}
               onAction={(type: string) => type === 'view' ? onSelectArtisan(artisan.id) : onBookArtisan(artisan, type === 'quick-book')}

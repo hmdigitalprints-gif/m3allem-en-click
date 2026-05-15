@@ -16,23 +16,31 @@ import {
   FileText,
   Sun,
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  Home as HomeIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import NotificationBell from '../layout/NotificationBell';
+import NavButton from '../common/NavButton';
+import MobileNav from '../common/MobileNav';
+import { LanguageSwitcher } from '../layout/LanguageSwitcher';
 
-export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, onAction }: { 
+import AccountSection from '../profile/AccountSection';
+
+export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, toggleTheme, onAction }: { 
   onLogout: () => void,
+  onSwitchView: () => void,
   isDarkMode: boolean,
   toggleTheme: () => void,
   onAction?: (msg: string) => void
 }) {
-  const { t } = useTranslation('dashboard');
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [completingProjectId, setCompletingProjectId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     activeProjects: 0,
     totalEmployees: 0,
@@ -54,8 +62,12 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
+        const options = {
+          credentials: 'include' as const,
+          headers: { 'Authorization': `Bearer ${token}` }
+        };
         const [projectsRes] = await Promise.all([
-          fetch('/api/companies/projects', { credentials: 'include'})
+          fetch('/api/companies/projects', options)
         ]);
 
         if (projectsRes.ok) {
@@ -102,10 +114,12 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
     }
 
     try {
-      const res = await fetch('/api/companies/projects', { credentials: 'include', 
+      const res = await fetch('/api/companies/projects', { 
+        credentials: 'include', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify(newProject)
       });
@@ -141,7 +155,39 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
     }
   };
 
+  const handleProjectStatusUpdate = async (projectId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/companies/projects/${projectId}/status`, { 
+        credentials: 'include', 
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        if (newStatus === 'completed') {
+          setCompletingProjectId(projectId);
+          setTimeout(() => {
+            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p));
+            setCompletingProjectId(null);
+            onAction?.('Project marked as completed! Excellent work.');
+          }, 1500);
+        } else {
+          setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p));
+          onAction?.(`Project status updated to ${newStatus}.`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update project status:', error);
+      onAction?.('Failed to update project status.');
+    }
+  };
+
   const navItems = [
+    { id: 'home-redirect', label: t('nav_home', 'Home'), icon: <HomeIcon size={18} />, onClick: onSwitchView },
     { id: 'dashboard', label: t('nav_dashboard', 'Dashboard'), icon: <LayoutDashboard size={18} /> },
     { id: 'projects', label: t('nav_projects', 'Projects'), icon: <Briefcase size={18} /> },
     { id: 'team', label: t('nav_team', 'Team'), icon: <Users size={18} /> },
@@ -160,7 +206,39 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
               <StatCard title="Active Projects" value={stats.activeProjects} icon={<Briefcase className="text-[var(--accent)]" />} />
               <StatCard title="Team Size" value={stats.totalEmployees} icon={<Users className="text-[var(--accent)]" />} />
               <StatCard title="Completed" value={stats.completedProjects} icon={<CheckCircle className="text-[var(--success)]" />} />
-              <StatCard title="Total Revenue" value={`${stats.totalRevenue} MAD`} icon={<Building2 className="text-[var(--accent)]" />} />
+              <StatCard title="Total Revenue" value={`${Number(stats.totalRevenue).toFixed(2)} MAD`} icon={<Building2 className="text-[var(--accent)]" />} />
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button 
+                onClick={() => setShowAddProjectModal(true)}
+                className="p-6 rounded-3xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex flex-col items-center gap-3 hover:bg-[var(--accent)] hover:text-white transition-all group"
+              >
+                <Plus size={24} className="text-[var(--accent)] group-hover:text-white" />
+                <span className="font-bold text-sm">New Project</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('team')}
+                className="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex flex-col items-center gap-3 hover:bg-blue-500 hover:text-white transition-all group"
+              >
+                <Users size={24} className="text-blue-500 group-hover:text-white" />
+                <span className="font-bold text-sm">Manage Team</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('invoices')}
+                className="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center gap-3 hover:bg-emerald-500 hover:text-white transition-all group"
+              >
+                <FileText size={24} className="text-emerald-500 group-hover:text-white" />
+                <span className="font-bold text-sm">Invoices</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className="p-6 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex flex-col items-center gap-3 hover:bg-purple-500 hover:text-white transition-all group"
+              >
+                <Settings size={24} className="text-purple-500 group-hover:text-white" />
+                <span className="font-bold text-sm">Settings</span>
+              </button>
             </div>
 
             <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6">
@@ -176,7 +254,20 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
               </div>
               <div className="space-y-4">
                 {projects?.map(project => (
-                  <div key={project.id} className="bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div key={project.id} className="bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
+                    <AnimatePresence>
+                      {completingProjectId === project.id && (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 z-10 bg-[var(--success)] flex items-center justify-center text-white"
+                        >
+                          <CheckCircle size={24} className="mr-2" />
+                          <span className="font-bold text-lg">Project Completed!</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <div>
                       <h4 className="font-bold text-lg text-[var(--text)]">{project.name}</h4>
                       <p className="text-[var(--text-muted)] text-sm">Client: {project.client}</p>
@@ -184,7 +275,7 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
                     <div className="flex items-center gap-8">
                       <div className="text-right">
                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Budget</p>
-                        <p className="font-bold text-[var(--accent)]">{project.budget} MAD</p>
+                        <p className="font-bold text-[var(--accent)]">{Number(project.budget).toFixed(2)} MAD</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Deadline</p>
@@ -192,16 +283,28 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                          project.status === 'ongoing' ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-[var(--warning)]/20 text-[var(--warning)]'
+                          project.status === 'ongoing' ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 
+                          project.status === 'completed' ? 'bg-[var(--success)]/20 text-[var(--success)]' :
+                          'bg-[var(--warning)]/20 text-[var(--warning)]'
                         }`}>
                           {project.status}
                         </span>
-                        <button 
-                          onClick={() => onAction?.(`Viewing details for project ${project.name}...`)}
-                          className="text-xs text-[var(--accent)] hover:underline transition-all active:scale-95"
-                        >
-                          Details
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {project.status !== 'completed' && (
+                            <button 
+                              onClick={() => handleProjectStatusUpdate(project.id, 'completed')}
+                              className="text-[10px] font-bold text-[var(--success)] hover:underline transition-all active:scale-95"
+                            >
+                              Mark Done
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => onAction?.(`Viewing details for project ${project.name}...`)}
+                            className="text-xs text-[var(--accent)] hover:underline transition-all active:scale-95"
+                          >
+                            Details
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -210,13 +313,92 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
             </div>
           </div>
         );
+      case 'projects':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-[var(--text)]">All Projects</h3>
+              <button 
+                onClick={() => setShowAddProjectModal(true)}
+                className="bg-[var(--accent)] text-[var(--accent-foreground)] px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20"
+              >
+                <Plus size={18} /> New Project
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {projects.map(project => (
+                <div key={project.id} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-8 glass group hover:shadow-2xl transition-all">
+                   <div className="flex justify-between items-start mb-6">
+                     <div>
+                       <h4 className="text-xl font-bold mb-1">{project.name}</h4>
+                       <span className="px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-bold uppercase rounded-lg">
+                         {project.status}
+                       </span>
+                     </div>
+                     <div className="text-right">
+                       <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mb-1">Budget</p>
+                       <p className="text-2xl font-black text-[var(--accent)]">{Number(project.budget).toFixed(0)} <span className="text-xs">MAD</span></p>
+                     </div>
+                   </div>
+                   <p className="text-sm text-[var(--text-muted)] mb-8 line-clamp-2">{project.description}</p>
+                   <div className="flex items-center justify-between pt-6 border-t border-[var(--border)]">
+                     <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-bold">
+                       <Clock size={14} /> Deadline: {project.deadline}
+                     </div>
+                     <button className="text-[var(--accent)] font-bold text-sm hover:underline">Details</button>
+                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'team':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center text-center">
+              <h3 className="text-xl font-bold">Team Management</h3>
+              <button 
+                onClick={() => {
+                  onAction?.('Opening candidate pool...');
+                  // In a real app we'd navigate to a candidate search page
+                }} 
+                className="bg-[var(--accent)] text-[var(--accent-foreground)] px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-all active:scale-95"
+              >
+                <Plus size={18} /> Hire Member
+              </button>
+            </div>
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-12 text-center">
+               <div className="w-20 h-20 bg-[var(--text)]/5 rounded-full flex items-center justify-center text-[var(--text-muted)] mx-auto mb-6">
+                 <Users size={40} />
+               </div>
+               <h4 className="text-xl font-bold mb-2">Build Your Team</h4>
+               <p className="text-[var(--text-muted)] max-w-md mx-auto mb-8">You can add professionals and specialists to your company projects once they are approved.</p>
+               <button className="px-8 py-3 bg-[var(--text)] text-[var(--bg)] rounded-xl font-bold text-sm">Browse Pros</button>
+            </div>
+          </div>
+        );
+      case 'invoices':
+        return (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-[var(--text)]">Financial Overview</h3>
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden">
+               <div className="p-12 text-center opacity-60">
+                 <FileText size={48} className="mx-auto mb-6 text-[var(--text-muted)]" />
+                 <h4 className="text-lg font-bold mb-2">No Invoices Yet</h4>
+                 <p className="text-sm">Invoices will be generated automatically as projects progress.</p>
+               </div>
+            </div>
+          </div>
+        );
+      case 'settings':
+        return <AccountSection onAction={(msg) => onAction?.(msg)} />;
       default:
         return <div className="p-12 text-center text-[var(--text-muted)]">Coming soon</div>;
     }
   };
 
   return (
-    <div className="flex h-screen bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden">
+    <div className="flex h-full bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden">
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -248,7 +430,14 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
           {navItems?.map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              onClick={() => { 
+                if (item.onClick) {
+                  item.onClick();
+                } else {
+                  setActiveTab(item.id); 
+                }
+                setIsMobileMenuOpen(false); 
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeTab === item.id 
                   ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-lg shadow-[var(--accent)]/20' 
@@ -292,6 +481,7 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
           </div>
           
           <div className="flex items-center gap-2 lg:gap-4">
+            <LanguageSwitcher />
             <button 
               onClick={toggleTheme}
               className="p-3 rounded-full glass hover:scale-110 transition-all active:scale-95 shadow-lg flex items-center justify-center"
@@ -321,6 +511,26 @@ export default function CompanyDashboard({ onLogout, isDarkMode, toggleTheme, on
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav 
+        activeTab={activeTab}
+        onTabChange={(id) => {
+          if (id === 'home-redirect') {
+            onSwitchView();
+          } else {
+            setActiveTab(id);
+          }
+        }}
+        navItems={[
+          { id: 'home-redirect', label: 'Home', icon: <HomeIcon size={18} /> },
+          { id: 'dashboard', label: 'Dash', icon: <LayoutDashboard size={18} /> },
+          { id: 'projects', label: 'Works', icon: <Briefcase size={18} /> },
+          { id: 'team', label: 'Team', icon: <Users size={18} /> },
+          { id: 'invoices', label: 'Docs', icon: <FileText size={18} /> },
+          { id: 'settings', label: 'Set', icon: <Settings size={18} /> }
+        ]}
+      />
 
       {/* Add Project Modal */}
       <AnimatePresence>

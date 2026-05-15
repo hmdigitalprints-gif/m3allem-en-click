@@ -50,7 +50,7 @@ export default function Devis() {
                     <td className="p-6 font-bold text-[var(--text)]">{t('devis_sample_proj', 'Complete Bathroom Renovation')}</td>
                     <td className="p-6 text-[var(--text)]/80">{t('devis_sample_artisan', 'Master Plumber')}</td>
                     <td className="p-6 text-[var(--text-muted)] text-sm">Oct 24, 2023</td>
-                    <td className="p-6 font-bold text-[var(--accent)]">15,000 MAD</td>
+                    <td className="p-6 font-bold text-[var(--accent)]">15,000.00 MAD</td>
                     <td className="p-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${i === 1 ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20'}`}>
                         {i === 1 ? t('devis_status_pending', 'Pending') : t('devis_status_accepted', 'Accepted')}

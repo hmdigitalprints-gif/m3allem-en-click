@@ -4,10 +4,12 @@ import { authenticateToken } from "./auth.ts";
 
 const router = express.Router();
 
-// GET all services (with search and filter)
+// GET all services (with search, filter and pagination)
 router.get("/", async (req, res) => {
   try {
-    const { category, search, artisanId } = req.query;
+    const { category, search, artisanId, page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
     
     const services = await prisma.service.findMany({
       where: {
@@ -16,12 +18,15 @@ router.get("/", async (req, res) => {
           artisanId ? { artisanId: artisanId as string } : {},
           search ? {
             OR: [
-              { title: { contains: search as string } },
-              { description: { contains: search as string } }
+              { title: { contains: search as string, mode: 'insensitive' as any } },
+              { description: { contains: search as string, mode: 'insensitive' as any } }
             ]
           } : {}
         ]
-      }
+      },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' }
     });
 
     res.json(services);

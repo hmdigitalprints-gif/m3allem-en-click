@@ -68,30 +68,38 @@ router.get("/stats", authenticateAdmin, async (req, res) => {
 router.get("/analytics", authenticateAdmin, async (req, res) => {
   try {
     // 1. Revenue Trends (Last 7 months)
-    const revenueTrends = [];
-    const now = new Date();
-    const sevenMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    const sevenMonthsAgo = new Date();
+    sevenMonthsAgo.setMonth(sevenMonthsAgo.getMonth() - 6);
+    sevenMonthsAgo.setDate(1);
+    sevenMonthsAgo.setHours(0, 0, 0, 0);
     
-    const revenueData = await prisma.booking.findMany({
+    // Efficiently group by month using database grouping if possible, 
+    // or at least optimize the query
+    const revenueDataRaw = await prisma.booking.groupBy({
+      by: ['createdAt', 'adminAmount' as any], // Prisma groupBy on dates is limited in some versions, but we can filter better
       where: {
         bookingStatus: 'completed',
         createdAt: { gte: sevenMonthsAgo }
       },
-      select: { adminAmount: true, createdAt: true }
+      _sum: { adminAmount: true }
     });
 
+    // Since Prisma groupBy doesn't directly support month grouping in all versions, 
+    // we'll keep the logic but optimize it to use the aggregated data
+    const revenueTrends = [];
+    const now = new Date();
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthName = d.toLocaleString('default', { month: 'short' });
-      const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+      const monthYear = d.getFullYear();
+      const monthIndex = d.getMonth();
       
-      const monthRevenue = revenueData
+      const monthRevenue = revenueDataRaw
         .filter(b => {
-           const t = b.createdAt.getTime();
-           return t >= startOfMonth && t <= endOfMonth;
+          const date = new Date(b.createdAt);
+          return date.getFullYear() === monthYear && date.getMonth() === monthIndex;
         })
-        .reduce((sum, b) => sum + Number(b.adminAmount || 0), 0);
+        .reduce((sum, b) => sum + Number(b._sum.adminAmount || 0), 0);
       
       revenueTrends.push({
         name: monthName,
@@ -643,7 +651,8 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
       where: {
         paymentMethod: 'cash',
         paymentStatus: 'pending',
-        bookingStatus: 'completed'
+        bookingStatus: 'completed',
+        artisanId: { not: null }
       },
       _sum: {
         price: true,
@@ -651,11 +660,19 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
       }
     });
 
-    const formatted = await Promise.all(collections.map(async (c) => {
-      const artisan = await prisma.artisan.findUnique({
-        where: { id: c.artisanId },
-        include: { user: { select: { name: true, avatarUrl: true } } }
-      });
+    const artisanIds = collections.map(c => c.artisanId).filter((id): id is string => id !== null);
+    const artisans = await prisma.artisan.findMany({
+      where: { id: { in: artisanIds } },
+      include: { user: { select: { name: true, avatarUrl: true } } }
+    });
+
+    const artisanMap = artisans.reduce((acc, a) => {
+      acc[a.id] = a;
+      return acc;
+    }, {} as Record<string, any>);
+
+    const formatted = collections.map(c => {
+      const artisan = artisanMap[c.artisanId!];
       return {
         artisan_id: c.artisanId,
         artisan_name: artisan?.user.name,
@@ -663,10 +680,11 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
         total_cash_handled: c._sum.price || 0,
         commission_owed: c._sum.adminAmount || 0
       };
-    }));
+    });
 
     res.json(formatted);
   } catch (error) {
+    console.error("Cash collections error:", error);
     res.status(500).json({ error: "Failed to fetch cash collections" });
   }
 });

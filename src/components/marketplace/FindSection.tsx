@@ -23,6 +23,9 @@ export default function FindSection({ onAction, onSelectArtisan, onBookArtisan, 
   const { t } = useTranslation();
   const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   
   const { filters, setFilters, resetFilters } = useFilterStore();
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -31,11 +34,28 @@ export default function FindSection({ onAction, onSelectArtisan, onBookArtisan, 
 
   useEffect(() => {
     setLoading(true);
-    marketplaceService.getArtisans(filters).then(data => {
+    setPage(1);
+    marketplaceService.getArtisans({ ...filters, page: 1, limit: 10 }).then(data => {
       setArtisans(data);
       setLoading(false);
+      setHasMore(data.length === 10);
     });
   }, [filters]);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const data = await marketplaceService.getArtisans({ ...filters, page: nextPage, limit: 10 });
+    if (data.length > 0) {
+      setArtisans(prev => [...prev, ...data]);
+      setPage(nextPage);
+      setHasMore(data.length === 10);
+    } else {
+      setHasMore(false);
+    }
+    setLoadingMore(false);
+  };
 
   const handleFilterChange = (key: string, val: any) => {
     setFilters({ [key]: val });
@@ -253,12 +273,33 @@ export default function FindSection({ onAction, onSelectArtisan, onBookArtisan, 
                   category={t(artisan.category_name, artisan.category_name)} 
                   rating={artisan.rating} 
                   reviews={artisan.review_count} 
-                  price={`${t('starting_from')} ${artisan.starting_price || 150} MAD`}
+                  price={`${t('starting_from')} ${Number(artisan.starting_price || 150).toFixed(2)} MAD`}
                   image={artisan.avatar_url}
                   isOnline={!!artisan.is_online}
                   onAction={(type: string) => type === 'view' ? onSelectArtisan(artisan.id) : onBookArtisan(artisan, type === 'quick-book')}
                 />
               ))}
+            </div>
+          )}
+
+          {hasMore && artisans.length > 0 && !loading && (
+            <div className="flex justify-center pt-8">
+              <button 
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-12 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text)] hover:bg-[var(--accent)] hover:text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 shadow-xl"
+              >
+                {loadingMore ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    {t('loading', 'Loading...')}
+                  </>
+                ) : (
+                  <>
+                    {t('load_more', 'Load More Artisans')}
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

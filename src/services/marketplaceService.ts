@@ -36,6 +36,8 @@ export interface Booking {
   finished_at?: string;
   other_party_name: string;
   other_party_avatar: string;
+  artisan_phone?: string;
+  client_phone?: string;
   payment_status?: string;
   payment_method?: string;
   has_review?: boolean;
@@ -46,83 +48,17 @@ export interface Booking {
 }
 
 const getAuthHeaders = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('m3allem_token') : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   return headers;
 };
 
-export const marketplaceService = {
-  async getCategories(): Promise<Category[]> {
-    try {
-      const res = await fetch('/api/marketplace/categories', { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
-  },
-
-  async getArtisans(filters: any = {}): Promise<Artisan[]> {
-    try {
-      const params = new URLSearchParams(filters);
-      const res = await fetch(`/api/marketplace/artisans?${params.toString()}`, { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
-  },
-
-  async getArtisanProfile(id: string) {
-    try {
-      const res = await fetch(`/api/marketplace/artisans/${id}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch profile');
-      return res.json();
-    } catch {
-      return null;
-    }
-  },
-
-  async toggleFavorite(artisanId: string, isFavorite: boolean) {
-    const method = isFavorite ? 'DELETE' : 'POST';
-    const url = isFavorite ? `/api/marketplace/favorites/${artisanId}` : '/api/marketplace/favorites';
-    const body = isFavorite ? undefined : JSON.stringify({ artisanId });
-    
-    const res = await fetch(url, {
-      method,
-      headers: getAuthHeaders(),
-      body,
-      credentials: 'include'
-    });
-    return res.json();
-  },
-
-  async getMyFavorites(): Promise<Artisan[]> {
-    try {
-      const res = await fetch('/api/marketplace/my-favorites', { 
-        credentials: 'include', 
-        headers: getAuthHeaders()
-      });
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
-  },
-
-  async getServicesByCategory(categoryId: string): Promise<any[]> {
-    try {
-      const res = await fetch(`/api/services/by-category/${categoryId}`, { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
-  }
-};
-
-const fetchJson = async (url: string, options: RequestInit = {}) => {
+export const fetchJson = async (url: string, options: RequestInit = {}) => {
   options.credentials = 'include';
   const res = await fetch(url, options);
   const contentType = res.headers.get("content-type");
@@ -138,6 +74,89 @@ const fetchJson = async (url: string, options: RequestInit = {}) => {
     throw new Error(data.error || 'API request failed');
   }
   return data;
+};
+
+export const marketplaceService = {
+  async getCategories(): Promise<Category[]> {
+    try {
+      return await fetchJson('/api/marketplace/categories', { 
+        headers: getAuthHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+      if (err instanceof Error) {
+        console.error('Error Stack:', err.stack);
+      }
+      return [];
+    }
+  },
+
+  async getArtisans(filters: any = {}): Promise<Artisan[]> {
+    try {
+      const params = new URLSearchParams(filters);
+      return await fetchJson(`/api/marketplace/artisans?${params.toString()}`, { 
+        headers: getAuthHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to fetch artisans:', err);
+      if (err instanceof Error) {
+        console.error('Error Stack:', err.stack);
+      }
+      return [];
+    }
+  },
+
+  async getArtisanProfile(id: string) {
+    try {
+      return await fetchJson(`/api/marketplace/artisans/${id}`, { 
+        headers: getAuthHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+      return null;
+    }
+  },
+
+  async toggleFavorite(artisanId: string, isFavorite: boolean) {
+    const method = isFavorite ? 'DELETE' : 'POST';
+    const url = isFavorite 
+      ? `/api/marketplace/favorites/remove` // Fixed endpoint based on server/index.ts
+      : '/api/marketplace/favorites/add';   // Fixed endpoint based on server/index.ts
+    const body = JSON.stringify({ artisanId });
+    
+    try {
+      return await fetchJson(url, {
+        method,
+        headers: getAuthHeaders(),
+        body
+      });
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+      return { error: 'Failed to update favorite' };
+    }
+  },
+
+  async getMyFavorites(): Promise<Artisan[]> {
+    try {
+      return await fetchJson('/api/marketplace/my-favorites', { 
+        headers: getAuthHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to fetch favorites:', err);
+      return [];
+    }
+  },
+
+  async getServicesByCategory(categoryId: string): Promise<any[]> {
+    try {
+      return await fetchJson(`/api/services/by-category/${categoryId}`, { 
+        headers: getAuthHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to fetch services:', err);
+      return [];
+    }
+  }
 };
 
 export const bookingService = {

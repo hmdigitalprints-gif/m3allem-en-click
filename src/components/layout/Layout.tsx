@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 import { useTheme } from '../../hooks/useTheme';
+import { useSettings } from '../../context/SettingsContext';
 import { Sun, Moon } from 'lucide-react';
 
 import premiumLogo from '../../assets/images/m3allem_premium_logo_1778418407151.png';
@@ -15,6 +16,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { settings } = useSettings();
+
+  const logoUrl = isDarkMode ? (settings?.branding_logo_dark || settings?.branding_logo_light || premiumLogo) : (settings?.branding_logo_light || premiumLogo);
+  const symbolUrl = isDarkMode ? (settings?.branding_symbol_dark || settings?.branding_symbol_light || premiumLogo) : (settings?.branding_symbol_light || premiumLogo);
+  
+  const hoverAnimClass = settings?.branding_navbar_animation === '1' ? 'transition-transform duration-500 hover:scale-105' : '';
 
   const navItems = [
     { icon: <Home size={24} />, label: t('nav_home', 'Home'), path: '/' },
@@ -30,10 +37,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-2xl border-b border-[var(--border)] px-4 sm:px-6 h-20 flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden transition-transform duration-500 hover:scale-105 shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5">
-              <img src={premiumLogo} alt="M3allem Logo" className="w-full h-full object-cover" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5 ${hoverAnimClass}`}>
+              <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance">M3allem <span className="text-[var(--accent)]">En Click</span></span>
+            <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance hidden sm:block">
+              {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
+            </span>
           </Link>
         </div>
         {user ? (

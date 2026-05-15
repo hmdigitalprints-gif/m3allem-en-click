@@ -22,7 +22,8 @@ import {
   Clock,
   Video,
   CheckCircle,
-  FileText
+  FileText,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -54,12 +55,16 @@ const Store = lazy(() => import('./pages/Store'));
 const FindM3allem = lazy(() => import('./pages/FindM3allem'));
 const Auth = lazy(() => import('./pages/Auth'));
 const PhoneDashboard = lazy(() => import('./pages/PhoneDashboard'));
+const SimulationDashboard = lazy(() => import('./components/debug/SimulationDashboard'));
 
 import ArtisanProfileModal from './components/marketplace/ArtisanProfile';
 import BookingModal from './components/marketplace/BookingModal';
 import ChatModal from './components/marketplace/ChatModal';
 import { AuthScreens } from './components/auth/AuthScreens';
 import { AuthRouteGuard } from './components/auth/AuthRouteGuard';
+import { Helmet } from 'react-helmet-async';
+import { useDirection } from './hooks/useDirection';
+import i18nInstance from './i18n.ts';
 import { useAuth } from './context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import NotificationBell from './components/layout/NotificationBell';
@@ -74,6 +79,7 @@ import MapTracking from './components/marketplace/MapTracking';
 import { socket, connectSocket } from './services/socket';
 
 import NavButton from './components/common/NavButton';
+import MobileNav from './components/common/MobileNav';
 import PromoBanner from './components/common/PromoBanner';
 
 // Lazy loaded Dashboards
@@ -92,6 +98,9 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export default function App() {
   const { t } = useTranslation();
+  const i18n = i18nInstance; // Use global instance
+  const { dir, language } = useDirection();
+
   const location = useLocation();
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -99,9 +108,19 @@ export default function App() {
   const { user, token, logout, isLoading: authLoading } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [view, setView] = useState<'admin' | 'customer' | 'artisan' | 'seller' | 'company'>('customer');
-  const [customerTab, setCustomerTab] = useState<'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages'>(() => (sessionStorage.getItem('m3allem_customerTab') as any) || 'home');
+  const [customerTab, setCustomerTab] = useState<'dashboard' | 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages'>(() => (sessionStorage.getItem('m3allem_customerTab') as any) || 'dashboard');
 
   useEffect(() => { sessionStorage.setItem('m3allem_customerTab', customerTab); }, [customerTab]);
+  
+  // Sync language with user preference
+  useEffect(() => {
+    if (user?.preferred_language && i18n.language !== user.preferred_language) {
+      i18n.changeLanguage(user.preferred_language);
+      // Persist in custom key for fetch interceptor robustness
+      localStorage.setItem('m3allem_lang', user.preferred_language);
+    }
+  }, [user?.preferred_language, i18n]);
+
   const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
   const [bookingArtisan, setBookingArtisan] = useState<any | null>(null);
   const [isQuickBook, setIsQuickBook] = useState(false);
@@ -181,44 +200,54 @@ export default function App() {
   const mainContent = !user ? (
     showLogin ? <AuthScreens onSuccess={() => setShowLogin(false)} onBack={() => setShowLogin(false)} /> : <LandingPage onGetStarted={() => setShowLogin(true)} onAction={(msg) => showToast(msg, 'info')} isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user} />
   ) : (
-    <div className="h-screen bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden flex flex-col pt-0">
+    <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden flex flex-col pt-0">
       <PromoBanner />
-      {view === 'admin' ? (
-        <ErrorBoundary>
-          <AdminDashboard 
-            onSwitchView={() => setView('customer')} 
-            onLogout={logout} 
-            onAction={showToast}
-            isDarkMode={isDarkMode} 
-            toggleTheme={toggleTheme} 
-          />
-        </ErrorBoundary>
-      ) : view === 'artisan' ? (
-        <ErrorBoundary><ArtisanDashboard onLogout={logout} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-      ) : view === 'seller' ? (
-        <ErrorBoundary><SellerDashboard onLogout={logout} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-      ) : view === 'company' ? (
-        <ErrorBoundary><CompanyDashboard onLogout={logout} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-      ) : (
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          <header className="h-16 md:h-20 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 sticky top-0 z-40 shrink-0">
+      <div className="flex-1 overflow-hidden">
+        {view === 'admin' ? (
+          <ErrorBoundary>
+            <AdminDashboard 
+              onSwitchView={() => setView('customer')} 
+              onLogout={logout} 
+              onAction={showToast}
+              isDarkMode={isDarkMode} 
+              toggleTheme={toggleTheme} 
+            />
+          </ErrorBoundary>
+        ) : view === 'artisan' ? (
+          <ErrorBoundary><ArtisanDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        ) : view === 'seller' ? (
+          <ErrorBoundary><SellerDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        ) : view === 'company' ? (
+          <ErrorBoundary><CompanyDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden relative h-full">
+            <header className="h-16 md:h-20 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 sticky top-0 z-[60] shrink-0">
             <div className="flex items-center gap-2 md:gap-4">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 transform hover:rotate-12 transition-transform duration-300">
+              <button 
+                onClick={() => setCustomerTab('dashboard')}
+                className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 transform hover:rotate-12 transition-transform duration-300"
+              >
                 <Hammer size={16} className="text-black" />
-              </div>
-              <div>
+              </button>
+              <div className="cursor-pointer" onClick={() => setCustomerTab('dashboard')}>
                 <h1 className="text-base md:text-xl font-black tracking-tight uppercase italic flex items-center gap-1">
-                  M3allem <span className="text-[var(--accent)] hidden sm:inline">En Click</span>
+                  M3allem <span className="text-[var(--accent)] hidden sm:inline">{t('nav_brand_accent')}</span>
                 </h1>
-                <p className="hidden md:block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">{t('crafting_excellence', 'Crafting Excellence')}</p>
+                <p className="hidden md:block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">{t('crafting_excellence')}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-1.5 md:gap-4">
+              <NavButton 
+                active={customerTab === 'home'} 
+                onClick={() => setCustomerTab('home')}
+                icon={<HomeIcon size={18} />}
+                label={t('nav_home')}
+              />
               <LanguageSwitcher />
               <button 
                 onClick={toggleTheme}
-                className="p-1.5 md:p-3 rounded-full glass hover:scale-110 transition-all active:scale-95 shadow-md flex items-center justify-center"
+                className="p-1.5 md:p-3 rounded-full glass hover:scale-110 transition-all active:scale-95 shadow-md flex items-center justify-center border border-[var(--border)]"
               >
                 {isDarkMode ? <Sun className="text-yellow-400" size={16} /> : <Moon className="text-blue-500" size={16} />}
               </button>
@@ -226,20 +255,20 @@ export default function App() {
               {user.role === 'admin' && (
                 <button 
                   onClick={() => setView('admin')}
-                  className="p-1.5 md:p-3 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-all active:scale-95 shadow-sm flex items-center gap-2 font-bold"
+                  className="p-1.5 md:p-3 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95 shadow-sm flex items-center gap-2 font-bold border border-[var(--accent)]/20"
                 >
                   <ShieldCheck size={16} />
-                  <span className="hidden lg:inline">{t('admin_panel', 'Admin Panel')}</span>
+                  <span className="hidden lg:inline">{t('nav_dashboard')}</span>
                 </button>
               )}
               <div className="flex items-center gap-1 md:gap-3 ms-1 md:ms-0">
                 <div className="w-7 h-7 md:w-10 md:h-10 rounded-full bg-[var(--text)]/10 border border-[var(--border)] overflow-hidden">
-                  <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=FFD700&color=000`} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=FFD700&color=000`} alt={t('profile_settings')} className="w-full h-full object-cover" />
                 </div>
                 <button 
                   onClick={logout}
-                  className="p-1.5 md:p-2.5 rounded-xl bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active:scale-95"
-                  title="Logout"
+                  className="p-1.5 md:p-2.5 rounded-xl bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active:scale-95 border border-[var(--danger)]/20"
+                  title={t('profile_btn_logout')}
                 >
                   <LogOut size={14} className="md:w-4 md:h-4" />
                 </button>
@@ -266,52 +295,24 @@ export default function App() {
           />
           
           {/* Customer Bottom Nav */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[95vw] md:w-auto z-40 bg-[var(--card-bg)]/80 md:bg-[var(--card-bg)]/40 backdrop-blur-2xl border border-[var(--border)] p-2 md:p-2 rounded-2xl md:rounded-full flex justify-between md:justify-center gap-1 md:gap-2 shadow-[0_10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-x-auto no-scrollbar">
-            <NavButton 
-              active={customerTab === 'home'} 
-              onClick={() => setCustomerTab('home')}
-              icon={<HomeIcon size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_home')}
-            />
-            <NavButton 
-              active={customerTab === 'find'} 
-              onClick={() => setCustomerTab('find')}
-              icon={<SearchIcon size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_find')}
-            />
-            <NavButton 
-              active={customerTab === 'documents'} 
-              onClick={() => setCustomerTab('documents')}
-              icon={<FileText size={18} className="md:w-5 md:h-5" />}
-              label="Documents"
-            />
-            <NavButton 
-              active={customerTab === 'store'} 
-              onClick={() => setCustomerTab('store')}
-              icon={<ShoppingBag size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_store')}
-            />
-            <NavButton 
-              active={customerTab === 'bookings'} 
-              onClick={() => setCustomerTab('bookings')}
-              icon={<Clock size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_bookings')}
-            />
-            <NavButton 
-              active={customerTab === 'messages'} 
-              onClick={() => setCustomerTab('messages')}
-              icon={<MessageSquare size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_messages')}
-            />
-            <NavButton 
-              active={customerTab === 'account'} 
-              onClick={() => setCustomerTab('account')}
-              icon={<Users size={18} className="md:w-5 md:h-5" />}
-              label={t('nav_account')}
-            />
-          </div>
+          <MobileNav 
+            activeTab={customerTab}
+            onTabChange={(id) => setCustomerTab(id as any)}
+            hiddenClassName=""
+            navItems={[
+              { id: 'dashboard', label: t('nav_overview'), icon: <LayoutDashboard size={18} /> },
+              { id: 'home', label: t('nav_home'), icon: <HomeIcon size={18} /> },
+              { id: 'find', label: t('nav_find'), icon: <SearchIcon size={18} /> },
+              { id: 'documents', label: t('nav_projects'), icon: <FileText size={18} /> },
+              { id: 'store', label: t('nav_store_short'), icon: <ShoppingBag size={18} /> },
+              { id: 'bookings', label: t('nav_bookings'), icon: <Clock size={18} /> },
+              { id: 'messages', label: t('nav_messages'), icon: <MessageSquare size={18} /> },
+              { id: 'account', label: t('nav_profile'), icon: <Users size={18} /> }
+            ]}
+          />
         </div>
       )}
+      </div>
 
       {/* Modals */}
       <AnimatePresence>
@@ -403,7 +404,7 @@ export default function App() {
               setBookingArtisan(null);
               setIsQuickBook(false);
               setCustomerTab('bookings');
-              showToast('Booking requested successfully!');
+              showToast(t('booking_success_msg', 'Booking requested successfully!'));
             }}
           />
         )}
@@ -434,7 +435,13 @@ export default function App() {
   );
 
   return (
-    <ErrorBoundary>
+    <>
+      <Helmet>
+        <html lang={language} dir={dir} />
+        <title>{t('meta_title', 'M3allem - Multilingual Home Services')}</title>
+        <meta name="description" content={t('meta_description', 'Morocco\'s premier marketplace for verified artisans.')} />
+      </Helmet>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={mainContent} />
         <Route path="/store" element={<Store />} />
@@ -460,6 +467,7 @@ export default function App() {
         <Route path="/careers" element={<Careers />} />
         <Route path="/phone-auth" element={<Auth />} />
         <Route path="/phone-dashboard" element={<AuthRouteGuard><PhoneDashboard /></AuthRouteGuard>} />
+        <Route path="/debug" element={<SimulationDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <AnimatePresence>
@@ -469,8 +477,8 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={() => navigate('/')}
-            className="fixed bottom-6 left-6 z-[60] py-3 px-6 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-2xl shadow-[var(--accent)]/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
-            title={t('back_to_home', 'Back to Home')}
+            className="fixed bottom-6 start-6 z-[60] py-3 px-6 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-2xl shadow-[var(--accent)]/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border border-[var(--accent-foreground)]/20"
+            title={t('back_to_home')}
             id="back-to-home-btn"
           >
             <HomeIcon size={20} />
@@ -481,6 +489,7 @@ export default function App() {
         )}
       </AnimatePresence>
     </ErrorBoundary>
+    </>
   );
 }
 

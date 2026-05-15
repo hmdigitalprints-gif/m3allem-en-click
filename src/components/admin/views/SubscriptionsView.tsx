@@ -16,7 +16,10 @@ export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedCl
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/subscriptions', { credentials: 'include'});
+      const res = await fetch('/api/admin/subscriptions', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setPlans(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -35,10 +38,12 @@ export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedCl
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/admin/subscriptions', { credentials: 'include', 
+      const res = await fetch('/api/admin/subscriptions', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({
           ...formData,
@@ -83,7 +88,7 @@ export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedCl
           <div key={plan.id} className={`p-6 rounded-3xl ${cardClasses} relative overflow-hidden`}>
             <div className={`absolute top-0 right-0 w-24 h-24 ${i % 3 === 0 ? 'bg-gray-500' : i % 3 === 1 ? 'bg-[#FFD700]' : 'bg-purple-500'}/10 rounded-bl-full -mr-8 -mt-8`} />
             <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
-            <p className="text-2xl font-black text-[#FFD700] mb-4">MAD {plan.price}/{plan.duration_days === 30 ? 'mo' : plan.duration_days + 'd'}</p>
+            <p className="text-2xl font-black text-[#FFD700] mb-4">MAD {Number(plan.price).toFixed(2)}/{plan.duration_days === 30 ? 'mo' : plan.duration_days + 'd'}</p>
             <div className="flex items-center gap-2 text-sm opacity-60">
               <Users size={14} />
               <span>{Math.floor(Math.random() * 1000)} Active Users</span>

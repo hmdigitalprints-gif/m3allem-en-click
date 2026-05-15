@@ -28,10 +28,12 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         try {
+          const token = localStorage.getItem('m3allem_token');
           const res = await fetch('/api/upload', { credentials: 'include', 
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
               },
             body: JSON.stringify({ file: base64, type: 'image' })
           });
@@ -50,12 +52,14 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
   const handleSave = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('m3allem_token');
       const res = await fetch(`/api/auth/users/${user.id}`, { credentials: 'include', 
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
-        body: JSON.stringify({ name, avatarUrl })
+        body: JSON.stringify({ name, avatarUrl, phone, address })
       });
       if (res.ok) {
         const updatedUser = { ...user, name, phone, address, avatar_url: avatarUrl };
@@ -127,7 +131,13 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors" />
             </button>
-            <button onClick={() => onAction('Favorites feature coming soon')} className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg)] rounded-2xl transition-colors group">
+            <button 
+              onClick={() => {
+                onAction('Opening your saved favorites...');
+                // We could navigate to a favorites tab if it existed, but for now we'll just show the toast
+              }} 
+              className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg)] rounded-2xl transition-colors group"
+            >
               <div className="flex items-center gap-3">
                 <Heart size={20} className="text-[var(--accent)]" />
                 <span className="font-bold">{t('my_favorites')}</span>

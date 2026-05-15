@@ -10,15 +10,17 @@ import MessagesSection from '../marketplace/MessagesSection';
 import FactureDevisManager from '../documents/FactureDevisManager';
 import ProfileCompletionBanner from '../profile/ProfileCompletionBanner';
 
+import CustomerDashboard from '../dashboard/CustomerDashboard';
+
 interface CustomerViewProps {
-  activeTab: 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages';
+  activeTab: 'dashboard' | 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages';
   onAction: (msg: string) => void;
   onSelectArtisan: (id: string) => void;
   onBookArtisan: (artisan: any, isQuick?: boolean) => void;
   categories: Category[];
   featuredArtisans: Artisan[];
   recommendedArtisans: Artisan[];
-  onNavigate: (tab: 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages') => void;
+  onNavigate: (tab: 'dashboard' | 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages') => void;
   onTrackArtisan: (booking: any) => void;
 }
 
@@ -36,6 +38,17 @@ export default function CustomerView({
   return (
     <div className="flex-1 overflow-y-auto bg-[var(--bg)] pb-24 md:pb-28">
       <AnimatePresence mode="wait">
+        {activeTab === 'dashboard' && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <CustomerDashboard onNavigate={onNavigate} onAction={onAction} />
+          </motion.div>
+        )}
         {activeTab === 'home' && (
           <motion.div
             key="home"

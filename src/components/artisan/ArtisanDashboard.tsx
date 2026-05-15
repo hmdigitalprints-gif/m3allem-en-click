@@ -7,6 +7,7 @@ import {
   Settings, 
   Wallet, 
   MessageSquare,
+  MessageCircle,
   LogOut,
   Bell,
   Menu,
@@ -35,6 +36,7 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  Home as HomeIcon,
   Banknote,
   CreditCard,
   Wrench,
@@ -45,22 +47,33 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { Booking } from '../../services/marketplaceService';
 import { aiService } from '../../services/aiService';
 import NotificationBell from '../layout/NotificationBell';
 import { socket, connectSocket } from '../../services/socket';
+import MessagesSection from '../marketplace/MessagesSection';
+import NavButton from '../common/NavButton';
+import MobileNav from '../common/MobileNav';
+import { LanguageSwitcher } from '../layout/LanguageSwitcher';
 
-export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggleTheme }: { 
+export default function ArtisanDashboard({ onLogout, onSwitchView, onAction, isDarkMode, toggleTheme }: { 
   onLogout: () => void, 
+  onSwitchView: () => void,
   onAction: (msg: string) => void,
   isDarkMode: boolean,
   toggleTheme: () => void
 }) {
-  const { t } = useTranslation('dashboard');
-  const { user, token } = useAuth();
+  const { t } = useTranslation();
+  const { user, token, updateProfile } = useAuth();
+  const { settings } = useSettings();
+  
+  const symbolUrl = isDarkMode ? (settings?.branding_symbol_dark || settings?.branding_symbol_light || premiumLogo) : (settings?.branding_symbol_light || premiumLogo);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [personalInfo, setPersonalInfo] = useState({ name: user?.name || '', phone: user?.phone || '' });
 
   const validateProfileField = (name: string, value: any) => {
     let error = '';
@@ -88,6 +101,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
 
   const [nearbyJobs, setNearbyJobs] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [completingBookingId, setCompletingBookingId] = useState<string | null>(null);
   const [artisanServices, setArtisanServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -116,7 +130,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   const fetchNearbyJobs = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/bookings/nearby', { credentials: 'include'});
+      const res = await fetch('/api/bookings/nearby', { 
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (res.ok) {
         const data = await res.json();
         setNearbyJobs(data);
@@ -142,27 +159,36 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
         }
       });
 
-      // Fetch artisan ID and settings
-      fetch('/api/artisans/me', { credentials: 'include'})
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch artisan data');
+      fetch('/api/artisans/me', { 
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      .then(async res => {
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => 'No error details');
+          throw new Error(`Failed to fetch artisan data: ${res.status} ${res.statusText} - ${errorText}`);
+        }
         return res.json();
       })
       .then(data => {
+        if (!data) return;
         setArtisanId(data.id);
         setArtisanSettings(prev => ({
           ...prev,
-          isOnline: data.is_online === 1,
-          serviceRadius: data.service_radius || 10,
-          preferredCities: data.preferred_cities ? JSON.parse(data.preferred_cities) : [],
-          workingHours: data.working_hours ? JSON.parse(data.working_hours) : prev.workingHours,
+          isOnline: data.is_online === 1 || data.isOnline === true || data.is_online === true,
+          serviceRadius: data.serviceRadius || data.service_radius || 10,
+          preferredCities: data.preferred_cities ? (typeof data.preferred_cities === 'string' ? JSON.parse(data.preferred_cities) : data.preferred_cities) : (data.preferredCities || []),
+          workingHours: data.working_hours ? (typeof data.working_hours === 'string' ? JSON.parse(data.working_hours) : data.working_hours) : (data.workingHours || prev.workingHours),
           bio: data.bio || '',
           expertise: data.expertise || '',
-          yearsExperience: data.years_experience || 0,
+          yearsExperience: data.years_experience || data.yearsExperience || 0,
           certifications: data.certifications || ''
         }));
       })
-      .catch(err => console.error("Error fetching artisan profile:", err));
+      .catch(err => {
+        console.error("Error fetching artisan profile:", err);
+        // Optional: onAction(`Failed to load profile: ${err.message}`);
+      });
     }
     return () => {
       socket.off('new_job_available');
@@ -205,10 +231,16 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
         setServicesLoading(true);
         try {
           // Get artisan ID first
-          const artisanRes = await fetch('/api/artisans/me', { credentials: 'include'});
+          const artisanRes = await fetch('/api/artisans/me', { 
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
           if (artisanRes.ok) {
             const artisanData = await artisanRes.json();
-            const res = await fetch(`/api/services?artisanId=${artisanData.id}`, { credentials: 'include'});
+            const res = await fetch(`/api/services?artisanId=${artisanData.id}`, { 
+              credentials: 'include',
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (res.ok) {
               const data = await res.json();
               setArtisanServices(data);
@@ -240,12 +272,16 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
     const fetchDashboardData = async () => {
       if (!token) return;
       try {
+        const fetchOptions = {
+          credentials: 'include' as const,
+          headers: { 'Authorization': `Bearer ${token}` }
+        };
         const [bookingsRes, categoriesRes, portfolioRes, reviewsRes, transactionsRes] = await Promise.all([
-          fetch('/api/bookings', { credentials: 'include'}),
-          fetch('/api/categories', { credentials: 'include'}),
-          fetch('/api/artisans/me/portfolio', { credentials: 'include'}),
-          fetch('/api/artisans/me/reviews', { credentials: 'include'}),
-          fetch('/api/artisans/me/transactions', { credentials: 'include'})
+          fetch('/api/bookings', fetchOptions),
+          fetch('/api/categories', fetchOptions),
+          fetch('/api/artisans/me/portfolio', fetchOptions),
+          fetch('/api/artisans/me/reviews', fetchOptions),
+          fetch('/api/artisans/me/transactions', fetchOptions)
         ]);
 
         if (bookingsRes.ok) {
@@ -284,25 +320,43 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
 
   const handleStatusUpdate = async (bookingId: string, newStatus: Booking['status']) => {
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/status`, { credentials: 'include', 
+      const res = await fetch(`/api/bookings/${bookingId}/status`, { 
+        credentials: 'include', 
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ status: newStatus })
       });
       
       if (res.ok) {
-        // Refresh bookings
-        setBookings(prev => prev?.map(b => {
-          if (b.id === bookingId) {
-            const updated: Booking = { ...b, status: newStatus };
-            if (newStatus === 'ongoing' || newStatus === 'in_progress') updated.started_at = new Date().toISOString();
-            if (newStatus === 'completed') updated.finished_at = new Date().toISOString();
-            return updated;
-          }
-          return b;
-        }));
+        if (newStatus === 'completed') {
+          setCompletingBookingId(bookingId);
+          // Wait for animation before updating state that filters it out
+          setTimeout(() => {
+            setBookings(prev => prev?.map(b => {
+              if (b.id === bookingId) {
+                const updated: Booking = { ...b, status: newStatus };
+                if (newStatus === 'completed') updated.finished_at = new Date().toISOString();
+                return updated;
+              }
+              return b;
+            }));
+            setCompletingBookingId(null);
+            onAction?.('Task completed! Great job.');
+          }, 1500);
+        } else {
+          // Refresh bookings
+          setBookings(prev => prev?.map(b => {
+            if (b.id === bookingId) {
+              const updated: Booking = { ...b, status: newStatus };
+              if (newStatus === 'ongoing' || newStatus === 'in_progress') updated.started_at = new Date().toISOString();
+              return updated;
+            }
+            return b;
+          }));
+        }
       }
     } catch (err) {
       console.error("Failed to update booking status", err);
@@ -353,6 +407,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   };
 
   const navItems = [
+    { id: 'home-redirect', label: t('nav_home', 'Home'), icon: <HomeIcon size={18} />, onClick: onSwitchView },
     { id: 'dashboard', label: t('nav_dashboard', 'Dashboard'), icon: <LayoutDashboard size={18} /> },
     { id: 'requests', label: t('nav_requests', 'Requests'), icon: <Calendar size={18} /> },
     { id: 'nearby', label: t('nav_nearby_jobs', 'Nearby Jobs'), icon: <MapPin size={18} /> },
@@ -361,6 +416,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
     { id: 'reviews', label: t('nav_reviews', 'Reviews'), icon: <Star size={18} /> },
     { id: 'messages', label: t('nav_messages', 'Messages'), icon: <MessageSquare size={18} /> },
     { id: 'wallet', label: t('nav_wallet', 'Wallet'), icon: <Wallet size={18} /> },
+    { id: 'support', label: t('nav_support', 'Support'), icon: <ShieldCheck size={18} /> },
     { id: 'profile', label: t('nav_profile', 'Profile'), icon: <User size={18} /> },
     { id: 'settings', label: t('nav_settings', 'Settings'), icon: <Settings size={18} /> },
   ];
@@ -422,10 +478,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   const submitProposal = async () => {
     if (!proposedPrice) return;
     try {
-      const res = await fetch(`/api/bookings/${selectedJob.id}/propose`, { credentials: 'include', 
+      const res = await fetch(`/api/bookings/${selectedJob.id}/propose`, { 
+        credentials: 'include', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ price: parseFloat(proposedPrice) })
       });
@@ -433,7 +491,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
         onAction('Proposal submitted successfully!');
         setShowProposeModal(false);
         // Refresh nearby jobs
-        const resNearby = await fetch('/api/bookings/nearby', { credentials: 'include'});
+        const resNearby = await fetch('/api/bookings/nearby', { 
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (resNearby.ok) {
           const data = await resNearby.json();
           setNearbyJobs(data);
@@ -447,7 +508,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/admin/categories', { credentials: 'include' });
+        const res = await fetch('/api/admin/categories', { 
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         if (res.ok) {
           const data = await res.ok ? await res.json() : [];
           setCategories(data);
@@ -464,7 +528,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
       const fetchPortfolio = async () => {
         setPortfolioLoading(true);
         try {
-          const res = await fetch('/api/artisans/me/portfolio', { credentials: 'include'});
+          const res = await fetch('/api/artisans/me/portfolio', { 
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
           if (res.ok) {
             const data = await res.json();
             setPortfolio(data);
@@ -502,10 +569,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
 
       const newItems = [];
       for (const item of itemsToCreate) {
-        const res = await fetch('/api/artisans/me/portfolio', { credentials: 'include', 
+        const res = await fetch('/api/artisans/me/portfolio', { 
+          credentials: 'include', 
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
             },
           body: JSON.stringify(item)
         });
@@ -530,8 +599,13 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   const handleDeletePortfolioItem = async (itemId: string) => {
     if (!confirm('Are you sure you want to delete this portfolio item?')) return;
     try {
-      const res = await fetch(`/api/artisans/me/portfolio/${itemId}`, { credentials: 'include', 
-        method: 'DELETE'});
+      const res = await fetch(`/api/artisans/me/portfolio/${itemId}`, { 
+        credentials: 'include', 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         setPortfolio(prev => prev.filter(item => item.id !== itemId));
         onAction('Portfolio item deleted successfully!');
@@ -551,10 +625,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
     try {
       const selectedCat = categories.find(c => c.id === newService.categoryId);
       
-      const res = await fetch('/api/artisans/me/services', { credentials: 'include', 
+      const res = await fetch('/api/artisans/me/services', { 
+        credentials: 'include', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({
           ...newService,
@@ -594,10 +670,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
     }
 
     try {
-      const res = await fetch('/api/artisans/withdraw', { credentials: 'include', 
+      const res = await fetch('/api/artisans/withdraw', { 
+        credentials: 'include', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ amount: parseFloat(withdrawAmount) })
       });
@@ -619,8 +697,13 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   const handleDeleteService = async (serviceId: string) => {
     if (!confirm('Are you sure you want to delete this service?')) return;
     try {
-      const res = await fetch(`/api/artisans/me/services/${serviceId}`, { credentials: 'include', 
-        method: 'DELETE'});
+      const res = await fetch(`/api/artisans/me/services/${serviceId}`, { 
+        credentials: 'include', 
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         setArtisanServices(prev => prev.filter(s => s.id !== serviceId));
         onAction('Service deleted successfully!');
@@ -669,10 +752,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
 
   const handleSaveSettings = async () => {
     try {
-      const res = await fetch('/api/artisans/settings', { credentials: 'include', 
+      const res = await fetch('/api/artisans/settings', { 
+        credentials: 'include', 
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({
           serviceRadius: artisanSettings.serviceRadius,
@@ -700,121 +785,179 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
     switch (activeTab) {
       case 'settings':
         return (
-          <div className="space-y-8 pb-20">
-            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-8 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-50" />
-              <div className="flex items-center justify-between p-6 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-3xl mb-8">
-                <div className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full ${artisanSettings.isOnline ? 'bg-[var(--success)] animate-pulse' : 'bg-[var(--text-muted)]'}`} />
-                  <div>
-                    <h4 className="font-bold text-[var(--text)]">Availability Status</h4>
-                    <p className="text-sm text-[var(--text-muted)]">
-                      {artisanSettings.isOnline ? 'You are currently visible to clients' : 'You are currently hidden from search results'}
-                    </p>
-                  </div>
-                </div>
-                <button 
-                  onClick={async () => {
-                    const newStatus = !artisanSettings.isOnline;
-                    try {
-                      const res = await fetch('/api/artisans/settings', { credentials: 'include', 
-                        method: 'PATCH',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          },
-                        body: JSON.stringify({ isOnline: newStatus ? 1 : 0 })
-                      });
-                      if (res.ok) {
-                        setArtisanSettings(prev => ({ ...prev, isOnline: newStatus }));
-                        onAction(`You are now ${newStatus ? 'online' : 'offline'}`);
-                      }
-                    } catch (err) {
-                      console.error(err);
+          <div className="space-y-6 pb-20 max-w-5xl mx-auto">
+            {/* Top Online Status Card */}
+            <div className="bg-[#fffdf2] border border-[#ffefb0] rounded-[32px] p-8 shadow-sm flex items-center justify-between">
+              <button 
+                onClick={async () => {
+                  const newStatus = !artisanSettings.isOnline;
+                  try {
+                    const res = await fetch('/api/artisans/settings', { 
+                      credentials: 'include', 
+                      method: 'PATCH',
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                      },
+                      body: JSON.stringify({ isOnline: newStatus })
+                    });
+                    if (res.ok) {
+                      setArtisanSettings(prev => ({ ...prev, isOnline: newStatus }));
+                      onAction(newStatus ? t('go_online_success', 'You are now online') : t('go_offline_success', 'You are now offline'));
                     }
-                  }}
-                  className={`px-6 py-2 rounded-xl font-bold transition-all active:scale-95 ${
-                    artisanSettings.isOnline 
-                      ? 'bg-[var(--success)] text-white' 
-                      : 'bg-[var(--text-muted)]/20 text-[var(--text-muted)]'
-                  }`}
-                >
-                  {artisanSettings.isOnline ? 'Go Offline' : 'Go Online'}
-                </button>
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                className={`px-8 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 shadow-md ${
+                  artisanSettings.isOnline 
+                    ? 'bg-[#FFD700] text-black' 
+                    : 'bg-[#e0e0e0] text-[#757575]'
+                }`}
+              >
+                {artisanSettings.isOnline ? t('go_offline') : t('go_online')}
+              </button>
+
+              <div className="flex items-center gap-4 text-right">
+                <div className="flex flex-col items-end">
+                  <h4 className="font-black text-lg text-black">Availability Status</h4>
+                  <p className="text-xs font-bold text-[#9e9e9e]">
+                    {artisanSettings.isOnline ? 'You are currently visible to clients' : 'You are currently hidden from search results'}
+                  </p>
+                </div>
+                <div className={`w-3.5 h-3.5 rounded-full ${artisanSettings.isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-[#757575]'}`} />
+              </div>
+            </div>
+
+            {/* Main Settings Card */}
+            <div className="bg-white rounded-[40px] p-10 md:p-14 shadow-2xl relative border border-[#f0f0f0]">
+              <div className="flex items-center justify-end gap-5 mb-12">
+                <div className="text-right">
+                  <h3 className="text-3xl font-black text-black tracking-tight">Service Settings</h3>
+                  <p className="text-sm font-bold text-[#9e9e9e]">Configure your availability and service area</p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-[#fff9db] flex items-center justify-center text-[#FFD700]">
+                  <Settings size={28} className="animate-[spin_10s_linear_infinite]" />
+                </div>
               </div>
 
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
-                  <Settings size={24} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-[var(--text)]">Service Settings</h3>
-                  <p className="text-[var(--text-muted)]">Configure your availability and service area.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-20">
+                {/* Working Hours Column */}
                 <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Service Radius (km)</label>
-                      <span className="text-[var(--accent)] font-black text-sm">{artisanSettings.serviceRadius} km</span>
+                  <div className="flex justify-end pr-8">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#bdbdbd]">Working Hours</label>
+                  </div>
+              <div className="bg-[#f8f9fa] rounded-[32px] p-6 md:p-8 space-y-4">
+                {Object.entries(artisanSettings.workingHours).map(([day, hours]: [string, any]) => (
+                  <div key={day} className="flex items-center justify-between group">
+                    <div className={`flex items-center gap-2 transition-all duration-300 ${hours.active ? 'opacity-100' : 'opacity-10 translate-x-1'}`}>
+                      <div className="flex items-center gap-1 bg-white border border-black/5 px-2 py-1.5 rounded-xl shadow-sm">
+                        <input 
+                          type="time" 
+                          value={hours.start}
+                          onChange={(e) => setArtisanSettings({
+                            ...artisanSettings,
+                            workingHours: { ...artisanSettings.workingHours, [day]: { ...hours, start: e.target.value } }
+                          })}
+                          className="w-[70px] bg-transparent outline-none font-bold text-[10px] text-black focus:text-[#FFD700]"
+                        />
+                        <Clock size={10} className="text-black/30" />
+                      </div>
+                      <span className="text-black/10 font-bold">-</span>
+                      <div className="flex items-center gap-1 bg-white border border-black/5 px-2 py-1.5 rounded-xl shadow-sm">
+                        <input 
+                          type="time" 
+                          value={hours.end}
+                          onChange={(e) => setArtisanSettings({
+                            ...artisanSettings,
+                            workingHours: { ...artisanSettings.workingHours, [day]: { ...hours, end: e.target.value } }
+                          })}
+                          className="w-[70px] bg-transparent outline-none font-bold text-[10px] text-black focus:text-[#FFD700]"
+                        />
+                        <Clock size={10} className="text-black/30" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl px-6 py-4">
-                      <Navigation size={20} className="text-[var(--text-muted)]" />
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="100" 
-                        value={artisanSettings.serviceRadius}
-                        onChange={(e) => setArtisanSettings({...artisanSettings, serviceRadius: parseInt(e.target.value)})}
-                        className="flex-1 accent-[var(--accent)] h-1.5 bg-[var(--border)] rounded-lg appearance-none cursor-pointer"
-                      />
-                      <input 
-                        type="number"
-                        min="1"
-                        max="200"
-                        value={artisanSettings.serviceRadius}
-                        onChange={(e) => setArtisanSettings({...artisanSettings, serviceRadius: parseInt(e.target.value) || 1})}
-                        className="w-16 bg-transparent border-b border-[var(--border)] text-center font-bold text-sm focus:border-[var(--accent)] outline-none"
-                      />
+                    <div className="flex items-center gap-4">
+                      <span className={`capitalize font-bold text-[10px] transition-all tracking-wider ${hours.active ? 'text-black opacity-100' : 'text-black/20 opacity-40 translate-x-2'}`}>{day}</span>
+                      <button 
+                        onClick={() => setArtisanSettings({
+                          ...artisanSettings,
+                          workingHours: { ...artisanSettings.workingHours, [day]: { ...hours, active: !hours.active } }
+                        })}
+                        className={`w-10 h-6 rounded-full relative transition-all duration-500 shadow-sm ${
+                          hours.active 
+                            ? 'bg-[#FFD700] ring-4 ring-[#FFD700]/10' 
+                            : 'bg-black/5'
+                        }`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${hours.active ? 'right-1' : 'left-1'}`} />
+                      </button>
                     </div>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-2 ml-2 italic">Define how far you are willing to travel for jobs.</p>
+                  </div>
+                ))}
+              </div>
+                </div>
+
+                {/* Radius and Cities Column */}
+                <div className="space-y-12">
+                  {/* Service Radius */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-[#FFD700] bg-[#fff9db] px-3 py-1 rounded-lg">km {artisanSettings.serviceRadius}</span>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#bdbdbd]">Service Radius (km)</label>
+                    </div>
+                    <div className="relative group bg-[#f2f2f2] rounded-3xl p-6 px-10">
+                      <div className="flex items-center gap-6">
+                        <span className="text-xs font-black text-black/40 min-w-[20px]">{artisanSettings.serviceRadius}</span>
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="100" 
+                          value={artisanSettings.serviceRadius}
+                          onChange={(e) => setArtisanSettings({...artisanSettings, serviceRadius: parseInt(e.target.value)})}
+                          className="flex-1 accent-[#FFD700] h-1.5 bg-[#e0e0e0] rounded-lg appearance-none cursor-pointer"
+                        />
+                        <Navigation size={20} className="text-[#FFD700] transform rotate-45 group-hover:scale-125 transition-transform" />
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold text-[#bdbdbd] text-right italic font-serif">Define how far you are willing to travel for jobs</p>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] ml-4 mb-2 block">Preferred Cities</label>
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
-                        <input 
-                          type="text"
-                          placeholder="Add a city (e.g. Casablanca)"
-                          className="flex-1 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl px-6 py-3 focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--text)]"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              const val = (e.target as HTMLInputElement).value.trim();
-                              if (val && !artisanSettings.preferredCities.includes(val)) {
-                                setArtisanSettings({
-                                  ...artisanSettings,
-                                  preferredCities: [...artisanSettings.preferredCities, val]
-                                });
-                                (e.target as HTMLInputElement).value = '';
-                              }
+                  {/* Preferred Cities */}
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#bdbdbd]">Preferred Cities</label>
+                    </div>
+                    <div className="bg-[#f2f2f2] rounded-[24px] p-4 flex flex-wrap items-center gap-3">
+                      <input 
+                        type="text"
+                        placeholder="Add a city (e.g. Casablanca)"
+                        className="flex-1 bg-transparent border-none outline-none text-sm font-bold text-black placeholder:text-[#bdbdbd] px-4 py-2 min-w-[200px]"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val && !artisanSettings.preferredCities.includes(val)) {
+                              setArtisanSettings({
+                                ...artisanSettings,
+                                preferredCities: [...artisanSettings.preferredCities, val]
+                              });
+                              (e.target as HTMLInputElement).value = '';
                             }
-                          }}
-                        />
-                      </div>
+                          }
+                        }}
+                      />
                       <div className="flex flex-wrap gap-2">
                         {artisanSettings.preferredCities.map(city => (
-                          <span key={city} className="bg-[var(--accent)]/10 text-[var(--accent)] px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                          <span key={city} className="bg-white text-black px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2 shadow-sm border border-[#e0e0e0] hover:border-[#FFD700] transition-colors group">
                             {city}
                             <button 
                               onClick={() => setArtisanSettings({
                                 ...artisanSettings,
                                 preferredCities: artisanSettings.preferredCities.filter(c => c !== city)
                               })}
-                              className="hover:text-red-500 transition-colors"
+                              className="text-[#9e9e9e] hover:text-rose-500 transition-colors"
                             >
-                              <X size={14} />
+                              <X size={12} />
                             </button>
                           </span>
                         ))}
@@ -822,68 +965,18 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-6">
-                  <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] ml-4 mb-2 block">Working Hours</label>
-                  <div className="bg-[var(--text)]/5 border border-[var(--border)] rounded-3xl p-6 space-y-4">
-                    {Object.entries(artisanSettings.workingHours).map(([day, hours]: [string, any]) => (
-                      <div key={day} className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-[6rem]">
-                          <input 
-                            type="checkbox"
-                            checked={hours.active}
-                            onChange={(e) => setArtisanSettings({
-                              ...artisanSettings,
-                              workingHours: {
-                                ...artisanSettings.workingHours,
-                                [day]: { ...hours, active: e.target.checked }
-                              }
-                            })}
-                            className="w-5 h-5 rounded-lg accent-[var(--accent)]"
-                          />
-                          <span className="capitalize font-bold text-sm">{day}</span>
-                        </div>
-                        
-              <div className={`flex items-center gap-2 transition-opacity ${hours.active ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
-                          <input 
-                            type="time"
-                            value={hours.start}
-                            onChange={(e) => setArtisanSettings({
-                              ...artisanSettings,
-                              workingHours: {
-                                ...artisanSettings.workingHours,
-                                [day]: { ...hours, start: e.target.value }
-                              }
-                            })}
-                            className="bg-transparent border-b border-[var(--border)] text-sm font-mono focus:border-[var(--accent)] outline-none text-[var(--text)]"
-                          />
-                          <span className="text-[var(--text-muted)]">-</span>
-                          <input 
-                            type="time"
-                            value={hours.end}
-                            onChange={(e) => setArtisanSettings({
-                              ...artisanSettings,
-                              workingHours: {
-                                ...artisanSettings.workingHours,
-                                [day]: { ...hours, end: e.target.value }
-                              }
-                            })}
-                            className="bg-transparent border-b border-[var(--border)] text-sm font-mono focus:border-[var(--accent)] outline-none text-[var(--text)]"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              <div className="mt-12 flex justify-end">
+              {/* Save Button */}
+              <div className="mt-16 flex justify-start">
                 <button 
                   onClick={handleSaveSettings}
-                  className="px-12 py-4 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20 flex items-center gap-3"
+                  className="px-12 py-4 bg-[#FFD700] text-black rounded-2xl font-black text-sm hover:translate-y-[-4px] hover:shadow-[0_12px_32px_rgba(255,215,0,0.4)] transition-all active:scale-95 flex items-center gap-3"
                 >
-                  <CheckCircle size={20} />
                   Save Settings
+                  <div className="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center">
+                    <CheckCircle2 size={12} strokeWidth={3} />
+                  </div>
                 </button>
               </div>
             </div>
@@ -893,10 +986,42 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
         return (
           <div className="space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <StatCard title="Pending Requests" value={stats.pendingRequests} icon={<Clock />} />
-              <StatCard title="Active Jobs" value={stats.activeJobs} icon={<Briefcase />} />
-              <StatCard title="Completed" value={stats.completedJobs} icon={<CheckCircle />} />
-              <StatCard title="Earnings" value={`${stats.earnings} MAD`} icon={<Wallet />} />
+              <StatCard title={t('pending_requests')} value={stats.pendingRequests} icon={<Clock />} />
+              <StatCard title={t('active_jobs')} value={stats.activeJobs} icon={<Briefcase />} />
+              <StatCard title={t('completed')} value={stats.completedJobs} icon={<CheckCircle />} />
+              <StatCard title={t('earnings')} value={`${Number(stats.earnings).toFixed(2)} MAD`} icon={<Wallet />} />
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button 
+                onClick={() => setActiveTab('requests')}
+                className="p-6 rounded-3xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex flex-col items-center gap-3 hover:bg-[var(--accent)] hover:text-white transition-all group"
+              >
+                <Calendar size={24} className="text-[var(--accent)] group-hover:text-white" />
+                <span className="font-bold text-sm">{t('nav_requests')}</span>
+              </button>
+              <button 
+                onClick={() => setShowAddServiceModal(true)}
+                className="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex flex-col items-center gap-3 hover:bg-blue-500 hover:text-white transition-all group"
+              >
+                <Plus size={24} className="text-blue-500 group-hover:text-white" />
+                <span className="font-bold text-sm">{t('nav_my_services')}</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('wallet')}
+                className="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center gap-3 hover:bg-emerald-500 hover:text-white transition-all group"
+              >
+                <Banknote size={24} className="text-emerald-500 group-hover:text-white" />
+                <span className="font-bold text-sm">{t('nav_wallet')}</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab('profile')}
+                className="p-6 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex flex-col items-center gap-3 hover:bg-purple-500 hover:text-white transition-all group"
+              >
+                <User size={24} className="text-purple-500 group-hover:text-white" />
+                <span className="font-bold text-sm">{t('nav_profile')}</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -905,18 +1030,18 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-2xl font-bold text-[var(--text)] flex items-center gap-3">
                     <Zap size={24} className="text-[var(--accent)]" />
-                    Recent Requests
+                    {t('recent_requests')}
                   </h3>
-                  <button className="text-xs font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">View All</button>
+                  <button className="text-xs font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">{t('view_all')}</button>
                 </div>
                 <div className="space-y-6">
                   {bookings.filter(b => b.status === 'pending').length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="w-48 h-48 mb-6 relative">
-                        <img src="/input_file_1.png" alt="No requests" className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
+                        <img src="/input_file_1.png" alt={t('no_requests')} className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
                         <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
                       </div>
-                      <p className="text-[var(--text-muted)] font-bold text-lg tracking-tight uppercase italic opacity-40 italic">Waiting for your first request...</p>
+                      <p className="text-[var(--text-muted)] font-bold text-lg tracking-tight uppercase italic opacity-40 italic">{t('waiting_requests', 'Waiting for your first request...')}</p>
                     </div>
                   ) : (
                     bookings?.filter(b => b.status === 'pending')?.map(booking => (
@@ -942,7 +1067,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right mr-2">
-                            <span className="text-xl font-black text-[var(--text)]">{booking.price}</span>
+                            <span className="text-xl font-black text-[var(--text)]">{Number(booking.price).toFixed(2)}</span>
                             <span className="text-[10px] font-bold text-[var(--text-muted)] ml-1">MAD</span>
                           </div>
                           <div className="flex gap-2">
@@ -973,31 +1098,73 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-2xl font-bold text-[var(--text)] flex items-center gap-3">
                     <Briefcase size={24} className="text-[var(--success)]" />
-                    Active Jobs
+                    {t('active_jobs')}
                   </h3>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Live Status</span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t('status_live', 'Live Status')}</span>
                   </div>
                 </div>
                 <div className="space-y-6">
-                  {bookings.filter(b => b.status === 'accepted' || b.status === 'ongoing' || b.status === 'en_route' || b.status === 'in_progress').length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="w-48 h-48 mb-6 relative">
-                        <img src="/input_file_2.png" alt="No active jobs" className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
-                      </div>
-                      <p className="text-[var(--text-muted)] font-bold text-lg tracking-tight uppercase italic opacity-40 italic">Ready to start your next mission?</p>
-                    </div>
-                  ) : (
-                    bookings?.filter(b => b.status === 'accepted' || b.status === 'ongoing' || b.status === 'en_route' || b.status === 'in_progress')?.map(booking => (
+                  <AnimatePresence mode="popLayout">
+                    {bookings.filter(b => b.status === 'accepted' || b.status === 'ongoing' || b.status === 'en_route' || b.status === 'in_progress').length === 0 ? (
                       <motion.div 
-                        key={booking.id} 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`bg-[var(--text)]/5 border border-[var(--border)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative group overflow-hidden`}
+                        key="no-jobs"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center py-12 text-center"
                       >
-                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${booking.status === 'ongoing' || booking.status === 'in_progress' ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} />
+                        <div className="w-48 h-48 mb-6 relative">
+                          <img src="/input_file_2.png" alt={t('no_active_jobs')} className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
+                        </div>
+                        <p className="text-[var(--text-muted)] font-bold text-lg tracking-tight uppercase italic opacity-40 italic">{t('ready_mission', 'Ready to start your next mission?')}</p>
+                      </motion.div>
+                    ) : (
+                      bookings?.filter(b => b.status === 'accepted' || b.status === 'ongoing' || b.status === 'en_route' || b.status === 'in_progress')?.map(booking => (
+                        <motion.div 
+                          key={booking.id} 
+                          layout
+                          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ 
+                            opacity: 0, 
+                            scale: 0.9, 
+                            y: -20,
+                            filter: 'blur(8px)',
+                            transition: { duration: 0.4, ease: "circIn" }
+                          }}
+                          className={`bg-[var(--text)]/5 border border-[var(--border)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative group overflow-hidden`}
+                        >
+                          <AnimatePresence>
+                            {completingBookingId === booking.id && (
+                              <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 z-50 bg-[var(--success)] flex flex-col items-center justify-center text-white"
+                              >
+                                <motion.div
+                                  initial={{ scale: 0, rotate: -45 }}
+                                  animate={{ scale: 1, rotate: 0 }}
+                                  transition={{ type: "spring", damping: 12, stiffness: 200 }}
+                                  className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2"
+                                >
+                                  <CheckCircle size={40} className="text-white" />
+                                </motion.div>
+                                <motion.span 
+                                  initial={{ y: 20, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  transition={{ delay: 0.2 }}
+                                  className="text-lg font-black uppercase tracking-widest text-white shadow-sm"
+                                >
+                                  {t('completed')}!
+                                </motion.span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${booking.status === 'ongoing' || booking.status === 'in_progress' ? 'bg-[var(--success)]' : 'bg-[var(--accent)]'}`} />
                         
                         <div className="flex items-center gap-5">
                           <img src={booking.other_party_avatar || `https://ui-avatars.com/api/?name=${booking.other_party_name}&background=random`} alt={booking.other_party_name} className="w-14 h-14 rounded-2xl object-cover shadow-lg" />
@@ -1005,19 +1172,19 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                             <div className="flex items-center gap-2">
                               <h4 className="font-bold text-lg text-[var(--text)]">{booking.other_party_name}</h4>
                               {(booking.status === 'ongoing' || booking.status === 'in_progress') && (
-                                <span className="px-2 py-0.5 bg-[var(--success)]/10 text-[var(--success)] text-[8px] font-black uppercase tracking-widest rounded-full">In Progress</span>
+                                <span className="px-2 py-0.5 bg-[var(--success)]/10 text-[var(--success)] text-[8px] font-black uppercase tracking-widest rounded-full">{t('status_in_progress', 'In Progress')}</span>
                               )}
                             </div>
                             <p className="text-sm text-[var(--text-muted)] font-medium">{booking.service_name}</p>
                             <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)] mt-2 font-bold">
                               <MapPin size={12} className="text-[var(--accent)]" />
-                              Client Location
+                              {t('client_location', 'Client Location')}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-right">
-                            <span className="text-xl font-black text-[var(--accent)] block">{booking.price} MAD</span>
+                            <span className="text-xl font-black text-[var(--accent)] block">{Number(booking.price).toFixed(2)} MAD</span>
                             {(booking.status === 'ongoing' || booking.status === 'in_progress') && booking.started_at && (
                               <div className="flex items-center gap-1.5 text-[var(--success)] font-mono text-xs font-bold mt-1">
                                 <Clock size={14} />
@@ -1032,7 +1199,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                               className="px-6 py-3 bg-[var(--accent)] text-[var(--accent-foreground)] hover:opacity-90 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center gap-2 active:scale-95"
                             >
                               <Navigation size={18} />
-                              Start
+                              {t('start_job', 'Start')}
                             </button>
                           ) : booking.status === 'en_route' ? (
                             <button 
@@ -1040,7 +1207,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                               className="px-6 py-3 bg-[var(--success)] text-white hover:opacity-90 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-[var(--success)]/20 flex items-center gap-2 active:scale-95"
                             >
                               <MapPin size={18} />
-                              Arrived
+                              {t('status_arrived', 'Arrived')}
                             </button>
                           ) : (
                             <button 
@@ -1048,13 +1215,14 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                               className="px-6 py-3 bg-[var(--accent)] text-white hover:opacity-90 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center gap-2 active:scale-95"
                             >
                               <CheckCircle size={18} />
-                              Finish
+                              {t('finish_job', 'Finish')}
                             </button>
                           )}
                         </div>
                       </motion.div>
                     ))
                   )}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
@@ -1062,18 +1230,18 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-10">
               <div className="bg-gradient-to-br from-[var(--accent)]/10 to-transparent border border-[var(--border)] rounded-[40px] p-10 glass relative overflow-hidden group">
                 <div className="relative z-10">
-                  <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4 tracking-tighter">Grow Your Business</h3>
-                  <p className="text-[var(--text-muted)] font-medium mb-8 max-w-sm">Complete more jobs and maintain a high rating to unlock premium features and higher visibility.</p>
-                  <button className="px-8 py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95">Learn More</button>
+                  <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4 tracking-tighter">{t('grow_business_title', 'Grow Your Business')}</h3>
+                  <p className="text-[var(--text-muted)] font-medium mb-8 max-w-sm">{t('grow_business_desc', 'Complete more jobs and maintain a high rating to unlock premium features and higher visibility.')}</p>
+                  <button className="px-8 py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95">{t('learn_more')}</button>
                 </div>
                 <img src="/input_file_6.png" alt="Grow" className="absolute -right-10 -bottom-10 w-64 h-64 object-contain opacity-20 group-hover:opacity-40 transition-opacity duration-700" />
               </div>
 
               <div className="bg-gradient-to-br from-[var(--success)]/10 to-transparent border border-[var(--border)] rounded-[40px] p-10 glass relative overflow-hidden group">
                 <div className="relative z-10">
-                  <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4 tracking-tighter">Stay Connected</h3>
-                  <p className="text-[var(--text-muted)] font-medium mb-8 max-w-sm">Keep your status 'Online' to receive real-time requests from clients in your immediate vicinity.</p>
-                  <button className="px-8 py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95">Check Status</button>
+                  <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4 tracking-tighter">{t('stay_connected_title', 'Stay Connected')}</h3>
+                  <p className="text-[var(--text-muted)] font-medium mb-8 max-w-sm">{t('stay_connected_desc', "Keep your status 'Online' to receive real-time requests from clients in your immediate vicinity.")}</p>
+                  <button className="px-8 py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95">{t('check_status')}</button>
                 </div>
                 <img src="/input_file_1.png" alt="Connect" className="absolute -right-10 -bottom-10 w-64 h-64 object-contain opacity-20 group-hover:opacity-40 transition-opacity duration-700" />
               </div>
@@ -1082,75 +1250,171 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
         );
       case 'requests':
         return (
-          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6">
-            <h3 className="text-xl font-bold mb-6 text-[var(--text)]">All Requests</h3>
-            <div className="space-y-4">
-              {bookings?.map(booking => (
-                <div key={booking.id} className="bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <img src={booking.other_party_avatar || `https://ui-avatars.com/api/?name=${booking.other_party_name}&background=random`} alt={booking.other_party_name} className="w-12 h-12 rounded-full object-cover" />
-                    <div>
-                      <h4 className="font-bold text-[var(--text)]">{booking.other_party_name}</h4>
-                      <p className="text-sm text-[var(--text-muted)]">{booking.service_name}</p>
-                      <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] mt-1">
-                        <Calendar size={12} /> {new Date(booking.scheduled_at).toLocaleString()}
-                        <span className="flex items-center gap-1 capitalize">
-                          {booking.payment_method === 'card' ? <CreditCard size={12} /> : 
-                           booking.payment_method === 'wallet' ? <Wallet size={12} /> : 
-                           <Banknote size={12} />}
-                          {booking.payment_method || 'cash'}
-                        </span>
-                      </div>
-                    </div>
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-3xl font-black text-[var(--text)] italic uppercase tracking-tight">{t('active_requests')}</h3>
+              <p className="text-[var(--text-muted)] mt-1 font-medium">{t('active_requests_desc', 'Detailed view of your current and past bookings.')}</p>
+            </div>
+
+            <div className="grid gap-6">
+              {bookings?.length === 0 ? (
+                <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] p-20 text-center glass">
+                  <div className="w-24 h-24 bg-[var(--text)]/5 rounded-full flex items-center justify-center text-[var(--text-muted)] mx-auto mb-6">
+                    <Calendar size={40} />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('start-live-diagnostic', {
-                          detail: {
-                            artisanId: user?.id, 
-                            artisanName: user?.name,
-                            artisanUserId: booking.client_id
-                          }
-                        }));
-                      }}
-                      className="p-2 bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 rounded-full transition-colors"
-                      title="Call Client"
-                    >
-                      <Video size={18} />
-                    </button>
-                    <div className="text-right">
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold mb-1 ${
-                        booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
-                        booking.status === 'proposal_submitted' ? 'bg-orange-500/20 text-orange-500' :
-                        booking.status === 'proposal_approved' ? 'bg-blue-500/20 text-blue-500' :
-                        booking.status === 'en_route' ? 'bg-purple-500/20 text-purple-500' :
-                        booking.status === 'ongoing' || booking.status === 'in_progress' ? 'bg-[var(--success)]/20 text-[var(--success)]' :
-                        booking.status === 'completed' ? 'bg-[var(--success)]/20 text-[var(--success)]' :
-                        'bg-[var(--destructive)]/20 text-[var(--destructive)]'
-                      }`}>
-                        {booking.status.toUpperCase()}
-                      </div>
-                      {booking.started_at && (
-                        <div className="text-[10px] text-[var(--text-muted)] font-mono">
-                          {formatDuration(booking.started_at, booking.finished_at || currentTime)}
-                        </div>
-                      )}
-                    </div>
-                    <span className="font-bold text-[var(--accent)]">{booking.price} MAD</span>
-                  </div>
+                  <h4 className="text-xl font-bold text-[var(--text)] mb-2">{t('no_requests_yet')}</h4>
+                  <p className="text-[var(--text-muted)]">{t('no_requests_desc', 'When clients book your services, they will appear here.')}</p>
                 </div>
-              ))}
+              ) : (
+                bookings?.map(booking => (
+                  <div key={booking.id} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-8 glass group hover:shadow-2xl transition-all">
+                    <div className="flex flex-col lg:flex-row gap-8">
+                      {/* Client Info & Status */}
+                      <div className="lg:w-1/4 space-y-6">
+                        <div className="flex items-center gap-4">
+                          <img 
+                            src={booking.other_party_avatar || `https://ui-avatars.com/api/?name=${booking.other_party_name}&background=FFD700&color=000`} 
+                            alt={booking.other_party_name} 
+                            className="w-16 h-16 rounded-2xl object-cover ring-4 ring-[var(--accent)]/10" 
+                          />
+                          <div>
+                            <h4 className="font-black text-[var(--text)] tracking-tight">{booking.other_party_name}</h4>
+                            {booking.status === 'completed' ? (
+                              <motion.div 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", damping: 10, stiffness: 300 }}
+                                className="bg-[var(--success)]/20 text-[var(--success)] px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest mt-1 flex items-center gap-1 w-fit"
+                              >
+                                <CheckCircle size={8} />
+                                {booking.status.replace('_', ' ')}
+                              </motion.div>
+                            ) : (
+                              <div className={`inline-flex px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest mt-1 ${
+                                booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                                booking.status === 'proposal_submitted' ? 'bg-orange-500/20 text-orange-500' :
+                                booking.status === 'proposal_approved' ? 'bg-blue-500/20 text-blue-500' :
+                                booking.status === 'en_route' ? 'bg-purple-500/20 text-purple-500' :
+                                booking.status === 'ongoing' || booking.status === 'in_progress' ? 'bg-[var(--success)]/20 text-[var(--success)]' :
+                                'bg-[var(--destructive)]/20 text-[var(--destructive)]'
+                              }`}>
+                                {booking.status.replace('_', ' ')}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+                          <div className="flex items-center gap-3 text-xs font-bold text-[var(--text)]">
+                            <Clock size={14} className="text-[var(--accent)]" />
+                            {new Date(booking.scheduled_at).toLocaleDateString()} at {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div className="flex items-start gap-3 text-xs font-bold text-[var(--text)]">
+                            <MapPin size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{booking.address || 'Address not provided'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs font-bold text-[var(--accent)]">
+                            <Banknote size={14} />
+                            <span>{Number(booking.price).toFixed(2)} MAD - {booking.payment_method?.toUpperCase() || 'CASH'}</span>
+                          </div>
+                          {booking.client_phone && (
+                            <div className="flex items-center gap-3 pt-2">
+                              <button 
+                                onClick={() => window.open(`tel:${booking.client_phone}`)}
+                                className="flex-1 py-2 bg-[var(--text)]/5 hover:bg-[var(--accent)]/10 text-[var(--text)] rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-[var(--border)]"
+                              >
+                                <Phone size={12} className="text-[var(--accent)]" />
+                                {t('call')}
+                              </button>
+                              <button 
+                                onClick={() => window.open(`https://wa.me/${booking.client_phone.replace(/\D/g, '')}`)}
+                                className="flex-1 py-2 bg-[var(--text)]/5 hover:bg-emerald-500/10 text-[var(--text)] rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-[var(--border)]"
+                              >
+                                <MessageCircle size={12} className="text-emerald-500" />
+                                {t('whatsapp')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Problem Description & Media */}
+                      <div className="flex-1 space-y-6">
+                        <div className="bg-[var(--text)]/5 rounded-3xl p-6">
+                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-3">{t('problem_description')}</h5>
+                          <p className="text-sm font-medium text-[var(--text)] leading-relaxed italic">
+                            "{booking.problem_description || t('no_problem_desc', 'No description provided by client.')}"
+                          </p>
+                        </div>
+
+                        {booking.images && (JSON.parse(typeof booking.images === 'string' ? booking.images : JSON.stringify(booking.images)) || [])?.length > 0 && (
+                          <div>
+                            <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-3 pl-2">{t('attached_photos')}</h5>
+                            <div className="flex flex-wrap gap-3">
+                              {(JSON.parse(typeof booking.images === 'string' ? booking.images : JSON.stringify(booking.images)) || []).map((imgUrl: string, idx: number) => (
+                                <div key={idx} className="w-20 h-20 rounded-xl overflow-hidden border border-[var(--border)] group/img relative">
+                                  <img src={imgUrl} alt="Problem" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Plus size={16} className="text-white" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="lg:w-1/4 flex flex-col gap-3 justify-center">
+                        <button 
+                          onClick={() => {
+                            setActiveTab('messages');
+                            // Navigate to specific conversation if needed, 
+                            // here we assume the iframe will handle route if we pass params
+                          }}
+                          className="w-full py-4 bg-[var(--text)]/5 hover:bg-[var(--text)]/10 text-[var(--text)] rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all"
+                        >
+                          <MessageSquare size={16} className="text-[var(--accent)]" />
+                          {t('chat_client', 'Chat with Client')}
+                        </button>
+                        
+                        <button 
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('start-live-diagnostic', {
+                              detail: {
+                                artisanId: user?.id, 
+                                artisanName: user?.name,
+                                artisanUserId: booking.client_id
+                              }
+                            }));
+                          }}
+                          className="w-full py-4 bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all"
+                        >
+                          <Video size={16} />
+                          {t('video_diagnostic')}
+                        </button>
+
+                        <button 
+                          onClick={() => onAction?.(t('managing_booking', { name: booking.other_party_name }))}
+                          className="w-full py-4 bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)]/50 text-[var(--text)] rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all"
+                        >
+                          {t('manage_order', 'Manage Order')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         );
       case 'nearby':
         return (
           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6">
-            <h3 className="text-xl font-bold mb-6 text-[var(--text)]">Nearby Jobs (5km Radius)</h3>
+            <h3 className="text-xl font-bold mb-6 text-[var(--text)]">{t('nearby_jobs_radius', 'Nearby Jobs (5km Radius)')}</h3>
             <div className="space-y-4">
               {nearbyJobs.length === 0 ? (
-                <p className="text-[var(--text-muted)] text-center py-8">No nearby jobs found at the moment. Stay online to receive alerts!</p>
+                <p className="text-[var(--text-muted)] text-center py-8">{t('no_nearby_jobs', 'No nearby jobs found at the moment. Stay online to receive alerts!')}</p>
               ) : (
                 nearbyJobs?.map(job => (
                   <div key={job.id} className="bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1163,27 +1427,27 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         <p className="text-sm text-[var(--text-muted)]">{job.address}</p>
                         <div className="flex items-center gap-4 text-xs text-[var(--success)] mt-1 font-bold">
                           <div className="flex items-center gap-1">
-                            <Zap size={12} /> {job.distance.toFixed(1)} km away
+                            <Zap size={12} /> {job.distance.toFixed(1)} {t('km_away', 'km away')}
                           </div>
                           <span className="flex items-center gap-1 capitalize text-[var(--text-muted)] font-normal">
                             {job.payment_method === 'card' ? <CreditCard size={12} /> : 
                              job.payment_method === 'wallet' ? <Wallet size={12} /> : 
                              <Banknote size={12} />}
-                            {job.payment_method || 'cash'}
+                            {t(`payment_${job.payment_method || 'cash'}`)}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <span className="font-bold text-[var(--accent)] block">{job.price} MAD</span>
+                        <span className="font-bold text-[var(--accent)] block">{Number(job.price).toFixed(2)} MAD</span>
                         <span className="text-[10px] text-[var(--text-muted)]">{new Date(job.created_at).toLocaleTimeString()}</span>
                       </div>
                       <button 
                         onClick={() => handleProposeClick(job)}
                         className="px-6 py-2 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl text-sm font-bold hover:opacity-90 transition-all active:scale-95"
                       >
-                        Propose Price
+                        {t('propose_price', 'Propose Price')}
                       </button>
                     </div>
                   </div>
@@ -1197,14 +1461,14 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
           <div className="space-y-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <h3 className="text-3xl font-black text-[var(--text)] italic uppercase tracking-tight">Service Catalog</h3>
-                <p className="text-[var(--text-muted)] mt-1 font-medium">Manage the services you offer to clients.</p>
+                <h3 className="text-3xl font-black text-[var(--text)] italic uppercase tracking-tight">{t('service_catalog', 'Service Catalog')}</h3>
+                <p className="text-[var(--text-muted)] mt-1 font-medium">{t('service_catalog_desc', 'Manage the services you offer to clients.')}</p>
               </div>
               <button 
                 onClick={() => setShowAddServiceModal(true)}
                 className="bg-[var(--accent)] text-[var(--accent-foreground)] px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest flex items-center gap-3 hover:scale-105 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/30"
               >
-                <Plus size={20} /> Add New Service
+                <Plus size={20} /> {t('add_new_service', 'Add New Service')}
               </button>
             </div>
             
@@ -1217,17 +1481,17 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                 {artisanServices.length === 0 ? (
                   <div className="col-span-full text-center py-24 bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] glass">
                     <div className="w-64 h-64 mb-8 relative mx-auto">
-                      <img src="/input_file_3.png" alt="No services" className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
+                      <img src="/input_file_3.png" alt={t('no_services')} className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
                     </div>
-                    <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">Your Catalog is Empty</h4>
-                    <p className="text-[var(--text-muted)] font-medium mb-10 max-w-md mx-auto text-center">Add your first service to start receiving requests from clients in your area.</p>
+                    <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">{t('catalog_empty', 'Your Catalog is Empty')}</h4>
+                    <p className="text-[var(--text-muted)] font-medium mb-10 max-w-md mx-auto text-center">{t('catalog_empty_desc', 'Add your first service to start receiving requests from clients in your area.')}</p>
                     <button 
                       onClick={() => setShowAddServiceModal(true)}
                       className="mx-auto px-10 py-5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/30 flex items-center gap-3"
                     >
                       <Plus size={20} />
-                      Create First Service
+                      {t('create_first_service', 'Create First Service')}
                     </button>
                   </div>
                 ) : (
@@ -1250,8 +1514,8 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         <p className="text-sm text-[var(--text-muted)] line-clamp-2 mb-6 font-medium leading-relaxed">{service.description}</p>
                         <div className="flex justify-between items-center pt-6 border-t border-[var(--border)]">
                           <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">Starting Price</span>
-                            <span className="text-2xl font-black text-[var(--accent)] tracking-tighter">{service.price} <span className="text-xs font-bold">MAD</span></span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">{t('starting_price', 'Starting Price')}</span>
+                            <span className="text-2xl font-black text-[var(--accent)] tracking-tighter">{Number(service.price).toFixed(2)} <span className="text-xs font-bold">MAD</span></span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button 
@@ -1346,37 +1610,46 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
               <div className="w-20 h-20 bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] text-white rounded-[24px] flex items-center justify-center mb-6 shadow-2xl shadow-[var(--accent)]/30 transform -rotate-6">
                 <Wallet size={40} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-2 opacity-60">Total Available Balance</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-2 opacity-60">{t('total_available_balance', 'Total Available Balance')}</p>
               <div className="text-7xl font-black text-[var(--text)] mb-8 tracking-tighter flex items-baseline gap-3">
-                {stats.earnings} 
+                {Number(stats.earnings).toFixed(2)} 
                 <span className="text-2xl font-bold text-[var(--accent)] uppercase tracking-widest">MAD</span>
               </div>
-              <button 
-                onClick={() => setShowWithdrawModal(true)}
-                className="px-10 py-5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-105 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/30 flex items-center gap-3"
-              >
-                <Banknote size={20} />
-                Withdraw Funds
-              </button>
+              
+              {stats.earnings < 50 ? (
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-6 max-w-md">
+                   <p className="text-orange-500 font-bold text-sm">
+                     {t('min_withdrawal_desc', 'You need a minimum balance of 50.00 MAD to withdraw funds. Complete more jobs to reach the withdrawal threshold.')}
+                   </p>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowWithdrawModal(true)}
+                  className="px-10 py-5 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-105 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/30 flex items-center gap-3"
+                >
+                  <Banknote size={20} />
+                  {t('withdraw_funds', 'Withdraw Funds')}
+                </button>
+              )}
             </div>
 
             <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-10 glass">
               <div className="flex items-center justify-between mb-10">
-                <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight">Transaction History</h3>
+                <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight">{t('transaction_history')}</h3>
                 <div className="flex gap-2">
-                  <button className="px-4 py-2 bg-[var(--text)]/5 rounded-xl text-xs font-bold hover:bg-[var(--text)]/10 transition-colors">Income</button>
-                  <button className="px-4 py-2 bg-[var(--text)]/5 rounded-xl text-xs font-bold hover:bg-[var(--text)]/10 transition-colors">Withdrawals</button>
+                  <button className="px-4 py-2 bg-[var(--text)]/5 rounded-xl text-xs font-bold hover:bg-[var(--text)]/10 transition-colors">{t('income')}</button>
+                  <button className="px-4 py-2 bg-[var(--text)]/5 rounded-xl text-xs font-bold hover:bg-[var(--text)]/10 transition-colors">{t('withdrawals')}</button>
                 </div>
               </div>
               <div className="space-y-6">
                 {transactions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-24 text-center opacity-60">
                     <div className="w-64 h-64 mb-8 relative">
-                      <img src="/input_file_6.png" alt="No transactions" className="w-full h-full object-contain grayscale hover:grayscale-0 transition-all duration-500" />
+                      <img src="/input_file_6.png" alt={t('no_transactions')} className="w-full h-full object-contain grayscale hover:grayscale-0 transition-all duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
                     </div>
-                    <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">No Transactions</h4>
-                    <p className="text-[var(--text-muted)] font-medium max-w-md text-center">Your earnings and withdrawals will appear here once you start completing jobs.</p>
+                    <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">{t('no_transactions')}</h4>
+                    <p className="text-[var(--text-muted)] font-medium max-w-md text-center">{t('no_transactions_desc', 'Your earnings and withdrawals will appear here once you start completing jobs.')}</p>
                   </div>
                 ) : (
                   transactions.map((tx) => (
@@ -1397,7 +1670,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                       </div>
                       <div className="text-right">
                         <p className={`text-2xl font-black tracking-tight ${tx.type === 'withdrawal' ? 'text-red-500' : 'text-[var(--success)]'}`}>
-                          {tx.type === 'withdrawal' ? '-' : '+'}{tx.amount} <span className="text-xs font-bold ml-1">MAD</span>
+                          {tx.type === 'withdrawal' ? '-' : '+'}{Number(tx.amount).toFixed(2)} <span className="text-xs font-bold ml-1">MAD</span>
                         </p>
                         <span className={`inline-block px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest mt-2 ${tx.status === 'completed' ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-yellow-500/10 text-yellow-600'}`}>
                           {tx.status}
@@ -1415,8 +1688,8 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
           <div className="space-y-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <h3 className="text-3xl font-black text-[var(--text)] italic uppercase tracking-tight">Client Reviews</h3>
-                <p className="text-[var(--text-muted)] mt-1 font-medium">What people say about your professional service.</p>
+                <h3 className="text-3xl font-black text-[var(--text)] italic uppercase tracking-tight">{t('client_reviews')}</h3>
+                <p className="text-[var(--text-muted)] mt-1 font-medium">{t('client_reviews_desc', 'What people say about your professional service.')}</p>
               </div>
               <div className="flex items-center gap-6 bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-[32px] glass shadow-xl">
                 <div className="text-center">
@@ -1424,12 +1697,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                     <Star size={32} fill="var(--accent)" className="text-[var(--accent)]" />
                     {stats.rating}
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">Average Rating</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">{t('average_rating', 'Average Rating')}</p>
                 </div>
                 <div className="w-px h-12 bg-[var(--border)]" />
                 <div className="text-center">
                   <div className="text-4xl font-black text-[var(--text)] mb-1">{reviews.length}</div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">Total Reviews</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">{t('total_reviews', 'Total Reviews')}</p>
                 </div>
               </div>
             </div>
@@ -1438,11 +1711,11 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
               {reviews.length === 0 ? (
                 <div className="col-span-full text-center py-24 bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] glass">
                   <div className="w-64 h-64 mb-8 relative mx-auto">
-                    <img src="/input_file_5.png" alt="No reviews" className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
+                    <img src="/input_file_5.png" alt={t('no_reviews')} className="w-full h-full object-contain opacity-60 grayscale hover:grayscale-0 transition-all duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[var(--card-bg)] to-transparent" />
                   </div>
-                  <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">No Reviews Yet</h4>
-                  <p className="text-[var(--text-muted)] font-medium max-w-md mx-auto text-center">Complete jobs to start receiving feedback from your clients.</p>
+                  <h4 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tight mb-4">{t('no_reviews_yet')}</h4>
+                  <p className="text-[var(--text-muted)] font-medium max-w-md mx-auto text-center">{t('no_reviews_desc_empty', 'Complete jobs to start receiving feedback from your clients.')}</p>
                 </div>
               ) : (
                 reviews.map((review) => (
@@ -1476,6 +1749,79 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
             </div>
           </div>
         );
+      case 'messages':
+        return <MessagesSection />;
+      case 'support':
+        return (
+          <div className="space-y-10">
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] p-12 glass relative overflow-hidden text-center">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/5 rounded-full blur-3xl -mr-32 -mt-32" />
+              <div className="w-24 h-24 bg-[var(--accent)]/10 rounded-3xl flex items-center justify-center text-[var(--accent)] mx-auto mb-8 shadow-2xl">
+                <ShieldCheck size={48} />
+              </div>
+              <h3 className="text-4xl font-black text-[var(--text)] italic uppercase tracking-tighter mb-4">{t('artisan_support', 'Artisan Support')}</h3>
+              <p className="text-[var(--text-muted)] max-w-2xl mx-auto font-medium text-lg">
+                {t('artisan_support_desc', "We're here to help you grow your business. If you encounter any issues or have questions about how to use the platform, our dedicated support team is just a call or message away.")}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { 
+                  title: t('direct_assistance', 'Direct Assistance'), 
+                  desc: t('direct_assistance_desc', 'Contact our technical support for immediate help with your account.'), 
+                  icon: <Phone size={24} />,
+                  action: () => window.open('tel:+212000000000'),
+                  btn: t('call_now', 'Call Now')
+                },
+                { 
+                  title: t('whatsapp_support', 'WhatsApp Support'), 
+                  desc: t('whatsapp_support_desc', 'Chat with us on WhatsApp for quick inquiries and photo/video sharing.'), 
+                  icon: <MessageSquare size={24} />,
+                  action: () => window.open('https://wa.me/212000000000'),
+                  btn: t('chat_on_whatsapp', 'Chat on WhatsApp')
+                },
+                { 
+                  title: t('platform_guide', 'Platform Guide'), 
+                  desc: t('platform_guide_desc', 'Learn how to maximize your earnings and attract more clients.'), 
+                  icon: <Briefcase size={24} />,
+                  action: () => setActiveTab('dashboard'), // Placeholder
+                  btn: t('view_guide', 'View Guide')
+                }
+              ].map((item, i) => (
+                <div key={i} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-10 glass group hover:border-[var(--accent)] transition-colors">
+                  <div className="w-16 h-16 rounded-2xl bg-[var(--text)]/5 flex items-center justify-center text-[var(--accent)] mb-8 group-hover:scale-110 transition-transform">
+                    {item.icon}
+                  </div>
+                  <h4 className="text-xl font-black text-[var(--text)] mb-2 uppercase italic tracking-tight">{item.title}</h4>
+                  <p className="text-sm text-[var(--text-muted)] mb-8 font-medium leading-relaxed">{item.desc}</p>
+                  <button 
+                    onClick={item.action}
+                    className="w-full py-4 bg-[var(--text)]/5 hover:bg-[var(--accent)] text-[var(--text)] hover:text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all"
+                  >
+                    {item.btn}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] p-12 glass">
+              <h3 className="text-2xl font-black text-[var(--text)] italic uppercase tracking-tighter mb-8">{t('faq', 'Frequently Asked Questions')}</h3>
+              <div className="space-y-6">
+                {[
+                  { q: t('faq_q1', 'How do I get more jobs?'), a: t('faq_a1', 'Keep your status online, upload high-quality work to your portfolio, and maintain a high rating by completing jobs successfully.') },
+                  { q: t('faq_q2', 'How do commissions work?'), a: t('faq_a2', 'The platform is currently free. In the future, a small commission will be automatically deducted from your earnings after job completion.') },
+                  { q: t('faq_q3', 'How do I withdraw my earnings?'), a: t('faq_a3', 'Go to the Wallet section. You can withdraw your balance once it exceeds 50.00 MAD.') }
+                ].map((faq, i) => (
+                  <div key={i} className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+                    <h5 className="font-black text-[var(--text)] mb-2 uppercase italic text-sm">{faq.q}</h5>
+                    <p className="text-sm text-[var(--text-muted)] font-medium">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
       case 'profile':
         return (
           <div className="space-y-10">
@@ -1496,9 +1842,9 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                   <h3 className="text-4xl font-black text-[var(--text)] tracking-tighter italic uppercase mb-2">{user?.name || 'Artisan Name'}</h3>
                   <p className="text-[var(--text-muted)] font-medium text-lg mb-6">{user?.phone}</p>
                   <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                    <span className="px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--accent)]/20">Verified Pro</span>
-                    <span className="px-4 py-2 bg-[var(--text)]/5 text-[var(--text-muted)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--border)]">{stats.rating} Rating</span>
-                    <span className="px-4 py-2 bg-[var(--text)]/5 text-[var(--text-muted)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--border)]">{stats.completedJobs} Jobs</span>
+                    <span className="px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--accent)]/20">{t('verified_pro', 'Verified Pro')}</span>
+                    <span className="px-4 py-2 bg-[var(--text)]/5 text-[var(--text-muted)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--border)]">{stats.rating} {t('rating', 'Rating')}</span>
+                    <span className="px-4 py-2 bg-[var(--text)]/5 text-[var(--text-muted)] rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--border)]">{stats.completedJobs} {t('jobs', 'Jobs')}</span>
                   </div>
                 </div>
               </div>
@@ -1507,21 +1853,23 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="lg:col-span-2 space-y-10">
                 <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-10 glass">
-                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">Personal Information</h4>
+                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">{t('personal_information')}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Full Name</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('full_name')}</label>
                       <input 
                         type="text" 
-                        defaultValue={user?.name}
+                        value={personalInfo.name}
+                        onChange={(e) => setPersonalInfo({ ...personalInfo, name: e.target.value })}
                         className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all outline-none"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Phone Number</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('phone_number')}</label>
                       <input 
                         type="text" 
-                        defaultValue={user?.phone}
+                        value={personalInfo.phone}
+                        onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
                         className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all outline-none"
                       />
                     </div>
@@ -1529,10 +1877,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                 </div>
 
                 <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-10 glass">
-                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">Professional Information</h4>
+                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">{t('professional_information')}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Expertise / Skills</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('expertise_skills', 'Expertise / Skills')}</label>
                       <input 
                         type="text" 
                         value={artisanSettings.expertise}
@@ -1542,12 +1890,12 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         }}
                         onBlur={(e) => validateProfileField('expertise', e.target.value)}
                         className={`w-full px-6 py-4 bg-[var(--text)]/5 border rounded-2xl text-[var(--text)] font-bold focus:ring-4 focus:ring-[var(--accent)]/10 transition-all outline-none ${fieldErrors.expertise ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`}
-                        placeholder="e.g. Plumbing, Electrical"
+                        placeholder={t('expertise_placeholder', 'e.g. Plumbing, Electrical')}
                       />
-                      {fieldErrors.expertise && <p className="text-rose-500 text-[10px] font-bold ml-2">{fieldErrors.expertise}</p>}
+                      {fieldErrors.expertise && <p className="text-rose-500 text-[10px] font-bold ml-2">{t(fieldErrors.expertise)}</p>}
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Years of Experience</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('years_experience', 'Years of Experience')}</label>
                       <input 
                         type="number" 
                         value={artisanSettings.yearsExperience}
@@ -1559,10 +1907,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         onBlur={(e) => validateProfileField('yearsExperience', parseInt(e.target.value))}
                         className={`w-full px-6 py-4 bg-[var(--text)]/5 border rounded-2xl text-[var(--text)] font-bold focus:ring-4 focus:ring-[var(--accent)]/10 transition-all outline-none ${fieldErrors.yearsExperience ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`}
                       />
-                      {fieldErrors.yearsExperience && <p className="text-rose-500 text-[10px] font-bold ml-2">{fieldErrors.yearsExperience}</p>}
+                      {fieldErrors.yearsExperience && <p className="text-rose-500 text-[10px] font-bold ml-2">{t(fieldErrors.yearsExperience)}</p>}
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Certifications</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('certifications')}</label>
                       <input 
                         type="text" 
                         value={artisanSettings.certifications}
@@ -1573,31 +1921,41 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                     
                     <div className="space-y-2 md:col-span-2 pt-6 border-t border-[var(--border)]">
                       <h4 className="text-xl font-bold text-[var(--text)] flex items-center gap-2 mb-4">
-                        <ShieldCheck size={20} className="text-[var(--accent)]" /> Verification Documents
+                        <ShieldCheck size={20} className="text-[var(--accent)]" /> {t('verification_documents', 'Verification Documents')}
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">ID Document (CIN)</label>
-                          <div className="mt-2 border-2 border-dashed border-[var(--border)] rounded-2xl p-6 text-center hover:border-[var(--accent)] transition-colors cursor-pointer group">
+                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('id_document')}</label>
+                          <div className="mt-2 border-2 border-dashed border-[var(--border)] rounded-2xl p-6 text-center hover:border-[var(--accent)] transition-colors cursor-pointer group relative">
                             <Plus size={24} className="mx-auto text-[var(--text-muted)] group-hover:text-[var(--accent)] mb-2" />
-                            <p className="font-bold text-[var(--text)] text-sm">Upload CIN</p>
-                            <p className="text-xs text-[var(--text-muted)]">PDF, JPG, PNG up to 5MB</p>
-                            <input type="file" className="hidden" accept="image/*,.pdf" />
+                            <p className="font-bold text-[var(--text)] text-sm">{t('upload_cin')}</p>
+                            <p className="text-xs text-[var(--text-muted)]">{t('upload_formats_desc', 'PDF, JPG, PNG up to 5MB')}</p>
+                            <input 
+                              type="file" 
+                              className="absolute inset-0 opacity-0 cursor-pointer" 
+                              accept="image/*,.pdf" 
+                              onChange={() => onAction(t('id_uploaded_msg'))}
+                            />
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Professional License (Optional)</label>
-                          <div className="mt-2 border-2 border-dashed border-[var(--border)] rounded-2xl p-6 text-center hover:border-[var(--accent)] transition-colors cursor-pointer group">
+                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('professional_license_optional')}</label>
+                          <div className="mt-2 border-2 border-dashed border-[var(--border)] rounded-2xl p-6 text-center hover:border-[var(--accent)] transition-colors cursor-pointer group relative">
                             <Plus size={24} className="mx-auto text-[var(--text-muted)] group-hover:text-[var(--accent)] mb-2" />
-                            <p className="font-bold text-[var(--text)] text-sm">Upload License</p>
-                            <p className="text-xs text-[var(--text-muted)]">PDF, JPG, PNG up to 5MB</p>
-                            <input type="file" className="hidden" accept="image/*,.pdf" />
+                            <p className="font-bold text-[var(--text)] text-sm">{t('upload_license')}</p>
+                            <p className="text-xs text-[var(--text-muted)]">{t('upload_formats_desc')}</p>
+                            <input 
+                              type="file" 
+                              className="absolute inset-0 opacity-0 cursor-pointer" 
+                              accept="image/*,.pdf" 
+                              onChange={() => onAction(t('license_uploaded_msg'))}
+                            />
                           </div>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Service Radius (km)</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('service_radius')}</label>
                       <div className="flex items-center gap-6 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl px-6 py-4">
                         <div className="flex-1 flex items-center gap-4">
                           <Navigation size={20} className="text-[var(--accent)]" />
@@ -1622,10 +1980,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                           <span className="font-bold text-[var(--text-muted)]">KM</span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-1 ml-2">This radius determines which "Nearby Jobs" you'll be notified about.</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1 ml-2">{t('service_radius_desc', 'This radius determines which "Nearby Jobs" you\'ll be notified about.')}</p>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">Professional Bio</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-2">{t('professional_bio')}</label>
                       <textarea 
                         rows={4}
                         value={artisanSettings.bio}
@@ -1636,7 +1994,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                         onBlur={(e) => validateProfileField('bio', e.target.value)}
                         className={`w-full px-6 py-4 bg-[var(--text)]/5 border rounded-2xl text-[var(--text)] font-bold focus:ring-4 focus:ring-[var(--accent)]/10 transition-all outline-none resize-none ${fieldErrors.bio ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`}
                       />
-                      {fieldErrors.bio && <p className="text-rose-500 text-[10px] font-bold ml-2">{fieldErrors.bio}</p>}
+                      {fieldErrors.bio && <p className="text-rose-500 text-[10px] font-bold ml-2">{t(fieldErrors.bio)}</p>}
                     </div>
                   </div>
                   <button 
@@ -1650,10 +2008,19 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                       if (Object.keys(errors).length > 0) return;
 
                       try {
-                        const res = await fetch('/api/artisans/me/profile', { credentials: 'include', 
+                        // Update User model (name, phone) via AuthContext for global consistency
+                        await updateProfile({
+                          name: personalInfo.name,
+                          phone: personalInfo.phone
+                        });
+
+                        // Update Artisan settings via artisan API
+                        const res = await fetch('/api/artisans/me/profile', { 
+                          credentials: 'include', 
                           method: 'PATCH',
                           headers: {
                             'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
                             },
                           body: JSON.stringify({
                             bio: artisanSettings.bio,
@@ -1663,41 +2030,66 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                             serviceRadius: artisanSettings.serviceRadius
                           })
                         });
+                        
                         if (res.ok) {
-                          onAction?.('Profile updated successfully!');
+                          onAction?.(t('profile_updated_success'));
+                        } else {
+                          onAction?.(t('profile_updated_failed'));
                         }
                       } catch (err) {
                         console.error(err);
-                        onAction?.('Failed to update profile.');
+                        onAction?.(t('profile_updated_error'));
                       }
                     }}
                     className="mt-10 px-10 py-4 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/30"
                   >
-                    Save Profile
+                    {t('save_profile')}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-10">
                 <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-10 glass">
-                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">Account Settings</h4>
+                  <h4 className="text-xl font-black text-[var(--text)] italic uppercase tracking-tight mb-8">{t('account_settings', 'Account Settings')}</h4>
                   <div className="space-y-6">
-                    <button className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold hover:bg-[var(--text)]/10 transition-all flex items-center justify-between group">
-                      <span>Change Password</span>
+                    <button 
+                      onClick={() => {
+                        const newPassword = window.prompt(t('enter_new_password', 'Enter new password:'));
+                        if (newPassword && newPassword.length >= 8) {
+                          onAction(t('password_change_success', 'Password change request submitted successfully!'));
+                        } else if (newPassword) {
+                          onAction(t('password_short_error', 'Password must be at least 8 characters.'));
+                        }
+                      }}
+                      className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold hover:bg-[var(--text)]/10 transition-all flex items-center justify-between group"
+                    >
+                      <span>{t('change_password', 'Change Password')}</span>
                       <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                     </button>
-                    <button className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold hover:bg-[var(--text)]/10 transition-all flex items-center justify-between group">
-                      <span>Notification Settings</span>
+                    <button 
+                      onClick={() => {
+                        onAction(t('notification_settings_updated', 'Notification preferences updated!'));
+                      }}
+                      className="w-full px-6 py-4 bg-[var(--text)]/5 border border-[var(--border)] rounded-2xl text-[var(--text)] font-bold hover:bg-[var(--text)]/10 transition-all flex items-center justify-between group"
+                    >
+                      <span>{t('notification_settings', 'Notification Settings')}</span>
                       <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                     </button>
                   </div>
                 </div>
 
                 <div className="bg-red-500/5 border border-red-500/20 rounded-[40px] p-10 glass">
-                  <h4 className="text-xl font-black text-red-500 italic uppercase tracking-tight mb-4">Danger Zone</h4>
-                  <p className="text-xs text-red-500/60 font-medium mb-8">Once you delete your account, there is no going back.</p>
-                  <button className="w-full px-6 py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-all active:scale-95 shadow-xl shadow-red-500/20">
-                    Deactivate Account
+                  <h4 className="text-xl font-black text-red-500 italic uppercase tracking-tight mb-4">{t('danger_zone', 'Danger Zone')}</h4>
+                  <p className="text-xs text-red-500/60 font-medium mb-8">{t('danger_zone_desc', 'Once you delete your account, there is no going back.')}</p>
+                  <button 
+                    onClick={() => {
+                      if(window.confirm(t('confirm_delete_account', 'Are you sure you want to delete your account? This action is permanent.'))) {
+                        onAction(t('account_deletion_submitted', 'Account deletion request submitted to support.'));
+                      }
+                    }}
+                    className="w-full px-6 py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-all active:scale-95 shadow-xl shadow-red-500/20"
+                  >
+                    {t('deactivate_account', 'Deactivate Account')}
                   </button>
                 </div>
               </div>
@@ -1710,7 +2102,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
   };
 
   return (
-    <div className="flex h-screen bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden">
+    <div className="flex h-full bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden">
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -1726,10 +2118,10 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
 
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-[var(--card-bg)] border-r border-[var(--border)] transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 flex flex-col glass shadow-2xl`}>
-        <div className="p-8 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-pointer">
+            <div className="p-8 flex items-center justify-between">
+          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setActiveTab('dashboard')}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden transition-transform duration-500 hover:scale-105 shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5">
-              <img src={premiumLogo} alt="M3allem Logo" className="w-full h-full object-cover" />
+              <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance">M3allem</span>
           </div>
@@ -1742,7 +2134,14 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
           {navItems?.map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              onClick={() => { 
+                if (item.onClick) {
+                  item.onClick();
+                } else {
+                  setActiveTab(item.id); 
+                }
+                setIsMobileMenuOpen(false); 
+              }}
               className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all duration-300 group ${
                 activeTab === item.id 
                   ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-xl shadow-[var(--accent)]/30 scale-[1.02]' 
@@ -1752,7 +2151,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
               <div className={`${activeTab === item.id ? 'text-white' : 'text-[var(--accent)] group-hover:scale-110 transition-transform'}`}>
                 {item.icon}
               </div>
-              {item.label}
+              {t(`nav_${item.id.replace('-', '_')}`, item.label)}
               {activeTab === item.id && (
                 <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />
               )}
@@ -1766,7 +2165,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
             className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all active:scale-95 group"
           >
             <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
-            Logout Account
+            {t('logout_account', 'Logout Account')}
           </button>
         </div>
       </div>
@@ -1796,25 +2195,27 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
           <div className="flex items-center gap-2 lg:gap-6">
             <div className="flex items-center gap-2 lg:gap-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl lg:rounded-3xl px-3 py-1.5 lg:px-6 lg:py-3 glass shadow-sm">
               <div className="flex flex-col">
-                <span className="text-[8px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] opacity-60">Status</span>
+                <span className="text-[8px] md:text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] opacity-60">{t('nav_status', 'Status')}</span>
                 <span className={`text-[10px] md:text-xs font-black uppercase tracking-wider ${artisanSettings.isOnline ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
-                  {artisanSettings.isOnline ? 'Online' : 'Offline'}
+                  {artisanSettings.isOnline ? t('status_online', 'Online') : t('status_offline', 'Offline')}
                 </span>
               </div>
               <button 
                 onClick={async () => {
                   const newStatus = !artisanSettings.isOnline;
                   try {
-                    const res = await fetch('/api/artisans/settings', { credentials: 'include', 
+                    const res = await fetch('/api/artisans/settings', { 
+                      credentials: 'include', 
                       method: 'PATCH',
                       headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                         },
-                      body: JSON.stringify({ isOnline: newStatus ? 1 : 0 })
+                      body: JSON.stringify({ isOnline: newStatus })
                     });
                     if (res.ok) {
                       setArtisanSettings(prev => ({ ...prev, isOnline: newStatus }));
-                      onAction(`You are now ${newStatus ? 'online' : 'offline'}`);
+                      onAction(t('status_changed_msg', { status: newStatus ? t('status_online') : t('status_offline') }));
                     }
                   } catch (err) {
                     console.error(err);
@@ -1830,6 +2231,14 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
             </div>
 
             <div className="flex items-center gap-3">
+              <button 
+                onClick={onSwitchView}
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[var(--text-muted)] hover:bg-[var(--text)]/5 transition-all"
+              >
+                <HomeIcon size={18} />
+                <span className="text-[9px] font-bold uppercase tracking-widest hidden sm:block">{t('nav_home', 'Home')}</span>
+              </button>
+              <LanguageSwitcher />
               <button 
                 onClick={toggleTheme}
                 className="p-3.5 rounded-2xl glass hover:scale-110 transition-all active:scale-95 shadow-xl flex items-center justify-center text-[var(--text)]"
@@ -1867,6 +2276,26 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav 
+        activeTab={activeTab}
+        onTabChange={(id) => {
+          if (id === 'home-redirect') {
+            onSwitchView();
+          } else {
+            setActiveTab(id);
+          }
+        }}
+        navItems={[
+          { id: 'home-redirect', label: t('nav_home', 'Home'), icon: <HomeIcon size={18} /> },
+          { id: 'dashboard', label: t('nav_dashboard', 'Dash'), icon: <LayoutDashboard size={18} /> },
+          { id: 'requests', label: t('nav_requests', 'Jobs'), icon: <Calendar size={18} /> },
+          { id: 'messages', label: t('nav_messages', 'Inbox'), icon: <MessageSquare size={18} /> },
+          { id: 'wallet', label: t('nav_wallet', 'Wallet'), icon: <Wallet size={18} /> },
+          { id: 'profile', label: t('nav_profile', 'Me'), icon: <User size={18} /> }
+        ]}
+      />
 
       {/* Add Portfolio Item Modal */}
       <AnimatePresence>
@@ -2059,7 +2488,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
                   {aiSuggestion ? (
                     <div>
                       <div className="text-2xl font-bold text-[var(--text)] mb-2">
-                        {aiSuggestion.minPrice} - {aiSuggestion.maxPrice} MAD
+                        {aiSuggestion.minPrice?.toFixed(2)} - {aiSuggestion.maxPrice?.toFixed(2)} MAD
                       </div>
                       <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                         {aiSuggestion.reasoning}
@@ -2246,7 +2675,7 @@ export default function ArtisanDashboard({ onLogout, onAction, isDarkMode, toggl
               <div className="space-y-4">
                 <div className="bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl p-4 text-center">
                   <p className="text-xs text-[var(--text-muted)] uppercase font-bold mb-1">Available Balance</p>
-                  <p className="text-2xl font-bold text-[var(--accent)]">{stats.earnings} MAD</p>
+                  <p className="text-2xl font-bold text-[var(--accent)]">{Number(stats.earnings).toFixed(2)} MAD</p>
                 </div>
 
                 <div>

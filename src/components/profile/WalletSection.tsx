@@ -41,7 +41,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
       setWalletData(data);
       setShowTopup(false);
       setAmount('');
-      onAction(`Successfully topped up ${amount} MAD`);
+      onAction(`Successfully topped up ${Number(amount).toFixed(2)} MAD`);
     } catch (err) {
       console.error(err);
     }
@@ -55,7 +55,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
       setWalletData(data);
       setShowWithdraw(false);
       setAmount('');
-      onAction(`Withdrawal request for ${amount} MAD submitted`);
+      onAction(`Withdrawal request for ${Number(amount).toFixed(2)} MAD submitted`);
     } catch (err) {
       console.error(err);
     }
@@ -75,7 +75,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
           <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/5 rounded-full -mr-32 -mt-32 blur-3xl transition-all group-hover:bg-[var(--accent)]/10" />
           <div className="relative z-10">
             <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs mb-4">Current Balance</p>
-            <h3 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8">{walletData?.balance.toLocaleString()} <span className="text-2xl md:text-4xl text-[var(--accent)]">MAD</span></h3>
+            <h3 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8">{Number(walletData?.balance || 0).toFixed(2)} <span className="text-2xl md:text-4xl text-[var(--accent)]">MAD</span></h3>
             <div className="flex flex-wrap gap-4">
               <button 
                 onClick={() => {
@@ -135,7 +135,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                 </div>
                 <div className="text-right">
                   <p className={`font-bold text-lg ${tx.amount > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount} MAD
+                    {tx.amount > 0 ? '+' : ''}{Number(tx.amount).toFixed(2)} MAD
                   </p>
                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">{tx.status}</span>
                 </div>
@@ -186,7 +186,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                 </div>
                 <button 
                   onClick={() => {
-                    onAction(`Confirming top-up of ${amount} MAD via ${method}`);
+                    onAction(`Confirming top-up of ${Number(amount).toFixed(2)} MAD via ${method}`);
                     handleTopup();
                   }}
                   className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -224,8 +224,20 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                     placeholder="Enter amount"
                     className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 text-2xl font-bold focus:outline-none focus:border-[var(--accent)]/50 transition-all text-[var(--text)]"
                   />
-                  <p className="text-xs text-[var(--text-muted)] mt-2">Available: {walletData?.balance} MAD</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-2">Available: {Number(walletData?.balance || 0).toFixed(2)} MAD</p>
                 </div>
+                {parseFloat(amount) < 50 && amount !== '' && (
+                  <div className="flex items-center gap-2 p-4 bg-red-500/10 text-red-500 rounded-2xl text-xs font-bold">
+                    <AlertCircle size={16} />
+                    Minimum withdrawal amount is 50.00 MAD
+                  </div>
+                )}
+                {walletData?.balance < 50 && (
+                  <div className="flex items-center gap-2 p-4 bg-orange-500/10 text-orange-500 rounded-2xl text-xs font-bold">
+                    <AlertCircle size={16} />
+                    Withdrawals are not allowed for balances under 50.00 MAD
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 block">Withdrawal Method</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -242,10 +254,20 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                 </div>
                 <button 
                   onClick={() => {
-                    onAction(`Requesting withdrawal of ${amount} MAD via ${method}`);
+                    const val = parseFloat(amount);
+                    if (val < 50) {
+                      onAction('Withdrawal minimum is 50.00 MAD');
+                      return;
+                    }
+                    if (val > walletData?.balance) {
+                      onAction('Insufficient balance');
+                      return;
+                    }
+                    onAction(`Requesting withdrawal of ${Number(amount).toFixed(2)} MAD via ${method}`);
                     handleWithdraw();
                   }}
-                  className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  disabled={!amount || parseFloat(amount) < 50 || parseFloat(amount) > walletData?.balance}
+                  className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowRight size={20} className="rotate-[-45deg]" />
                   Request Withdrawal

@@ -69,15 +69,15 @@ export default function AutoDevis() {
           <form onSubmit={handleEstimate} className="space-y-6">
             {/* Service Type */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ml-4">{t('auto_devis_lbl_service', 'Service Category')}</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ps-4">{t('auto_devis_lbl_service', 'Service Category')}</label>
               <div className="relative">
-                <Wrench className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/20" size={18} />
+                <Wrench className="absolute start-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/20" size={18} />
                 <input 
                   type="text"
-                  placeholder="{t('auto_devis_placeholder_service', 'e.g. Plumbing, Electrical, Painting...')}"
+                  placeholder={t('auto_devis_placeholder_service', 'e.g. Plumbing, Electrical, Painting...')}
                   value={formData.serviceType}
                   onChange={(e) => setFormData({...formData, serviceType: e.target.value})}
-                  className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-sm text-[var(--text)]"
+                  className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl py-4 ps-12 pe-4 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-sm text-[var(--text)]"
                   required
                 />
               </div>
@@ -85,13 +85,13 @@ export default function AutoDevis() {
 
             {/* City */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ml-4">{t('auto_devis_lbl_city', 'City')}</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ps-4">{t('auto_devis_lbl_city', 'City')}</label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/20" size={18} />
+                <MapPin className="absolute start-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/20" size={18} />
                 <select 
                   value={formData.city}
                   onChange={(e) => setFormData({...formData, city: e.target.value})}
-                  className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-sm appearance-none text-[var(--text)]"
+                  className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl py-4 ps-12 pe-4 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-sm appearance-none text-[var(--text)]"
                 >
                   {MOROCCAN_CITIES?.map(city => (
                     <option key={city} value={city} className="bg-[var(--card-bg)]">{city}</option>
@@ -102,7 +102,7 @@ export default function AutoDevis() {
 
             {/* Urgency */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ml-4">{t('auto_devis_lbl_urgency', 'Urgency')}</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ps-4">{t('auto_devis_lbl_urgency', 'Urgency')}</label>
               <div className="grid grid-cols-3 gap-3">
                 {['Normal', 'Urgent', 'Emergency']?.map(level => (
                   <button
@@ -123,9 +123,9 @@ export default function AutoDevis() {
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ml-4">Problem Description</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ps-4">{t('auto_devis_lbl_details', 'Project Details')}</label>
               <textarea 
-                placeholder="Describe what needs to be fixed or built..."
+                placeholder={t('auto_devis_placeholder_details', 'Describe what needs to be fixed or built...')}
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-sm h-32 resize-none text-[var(--text)]"
@@ -166,9 +166,9 @@ export default function AutoDevis() {
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em]">Estimated Price Range</p>
+                    <p className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">Estimated Price Range</p>
                     <div className="flex items-baseline gap-2">
-                      <h3 className="text-5xl font-bold tracking-tighter text-[var(--text)]">{estimate.min} - {estimate.max}</h3>
+                      <h3 className="text-5xl font-bold tracking-tighter text-[var(--text)]">{Number(estimate.min).toFixed(2)} - {Number(estimate.max).toFixed(2)}</h3>
                       <span className="text-xl font-bold text-[var(--text-muted)]">{t('currency_mad', 'MAD')}</span>
                     </div>
                   </div>
@@ -176,7 +176,7 @@ export default function AutoDevis() {
                   <div className="p-4 bg-[var(--accent)]/10 rounded-2xl border border-[var(--accent)]/20 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-[var(--accent)] uppercase">Suggested Price</p>
-                      <p className="text-2xl font-bold text-[var(--text)]">{estimate.suggested} {t('currency_mad', 'MAD')}</p>
+                      <p className="text-2xl font-bold text-[var(--text)]">{Number(estimate.suggested).toFixed(2)} {t('currency_mad', 'MAD')}</p>
                     </div>
                     <div className="w-12 h-12 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-full flex items-center justify-center">
                       <CheckCircle2 size={24} />
@@ -203,7 +203,7 @@ export default function AutoDevis() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <Link 
-                    to={`/search?q=${formData.serviceType}`}
+                    to={`/find-pro?search=${formData.serviceType}`}
                     className="bg-[var(--card-bg)] border border-[var(--border)] py-4 rounded-2xl font-bold text-center hover:bg-[var(--bg)] transition-all text-[var(--text)]"
                   >
                     Find Artisans

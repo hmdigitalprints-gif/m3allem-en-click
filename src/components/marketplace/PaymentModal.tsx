@@ -27,13 +27,16 @@ export default function PaymentModal({ booking, onClose, onSuccess, onAction }: 
     setProcessing(true);
     try {
       if (method === 'wallet') {
-        await walletService.payOrder(booking.id, booking.price);
+        await walletService.payOrder(booking.id, 'wallet');
       }
       
-      const res = await fetch(`/api/bookings/${booking.id}/pay`, { credentials: 'include', 
+      const token = localStorage.getItem('m3allem_token');
+      const res = await fetch(`/api/bookings/${booking.id}/pay`, { 
+        credentials: 'include', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ method })
       });
@@ -91,7 +94,7 @@ export default function PaymentModal({ booking, onClose, onSuccess, onAction }: 
               </div>
               <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center">
                 <span className="font-bold">Total Amount</span>
-                <span className="text-2xl font-bold text-[var(--accent)]">{booking.price} MAD</span>
+                <span className="text-2xl font-bold text-[var(--accent)]">{Number(booking.price).toFixed(2)} MAD</span>
               </div>
             </div>
 

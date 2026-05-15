@@ -18,7 +18,10 @@ export default function CompaniesView({ isDarkMode, cardClasses, textMutedClasse
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/companies', { credentials: 'include'});
+      const res = await fetch('/api/admin/companies', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setCompanies(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -37,10 +40,12 @@ export default function CompaniesView({ isDarkMode, cardClasses, textMutedClasse
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/admin/companies', { credentials: 'include', 
+      const res = await fetch('/api/admin/companies', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify(formData)
       });

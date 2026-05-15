@@ -14,7 +14,10 @@ export default function FraudMonitoringView({ isDarkMode, cardClasses, textMuted
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/fraud-alerts', { credentials: 'include'});
+      const res = await fetch('/api/admin/fraud-alerts', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setAlerts(Array.isArray(data) ? data : []);
     } catch (error) {

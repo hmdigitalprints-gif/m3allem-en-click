@@ -14,7 +14,10 @@ export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, 
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/escrows', { credentials: 'include'});
+      const res = await fetch('/api/admin/escrows', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setEscrows(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -53,7 +56,7 @@ export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KpiCard title="Total Funds in Escrow" value={`MAD ${totalFunds.toLocaleString()}`} icon={<ShieldCheck size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Total Funds in Escrow" value={`MAD ${Number(totalFunds).toFixed(2)}`} icon={<ShieldCheck size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
         <KpiCard title="Active Escrows" value={escrows.filter(e => e.status !== 'released').length.toString()} icon={<Clock size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
         <KpiCard title="Disputed Escrows" value={escrows.filter(e => e.status === 'disputed').length.toString()} icon={<AlertTriangle size={20} />} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
       </div>
@@ -101,7 +104,7 @@ export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, 
                 <tr key={escrow.id} className="hover:bg-white/5 transition-all group">
                   <td className="px-8 py-5 font-bold">{escrow.project_name}</td>
                   <td className="px-8 py-5 text-white/60">{escrow.parties}</td>
-                  <td className="px-8 py-5 font-bold text-[#FFD700]">MAD {escrow.amount.toLocaleString()}</td>
+                  <td className="px-8 py-5 font-bold text-[#FFD700]">MAD {Number(escrow.amount).toFixed(2)}</td>
                   <td className="px-8 py-5 text-white/40">{new Date(escrow.release_date).toLocaleDateString()}</td>
                   <td className="px-8 py-5 text-right">
                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase flex items-center gap-2 w-fit ml-auto ${

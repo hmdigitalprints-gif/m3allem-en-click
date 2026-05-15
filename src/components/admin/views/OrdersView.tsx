@@ -14,7 +14,10 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/orders', { credentials: 'include'});
+      const res = await fetch('/api/admin/orders', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -57,7 +60,7 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
         <KpiCard title="Active Orders" value={orders.filter(o => o.status === 'pending' || o.status === 'in_progress').length.toString()} icon={<ShoppingBag size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
         <KpiCard title="Completed" value={orders.filter(o => o.status === 'completed').length.toString()} icon={<CheckCircle size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
         <KpiCard title="Disputed" value={orders.filter(o => o.status === 'disputed').length.toString()} icon={<AlertTriangle size={20} />} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
-        <KpiCard title="Total Volume" value={`MAD ${totalVolume.toLocaleString()}`} icon={<DollarSign size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Total Volume" value={`MAD ${Number(totalVolume).toFixed(2)}`} icon={<DollarSign size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
       </div>
 
       <div className="hynex-card p-8 flex flex-wrap gap-6 items-center justify-between">
@@ -112,7 +115,7 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
                   </td>
                   <td className="px-10 py-8">
                     <span className="text-sm font-black italic tracking-tighter text-[var(--text)]">
-                      MAD {order.total_price?.toLocaleString()}
+                      MAD {Number(order.total_price).toFixed(2)}
                     </span>
                   </td>
                   <td className="px-10 py-8">

@@ -20,8 +20,8 @@ interface PortfolioItem {
   id: string;
   title: string;
   description: string;
-  image_url: string;
-  video_url?: string;
+  imageUrl: string;
+  videoUrl?: string;
 }
 
 interface ArtisanProfileData {
@@ -58,7 +58,11 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
-    fetch(`/api/marketplace/artisans/${artisanId}`, { credentials: 'include' })
+    const token = localStorage.getItem('m3allem_token');
+    fetch(`/api/marketplace/artisans/${artisanId}`, { 
+      credentials: 'include',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch artisan profile');
         return res.json();
@@ -386,9 +390,9 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                         className="group bg-[var(--card-bg)]/5 border border-[var(--border)] rounded-[40px] overflow-hidden"
                       >
                         <div className="h-64 overflow-hidden relative">
-                          {item.video_url ? (
+                          {item.videoUrl ? (
                             <video 
-                              src={item.video_url} 
+                              src={item.videoUrl} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                               controls
                               muted
@@ -396,7 +400,7 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                             />
                           ) : (
                             <img 
-                              src={item.image_url} 
+                              src={item.imageUrl} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                               alt={item.title} 
                             />
@@ -428,7 +432,7 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                           <p className="text-[var(--text-muted)] text-sm mt-1">{service.description || 'Standard service'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[var(--accent)] font-bold text-xl">{service.base_price} MAD</p>
+                          <p className="text-[var(--accent)] font-bold text-xl">{Number(service.base_price).toFixed(2)} MAD</p>
                           <button 
                             onClick={() => onBook(artisan)}
                             className="mt-2 px-4 py-2 bg-[var(--card-bg)]/10 hover:bg-[var(--card-bg)]/20 rounded-xl text-sm font-bold transition-colors text-[var(--text)]"

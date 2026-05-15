@@ -63,18 +63,18 @@ export default function MarketplaceExtras() {
       const res = await fetch(`/api/marketplace-extras/group-requests/${id}/join`, { credentials: 'include', 
         method: 'POST'});
       if (res.ok) {
-        setToastMessage("Successfully joined the group request!");
+        setToastMessage(t('msg_joined_group_success', 'Successfully joined the group request!'));
         setTimeout(() => setToastMessage(null), 3000);
         // Refresh data
         const grpRes = await fetch('/api/marketplace-extras/group-requests', { credentials: 'include' });
         setGroupRequests(await grpRes.json());
       } else {
         const data = await res.json();
-        setToastMessage(data.error || "Failed to join group");
+        setToastMessage(data.error || t('msg_failed_join_group', 'Failed to join group'));
         setTimeout(() => setToastMessage(null), 3000);
       }
     } catch (error) {
-      setToastMessage("An error occurred");
+      setToastMessage(t('msg_error_occurred', 'An error occurred'));
       setTimeout(() => setToastMessage(null), 3000);
     }
   };
@@ -84,9 +84,9 @@ export default function MarketplaceExtras() {
       <div className="max-w-7xl mx-auto px-6 py-12 bg-[var(--bg)] text-[var(--text)]">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div>
-            <h1 className="text-4xl font-bold mb-4 text-[var(--text)]">{t('extras_title', 'Marketplace Extras')}</h1>
+            <h1 className="text-4xl font-bold mb-4 text-[var(--text)]">{t('extras_title')}</h1>
             <p className="text-[var(--text-muted)] max-w-2xl">
-              Discover multi-service bundles and join group requests to save money and get more done.
+              {t('extras_desc')}
             </p>
           </div>
           
@@ -95,13 +95,13 @@ export default function MarketplaceExtras() {
               onClick={() => setActiveTab('packages')}
               className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'packages' ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
             >
-              Bundles
+              {t('extras_tab_bundles')}
             </button>
             <button
               onClick={() => setActiveTab('groups')}
               className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'groups' ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
             >
-              Group Requests
+              {t('extras_tab_groups')}
             </button>
           </div>
         </div>
@@ -137,8 +137,8 @@ export default function MarketplaceExtras() {
                 
                 <div className="flex items-center justify-between pt-6 border-t border-[var(--border)]">
                   <div>
-                    <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider">Bundle Price</p>
-                    <p className="text-2xl font-bold text-[var(--accent)]">{pkg.price} MAD</p>
+                    <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider">{t('extras_lbl_bundle_price')}</p>
+                    <p className="text-2xl font-bold text-[var(--accent)]">{Number(pkg.price).toFixed(2)} MAD</p>
                   </div>
                   <button 
                     onClick={() => {
@@ -147,7 +147,7 @@ export default function MarketplaceExtras() {
                     }}
                     className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--accent-foreground)] transition-all text-[var(--text)]"
                   >
-                    <ArrowRight size={20} />
+                    <ArrowRight size={20} className="rtl:rotate-180" />
                   </button>
                 </div>
               </div>
@@ -158,10 +158,10 @@ export default function MarketplaceExtras() {
               <div className="w-16 h-16 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-3xl flex items-center justify-center mb-6">
                 <Plus size={32} />
               </div>
-              <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">Custom Bundle</h3>
-              <p className="text-[var(--text-muted)] text-sm mb-8">Need something specific? Create your own multi-service request and get a custom quote.</p>
+              <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{t('extras_custom_title')}</h3>
+              <p className="text-[var(--text-muted)] text-sm mb-8">{t('extras_custom_desc')}</p>
               <button className="px-8 py-3 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-bold hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] transition-all">
-                Request Custom
+                {t('extras_custom_btn')}
               </button>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function MarketplaceExtras() {
                       <span className="text-[var(--text-muted)]/20">•</span>
                       <span className="text-[var(--text-muted)] text-xs flex items-center gap-1">
                         <Users size={12} />
-                        {req.participant_count}/{req.max_participants || '∞'} joined
+                        {t('extras_joined_count', { joined: req.participant_count, total: req.max_participants || '∞' })}
                       </span>
                     </div>
                     <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{req.title}</h3>
@@ -186,11 +186,11 @@ export default function MarketplaceExtras() {
                   </div>
                   
                   <div className="bg-[var(--bg)] rounded-3xl p-6 flex flex-col items-center justify-center min-w-[140px] border border-[var(--border)]">
-                    <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold mb-1">Price per user</p>
-                    <p className="text-2xl font-bold text-[var(--accent)]">{req.current_price_per_user} MAD</p>
+                    <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold mb-1">{t('extras_lbl_price_per_user')}</p>
+                    <p className="text-2xl font-bold text-[var(--accent)]">{Number(req.current_price_per_user).toFixed(2)} MAD</p>
                     <p className="text-[10px] text-[var(--success)] font-bold mt-1 flex items-center gap-1">
                       <Info size={10} />
-                      Group Discount
+                      {t('extras_lbl_discount')}
                     </p>
                   </div>
                 </div>
@@ -216,7 +216,7 @@ export default function MarketplaceExtras() {
                       {req.creator_name[0]}
                     </div>
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Organized by</p>
+                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">{t('extras_lbl_organized_by')}</p>
                       <p className="text-sm font-bold text-[var(--text)]">{req.creator_name}</p>
                     </div>
                   </div>
@@ -224,7 +224,7 @@ export default function MarketplaceExtras() {
                     onClick={() => handleJoinGroup(req.id)}
                     className="px-8 py-3 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-[var(--accent)]/20"
                   >
-                    Join Group
+                    {t('marketplace_btn_join')}
                   </button>
                 </div>
               </div>
@@ -235,10 +235,10 @@ export default function MarketplaceExtras() {
               <div className="w-16 h-16 bg-[var(--bg)] text-[var(--text-muted)]/40 rounded-3xl flex items-center justify-center mb-6 border border-[var(--border)]">
                 <Users size={32} />
               </div>
-              <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">Start a Group Request</h3>
-              <p className="text-[var(--text-muted)] text-sm mb-8">Organize a collective service for your building or neighborhood and unlock lower prices for everyone.</p>
+              <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{t('extras_create_group_title')}</h3>
+              <p className="text-[var(--text-muted)] text-sm mb-8">{t('extras_create_group_desc')}</p>
               <button className="px-8 py-3 border border-[var(--border)] text-[var(--text)] rounded-2xl font-bold hover:bg-[var(--text)] hover:text-[var(--bg)] transition-all">
-                Create Group
+                {t('extras_create_group_btn')}
               </button>
             </div>
           </div>

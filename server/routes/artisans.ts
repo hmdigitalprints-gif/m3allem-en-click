@@ -11,10 +11,12 @@ const router = express.Router();
 // Get nearby artisans
 router.get("/nearby", async (req, res) => {
   try {
-    const { lat, lng, categoryId, city } = req.query;
+    const { lat, lng, categoryId, city, page = '1', limit = '50' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
     
     // Generate cache key
-    const cacheKey = `nearby_${lat || ''}_${lng || ''}_${categoryId || ''}_${city || ''}`;
+    const cacheKey = `nearby_${lat || ''}_${lng || ''}_${categoryId || ''}_${city || ''}_${page}_${limit}`;
     const cachedData = cache.get(cacheKey);
     
     if (cachedData) {
@@ -32,7 +34,7 @@ router.get("/nearby", async (req, res) => {
     if (lat && lng) {
       const uLat = parseFloat(lat as string);
       const uLng = parseFloat(lng as string);
-      const maxRadius = 50; // coarse bounds: 50km
+      const maxRadius = 100; // Increased search bounds for coarse filter
       const latOffset = maxRadius / 111.32;
       const lngOffset = maxRadius / (111.32 * Math.cos(uLat * (Math.PI / 180)));
 
@@ -42,11 +44,13 @@ router.get("/nearby", async (req, res) => {
 
     const artisans = await prisma.artisan.findMany({
       where: whereClause,
-      take: 50,
+      take,
+      skip,
       include: {
         user: { select: { name: true, avatarUrl: true } },
         category: { select: { name: true } }
-      }
+      },
+      orderBy: { rating: 'desc' }
     });
 
     const formatted = artisans.map(a => ({
@@ -94,13 +98,35 @@ router.get("/nearby", async (req, res) => {
 router.get("/me", authenticateToken, async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const artisan = await prisma.artisan.findUnique({
+    let artisan = await prisma.artisan.findUnique({
       where: { userId },
       include: {
         user: { select: { name: true, avatarUrl: true } },
         category: { select: { name: true } }
       }
     });
+
+    if (!artisan && (req.user.role === 'artisan' || req.user.role === 'admin')) {
+      try {
+        const categories = await prisma.category.findMany({ take: 1 });
+        artisan = await prisma.artisan.create({
+          data: {
+            userId,
+            categoryId: categories[0]?.id || null,
+            bio: req.user.role === 'admin' ? "Platform Administrator profile." : "",
+            isOnline: true,
+            serviceRadius: 50
+          },
+          include: {
+            user: { select: { name: true, avatarUrl: true } },
+            category: { select: { name: true } }
+          }
+        });
+        if (process.env.NODE_ENV !== 'production') console.log(`[Artisan] Auto-created profile for user ${userId} (${req.user.role})`);
+      } catch (err) {
+        console.error("Failed to auto-create artisan profile:", err);
+      }
+    }
 
     if (!artisan) {
       return res.status(404).json({ error: "Artisan profile not found" });
@@ -170,7 +196,10 @@ router.get("/me/portfolio", authenticateToken, async (req: any, res) => {
       where: { userId },
       select: { id: true }
     });
-    if (!artisan) return res.status(404).json({ error: "Artisan profile not found" });
+    if (!artisan) {
+      if (req.user.role === 'admin') return res.json([]);
+      return res.status(404).json({ error: "Artisan profile not found" });
+    }
 
     const portfolio = await prisma.artisanPortfolio.findMany({
       where: { artisanId: artisan.id },
@@ -190,7 +219,10 @@ router.get("/me/reviews", authenticateToken, async (req: any, res) => {
       where: { userId },
       select: { id: true }
     });
-    if (!artisan) return res.status(404).json({ error: "Artisan profile not found" });
+    if (!artisan) {
+      if (req.user.role === 'admin') return res.json([]);
+      return res.status(404).json({ error: "Artisan profile not found" });
+    }
 
     const reviews = await prisma.rating.findMany({
       where: { artisanId: artisan.id },

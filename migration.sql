@@ -639,6 +639,29 @@ CREATE TABLE "facture_items" (
     CONSTRAINT "facture_items_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "product_orders" (
+    "id" TEXT NOT NULL,
+    "store_id" TEXT NOT NULL,
+    "client_id" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "total_price" DECIMAL(65,30) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "product_orders_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "product_order_items" (
+    "id" TEXT NOT NULL,
+    "product_order_id" TEXT NOT NULL,
+    "product_id" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "price_at_time" DECIMAL(65,30) NOT NULL,
+
+    CONSTRAINT "product_order_items_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "translations_key_language_code_key" ON "translations"("key", "language_code");
 
@@ -821,4 +844,16 @@ ALTER TABLE "factures" ADD CONSTRAINT "factures_client_id_fkey" FOREIGN KEY ("cl
 
 -- AddForeignKey
 ALTER TABLE "facture_items" ADD CONSTRAINT "facture_items_facture_id_fkey" FOREIGN KEY ("facture_id") REFERENCES "factures"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_orders" ADD CONSTRAINT "product_orders_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "stores"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_orders" ADD CONSTRAINT "product_orders_client_id_fkey" FOREIGN KEY ("client_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_order_items" ADD CONSTRAINT "product_order_items_product_order_id_fkey" FOREIGN KEY ("product_order_id") REFERENCES "product_orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "product_order_items" ADD CONSTRAINT "product_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 

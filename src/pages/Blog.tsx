@@ -80,7 +80,7 @@ export default function Blog() {
                   alt={post.title}
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold text-[var(--accent)] border border-[var(--border)]">
+                <div className="absolute top-6 start-6 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold text-[var(--accent)] border border-[var(--border)]">
                   {post.category}
                 </div>
               </div>

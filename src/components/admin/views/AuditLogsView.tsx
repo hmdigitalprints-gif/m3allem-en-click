@@ -25,7 +25,10 @@ export default function AuditLogsView({
 
   useEffect(() => {
     if (!token) return;
-    fetch('/api/admin/audit-logs', { credentials: 'include'})
+    fetch('/api/admin/audit-logs', { 
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
         setLogs(Array.isArray(data) ? data : []);

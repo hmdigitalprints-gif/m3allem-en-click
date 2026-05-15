@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Star, MapPin, ShieldCheck, User, Calendar } from 'lucide-react';
 
-export default function ArtisanCard({ name, category, rating, reviews, price, image, onAction, isVerified, isOnline, city = 'Casablanca', jobs = 42 }: any) {
+const ArtisanCard = memo(({ name, category, rating, reviews, price, image, onAction, isVerified, isOnline, city = 'Casablanca', jobs = 42 }: any) => {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
@@ -91,4 +91,6 @@ export default function ArtisanCard({ name, category, rating, reviews, price, im
       </div>
     </motion.div>
   );
-}
+});
+
+export default ArtisanCard;

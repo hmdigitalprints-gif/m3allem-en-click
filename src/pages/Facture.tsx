@@ -19,7 +19,7 @@ export default function Facture() {
             <CreditCard size={24} className="text-[var(--accent)]" />
             <div>
               <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">{t('facture_total_spent', 'Total Spent')}</p>
-              <p className="text-xl font-bold text-[var(--text)]">24,500 MAD</p>
+              <p className="text-xl font-bold text-[var(--text)]">24,500.00 MAD</p>
             </div>
           </div>
         </div>
@@ -43,7 +43,7 @@ export default function Facture() {
                     <td className="p-6 font-mono text-sm text-[var(--text-muted)]">INV-2023-{1000 + i}</td>
                     <td className="p-6 font-bold text-[var(--text)]">{t('facture_repair', 'Electrical Repair')}</td>
                     <td className="p-6 text-[var(--text-muted)] text-sm">Oct 24, 2023</td>
-                    <td className="p-6 font-bold text-[var(--accent)]">850 MAD</td>
+                    <td className="p-6 font-bold text-[var(--accent)]">850.00 MAD</td>
                     <td className="p-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${i === 1 ? 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20' : 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20'}`}>
                         {t('facture_paid', 'Paid')}

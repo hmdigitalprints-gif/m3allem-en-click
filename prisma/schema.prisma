@@ -109,6 +109,8 @@ model Store {
   orders      ProductOrder[]
 
   @@map("stores")
+  @@index([userId])
+  @@index([city])
 }
 
 model Product {
@@ -125,6 +127,8 @@ model Product {
   orderItems  ProductOrderItem[]
 
   @@map("products")
+  @@index([storeId])
+  @@index([category])
 }
 
 model Company {
@@ -252,6 +256,8 @@ model Favorite {
   artisan   Artisan? @relation(fields: [artisanId], references: [id])
 
   @@map("favorites")
+  @@index([userId])
+  @@index([artisanId])
 }
 
 model ArtisanPortfolio {
@@ -286,6 +292,8 @@ model Service {
   groupRequests GroupRequest[]
 
   @@map("services")
+  @@index([categoryId])
+  @@index([artisanId])
 }
 
 enum DeliveryMethod {
@@ -353,6 +361,10 @@ model Booking {
   service Service? @relation(fields: [serviceId], references: [id])
 
   @@map("bookings")
+  @@index([clientId])
+  @@index([artisanId])
+  @@index([bookingStatus])
+  @@index([scheduledAt])
 }
 
 enum OrderStatus {
@@ -403,6 +415,10 @@ model Order {
   proposals Proposal[]
 
   @@map("orders")
+  @@index([clientId])
+  @@index([artisanId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Wallet {
@@ -459,7 +475,7 @@ model Payment {
   orderId       String?        @map("order_id")
   amount        Decimal?
   method        PaymentMethod?
-  status        PaymentStatus?
+  paymentStatus PaymentStatus? @default(pending) @map("payment_status")
   transactionId String?        @map("transaction_id")
   createdAt     DateTime       @default(now()) @map("created_at")
   order         Order?         @relation(fields: [orderId], references: [id])
@@ -514,6 +530,8 @@ model Message {
   receiver    User?          @relation("ReceivedMessages", fields: [receiverId], references: [id])
 
   @@map("messages")
+  @@index([senderId, receiverId])
+  @@index([createdAt])
 }
 
 enum NotificationType {
@@ -534,6 +552,8 @@ model Notification {
   user      User?             @relation(fields: [userId], references: [id])
 
   @@map("notifications")
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 model Proposal {

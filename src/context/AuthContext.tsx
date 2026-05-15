@@ -21,7 +21,7 @@ interface AuthContextType {
   verifyOtp: (userId: string, code: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   updateLanguage: (lang: string) => Promise<void>;
-  updateProfile: (data: { name?: string; avatarUrl?: string; city?: string; address?: string }) => Promise<void>;
+  updateProfile: (data: { name?: string; avatarUrl?: string; city?: string; address?: string; phone?: string }) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -58,9 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           localStorage.removeItem('m3allem_user');
         }
-      } catch (err) {
-        // network error, keep saved user?
-        console.error("Session verification failed", err);
+      } catch (err: any) {
+        if (err?.name === 'TypeError' && err?.message === 'Failed to fetch') {
+          console.warn("Network error verifying session. Server might be starting up.");
+        } else {
+          console.error("Session verification failed", err);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -164,11 +167,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateLanguage = async (lang: string) => {
-    if (!user) return;
-    const res = await fetch(`/api/auth/users/${user.id}/language`, { credentials: 'include', 
+    if (!user || !token) return;
+    const res = await fetch(`/api/auth/users/${user.id}/language`, { 
+      credentials: 'include', 
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ language: lang })});
     if (res.ok) {
@@ -181,12 +186,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProfile = async (data: { name?: string; avatarUrl?: string; city?: string; address?: string }) => {
-    if (!user) return;
-    const res = await fetch(`/api/auth/users/${user.id}`, { credentials: 'include', 
+  const updateProfile = async (data: { name?: string; avatarUrl?: string; city?: string; address?: string; phone?: string }) => {
+    if (!user || !token) return;
+    const res = await fetch(`/api/auth/users/${user.id}`, { 
+      credentials: 'include', 
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(data)});
     if (res.ok) {
@@ -195,7 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: data.name || user.name, 
         avatar_url: data.avatarUrl || user.avatar_url,
         city: data.city || user.city,
-        address: data.address || user.address
+        address: data.address || user.address,
+        phone: data.phone || user.phone
       };
       setUser(updatedUser);
       localStorage.setItem('m3allem_user', JSON.stringify(updatedUser));

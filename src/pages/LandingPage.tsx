@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 import { LanguageSwitcher } from '../components/layout/LanguageSwitcher';
 import { ThemeToggle } from '../components/layout/ThemeToggle';
+import { SymmetricalIcon } from '../components/common/SymmetricalIcon';
 import { useTranslation } from 'react-i18next';
 import PromoBanner from '../components/common/PromoBanner';
+import { useDirection } from '../hooks/useDirection';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -57,30 +59,31 @@ const defaultHeroSlides = [
   }
 ];
 
-const categories = [
-  { id: 'cat_1', name: 'Plumbing', icon: <Droplets />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Expert leak repairs and pipe installations.' },
-  { id: 'cat_2', name: 'Electricity', icon: <Zap />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Safe electrical wiring and fixture repairs.' },
-  { id: 'cat_3', name: 'Painting', icon: <Paintbrush />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Professional interior and exterior painting.' },
-  { id: 'cat_4', name: 'Cleaning', icon: <Sparkles />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Deep cleaning for homes and offices.' },
-  { id: 'cat_5', name: 'AC Repair', icon: <Wind />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Cooling system maintenance and repair.' },
-  { id: 'cat_6', name: 'Construction', icon: <HardHat />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: 'Quality building and renovation work.' },
-];
-
-const stats = [
-  { label: 'Active Artisans', value: '2,500+' },
-  { label: 'Services Completed', value: '45k+' },
-  { label: 'Customer Rating', value: '4.9/5' },
-  { label: 'Cities Covered', value: '12' },
-];
-
 export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggleTheme, user }: LandingPageProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isRtl } = useDirection();
   const { settings } = useSettings();
   const [isDemoOpen, setIsDemoOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeHeroSlides, setActiveHeroSlides] = useState(defaultHeroSlides);
+
+  const categories = [
+    { id: 'cat_1', name: t('cat_plumbing'), icon: <Droplets />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_plumbing_desc') },
+    { id: 'cat_2', name: t('cat_electricity'), icon: <Zap />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_electricity_desc') },
+    { id: 'cat_3', name: t('cat_carpentry'), icon: <Hammer />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_carpentry_desc') },
+    { id: 'cat_4', name: t('cat_painting'), icon: <Paintbrush />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_painting_desc') },
+    { id: 'cat_5', name: t('cat_cleaning'), icon: <Sparkles />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_cleaning_desc') },
+    { id: 'cat_6', name: t('cat_construction'), icon: <HardHat />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_construction_desc') },
+  ];
+
+  const stats = [
+    { label: t('stat_active_artisans'), value: '2,500+' },
+    { label: t('stat_services_completed'), value: '45k+' },
+    { label: t('stat_customer_rating'), value: '4.9/5' },
+    { label: t('stat_cities_covered'), value: '12' },
+  ];
 
   useEffect(() => {
     if (settings && settings.hero_slides) {
@@ -116,28 +119,28 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               <div className="w-10 h-10 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-lg shadow-[var(--accent)]/20">
                 <Hammer size={20} />
               </div>
-              <span className="text-2xl font-bold tracking-tighter">M3allem <span className="text-[var(--accent)]">En Click</span></span>
+              <span className="text-2xl font-bold tracking-tighter">M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></span>
             </Link>
           
-          <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-[var(--text-muted)]">
-            <a href="#features" className="hover:text-[var(--text)] transition-colors">{t('nav_features', 'Features')}</a>
-            <a href="#categories" className="hover:text-[var(--text)] transition-colors">{t('nav_categories', 'Categories')}</a>
-            <Link to="/store" className="hover:text-[var(--text)] transition-colors">{t('nav_store_materials', 'Materials Store')}</Link>
-          </div>
+            <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-[var(--text-muted)]">
+              <a href="#features" className="hover:text-[var(--text)] transition-colors">{t('nav_features')}</a>
+              <a href="#categories" className="hover:text-[var(--text)] transition-colors">{t('nav_categories')}</a>
+              <Link to="/store" className="hover:text-[var(--text)] transition-colors">{t('nav_store')}</Link>
+            </div>
 
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher />
-            <ThemeToggle />
-            <button 
-              onClick={() => {
-                onAction?.('Opening Sign In...');
-                onGetStarted();
-              }}
-              className="hidden sm:flex bg-[var(--card-bg)] hover:bg-[var(--bg)] border border-[var(--border)] px-6 py-2.5 rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm items-center gap-2"
-            >
-              <Users size={16} />
-              {t('auth_sign_in', 'Sign In')}
-            </button>
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+              <ThemeToggle />
+              <button 
+                onClick={() => {
+                  onAction?.(t('ui_opening_signin'));
+                  onGetStarted();
+                }}
+                className="hidden sm:flex bg-[var(--card-bg)] hover:bg-[var(--bg)] border border-[var(--border)] px-6 py-2.5 rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm items-center gap-2"
+              >
+                <Users size={16} />
+                {t('auth_btn_login')}
+              </button>
             
             {/* Mobile Menu Button */}
             <button 
@@ -246,12 +249,12 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               <button 
                 onClick={() => {
-                  onAction?.('Redirecting to registration...');
+                  onAction?.(t('ui_redirect_reg'));
                   onGetStarted();
                 }}
                 className="bg-[var(--accent)] text-black hover:bg-[var(--accent-muted)] hover:scale-105 active:scale-95 px-10 py-5 rounded-full font-bold uppercase tracking-widest text-sm transition-all shadow-xl shadow-[var(--accent)]/20 flex items-center justify-center gap-3 whitespace-nowrap"
               >
-                {t('hero_btn_book')} <ArrowRight size={18} />
+                {t('hero_btn_book')} <SymmetricalIcon icon={ArrowRight} size={18} />
               </button>
             </div>
           </motion.div>
@@ -287,7 +290,7 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
                 className="text-center"
               >
                 <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-2">{stat.value}</div>
-                <div className="text-xs sm:text-xs text-[var(--accent)] font-bold uppercase tracking-[0.2em]">{t(stat.label.toLowerCase().replace(' ', '_'), stat.label)}</div>
+                <div className="text-xs sm:text-xs text-[var(--accent)] font-bold uppercase tracking-[0.2em]">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -340,11 +343,11 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
                 </div>
                 
                 <div className="relative z-10">
-                  <h3 className="text-2xl font-bold mb-3 tracking-tight">{t(cat.id, cat.name)}</h3>
-                  <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-8">{t(`${cat.id}_desc`, cat.desc)}</p>
+                  <h3 className="text-2xl font-bold mb-3 tracking-tight">{cat.name}</h3>
+                  <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-8">{cat.desc}</p>
                   
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] opacity-80 group-hover:opacity-100 transition-opacity">
-                    {t('cat_explore')} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    {t('cat_explore')} <SymmetricalIcon icon={ArrowRight} size={14} className="group-hover:translate-x-1" />
                   </div>
                 </div>
               </motion.div>
@@ -364,8 +367,8 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               {t('feat_why_title')}
             </div>
             <h2 className="text-4xl sm:text-5xl md:text-7xl font-sans font-bold tracking-tighter mb-8 leading-[0.9] text-balance">
-              {t('feat_main_title_part1', 'The')} <span className="text-[var(--accent)] opacity-90 italic font-serif">{t('feat_main_title_accent', 'Standard')}</span><br />
-              {t('feat_main_title_part2', 'for Home Services.')}
+              {t('feat_main_title_part1')} <span className="text-[var(--accent)] opacity-90 italic font-serif">{t('feat_main_title_accent')}</span><br />
+              {t('feat_main_title_part2')}
             </h2>
             <p className="text-lg md:text-xl text-[var(--text-muted)] leading-relaxed text-balance">
               {t('feat_main_desc')}
@@ -384,8 +387,8 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               <div className="w-12 h-12 bg-[var(--bg)] text-[var(--accent)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border)] shadow-sm">
                 <ShieldCheck className="w-6 h-6" strokeWidth={1.5} />
               </div>
-              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)]">{t(`feat_verified_title`, 'Verified Pros')}</h4>
-              <p className="text-[var(--text-muted)] text-base leading-relaxed max-w-sm">{t(`feat_verified_desc`, 'Every artisan undergoes a strict background check.')}</p>
+              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)]">{t(`feat_verified_title`)}</h4>
+              <p className="text-[var(--text-muted)] text-base leading-relaxed max-w-sm">{t(`feat_verified_desc`)}</p>
             </motion.div>
 
             {/* Bento Box 2 */}
@@ -399,8 +402,8 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               <div className="w-12 h-12 bg-[var(--bg)] text-[var(--accent)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border)] shadow-sm">
                 <Zap className="w-6 h-6" strokeWidth={1.5} />
               </div>
-              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)]">{t(`feat_secure_title`, 'Secure Payments')}</h4>
-              <p className="text-[var(--text-muted)] text-base leading-relaxed">{t(`feat_secure_desc`, 'Your money is safe with our escrow payment system.')}</p>
+              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)]">{t(`feat_secure_title`)}</h4>
+              <p className="text-[var(--text-muted)] text-base leading-relaxed">{t(`feat_secure_desc`)}</p>
             </motion.div>
 
             {/* Bento Box 3 */}
@@ -412,10 +415,10 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               className="md:col-span-1 row-span-1 bg-[var(--text)] text-[var(--bg)] border border-[var(--text)] rounded-[2rem] p-8 md:p-10 relative overflow-hidden group hover:scale-[1.02] transition-transform"
             >
               <div className="w-12 h-12 bg-[var(--bg)] text-[var(--text)] rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                <ArrowRight className="w-6 h-6" strokeWidth={2} />
+                <SymmetricalIcon icon={ArrowRight} className="w-6 h-6 border-none p-0" strokeWidth={2} />
               </div>
-              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">{t(`feat_instant_title`, 'Instant Booking')}</h4>
-              <p className="opacity-80 text-base leading-relaxed">{t(`feat_instant_desc`, 'Book a service in seconds, not hours.')}</p>
+              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">{t(`feat_instant_title`)}</h4>
+              <p className="opacity-80 text-base leading-relaxed">{t(`feat_instant_desc`)}</p>
             </motion.div>
 
             {/* Bento Box 4 - Span 2 Columns */}
@@ -426,12 +429,12 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               transition={{ delay: 0.3 }}
               className="md:col-span-2 row-span-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-8 md:p-10 relative overflow-hidden group flex flex-col justify-end"
             >
-              <div className="absolute top-0 right-0 text-[120px] font-serif italic text-[var(--text)]/5 -mt-10 mr-4 rotate-12 pointer-events-none">24/7</div>
+              <div className={`absolute top-0 ${isRtl ? 'left-0' : 'right-0'} text-[120px] font-serif italic text-[var(--text)]/5 -mt-10 mr-4 rotate-12 pointer-events-none`}>24/7</div>
               <div className="w-12 h-12 bg-[var(--bg)] text-[var(--accent)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border)] shadow-sm relative z-10">
                 <Users className="w-6 h-6" strokeWidth={1.5} />
               </div>
-              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)] relative z-10">{t(`feat_support_title`, 'Support 24/7')}</h4>
-              <p className="text-[var(--text-muted)] text-base leading-relaxed max-w-sm relative z-10">{t(`feat_support_desc`, 'Our team is here to help you anytime.')}</p>
+              <h4 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight text-[var(--text)] relative z-10">{t(`feat_support_title`)}</h4>
+              <p className="text-[var(--text-muted)] text-base leading-relaxed max-w-sm relative z-10">{t(`feat_support_desc`)}</p>
             </motion.div>
           </div>
         </div>
@@ -443,14 +446,14 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
       <section className="py-20 md:py-32 bg-[var(--card-bg)] border-y border-[var(--border)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tighter mb-6">{t('faq_title', 'Frequently Asked Questions')}</h2>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tighter mb-6">{t('faq_title')}</h2>
           </div>
           <div className="space-y-4">
             {[
-              { q: t('faq_q1', 'How do I book a professional?'), a: t('faq_a1', 'Simply search for the service you need, choose a verified professional, and schedule an appointment directly from their profile.') },
-              { q: t('faq_q2', 'Are all artisans verified?'), a: t('faq_a2', 'Yes. We conduct strict background checks and review their past work to ensure you only get the best.') },
-              { q: t('faq_q3', 'How does payment work?'), a: t('faq_a3', 'Payments are securely held in escrow and only released to the artisan once you confirm the job is complete and satisfactory.') },
-              { q: t('faq_q4', 'What if I am not satisfied?'), a: t('faq_a4', 'Our 24/7 customer support team is always available to resolve disputes and ensure you get what you paid for.') },
+              { q: t('faq_q1'), a: t('faq_a1') },
+              { q: t('faq_q2'), a: t('faq_a2') },
+              { q: t('faq_q3'), a: t('faq_a3') },
+              { q: t('faq_q4'), a: t('faq_a4') },
             ]?.map((faq, i) => (
               <div key={i} className="border border-[var(--border)] rounded-[2rem] p-6 md:p-8 hover:border-[var(--accent)] transition-colors">
                 <h4 className="text-xl font-bold text-[var(--text)] mb-3">{faq.q}</h4>
@@ -476,14 +479,14 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link 
                   to="/services"
-                  onClick={() => onAction?.('Finding a Pro...')}
+                  onClick={() => onAction?.(t('ui_finding_pro'))}
                   className="bg-[var(--text)] text-[var(--bg)] px-10 py-5 rounded-full font-bold uppercase tracking-widest text-xs transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 shadow-xl"
                 >
-                  {t('cta_btn_find_pro')} <ArrowRight size={18} />
+                  {t('cta_btn_find_pro')} <SymmetricalIcon icon={ArrowRight} size={18} />
                 </Link>
                 <Link 
                   to="/become-artisan"
-                  onClick={() => onAction?.('Redirecting to Artisan registration...')}
+                  onClick={() => onAction?.(t('ui_redirect_artisan'))}
                   className="bg-[var(--glass-bg)] backdrop-blur-md border border-[var(--border)] px-10 py-5 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-[var(--bg)] transition-all active:scale-95 flex items-center justify-center text-[var(--text)]"
                 >
                   {t('cta_btn_become_artisan')}
@@ -510,29 +513,29 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               </p>
             </div>
             <div>
-              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_platform', 'Platform')}</h5>
+              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_platform')}</h5>
               <ul className="space-y-4 text-sm text-[var(--text-muted)]">
-                <li><Link to="/services" className="hover:text-[var(--accent)] transition-colors">{t('nav_find_pro', 'Find a Pro')}</Link></li>
-                <li><Link to="/become-artisan" className="hover:text-[var(--accent)] transition-colors">{t('nav_become_artisan', 'Become an Artisan')}</Link></li>
-                <li><Link to="/store" className="hover:text-[var(--accent)] transition-colors">{t('nav_store', 'Materials Store')}</Link></li>
-                <li><Link to="/pricing" className="hover:text-[var(--accent)] transition-colors">{t('nav_pricing', 'Pricing')}</Link></li>
+                <li><Link to="/services" className="hover:text-[var(--accent)] transition-colors">{t('nav_find_pro')}</Link></li>
+                <li><Link to="/become-artisan" className="hover:text-[var(--accent)] transition-colors">{t('nav_become_artisan')}</Link></li>
+                <li><Link to="/store" className="hover:text-[var(--accent)] transition-colors">{t('nav_store')}</Link></li>
+                <li><Link to="/pricing" className="hover:text-[var(--accent)] transition-colors">{t('nav_pricing')}</Link></li>
               </ul>
             </div>
             <div>
-              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_company', 'Company')}</h5>
+              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_company')}</h5>
               <ul className="space-y-4 text-sm text-[var(--text-muted)]">
-                <li><Link to="/about" className="hover:text-[var(--accent)] transition-colors">{t('footer_about', 'About Us')}</Link></li>
-                <li><Link to="/careers" className="hover:text-[var(--accent)] transition-colors">{t('footer_careers', 'Careers')}</Link></li>
-                <li><Link to="/contact" className="hover:text-[var(--accent)] transition-colors">{t('footer_contact', 'Contact')}</Link></li>
-                <li><Link to="/blog" className="hover:text-[var(--accent)] transition-colors">{t('footer_blog', 'Blog')}</Link></li>
+                <li><Link to="/about" className="hover:text-[var(--accent)] transition-colors">{t('footer_about')}</Link></li>
+                <li><Link to="/careers" className="hover:text-[var(--accent)] transition-colors">{t('footer_careers')}</Link></li>
+                <li><Link to="/contact" className="hover:text-[var(--accent)] transition-colors">{t('footer_contact')}</Link></li>
+                <li><Link to="/blog" className="hover:text-[var(--accent)] transition-colors">{t('footer_blog')}</Link></li>
               </ul>
             </div>
             <div>
-              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_legal', 'Legal')}</h5>
+              <h5 className="font-semibold mb-6 text-sm text-[var(--text)]">{t('footer_legal')}</h5>
               <ul className="space-y-4 text-sm text-[var(--text-muted)]">
-                <li><Link to="/privacy" className="hover:text-[var(--accent)] transition-colors">{t('footer_privacy', 'Privacy Policy')}</Link></li>
-                <li><Link to="/terms" className="hover:text-[var(--accent)] transition-colors">{t('footer_terms', 'Terms of Service')}</Link></li>
-                <li><Link to="/cookies" className="hover:text-[var(--accent)] transition-colors">{t('footer_cookies', 'Cookie Policy')}</Link></li>
+                <li><Link to="/privacy" className="hover:text-[var(--accent)] transition-colors">{t('footer_privacy')}</Link></li>
+                <li><Link to="/terms" className="hover:text-[var(--accent)] transition-colors">{t('footer_terms')}</Link></li>
+                <li><Link to="/cookies" className="hover:text-[var(--accent)] transition-colors">{t('footer_cookies')}</Link></li>
               </ul>
             </div>
           </div>

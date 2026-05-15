@@ -12,7 +12,10 @@ export default function WalletsView({ isDarkMode, cardClasses, textMutedClasses,
 
   useEffect(() => {
     if (!token) return;
-    fetch('/api/admin/transactions', { credentials: 'include'})
+    fetch('/api/admin/transactions', { 
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
         setTransactions(Array.isArray(data) ? data : []);
@@ -57,8 +60,8 @@ export default function WalletsView({ isDarkMode, cardClasses, textMutedClasses,
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <KpiCard title="Total Platform Balance" value={`MAD ${transactions.reduce((acc, t) => acc + (t.type === 'topup' ? t.amount : 0), 0).toLocaleString()}`} trend="+0%" isPositive={true} isDarkMode={isDarkMode} />
-        <KpiCard title="Pending Withdrawals" value={`MAD ${transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}`} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
+        <KpiCard title="Total Platform Balance" value={`MAD ${Number(transactions.reduce((acc, t) => acc + (t.type === 'topup' ? (t.amount || 0) : 0), 0)).toFixed(2)}`} trend="+0%" isPositive={true} isDarkMode={isDarkMode} />
+        <KpiCard title="Pending Withdrawals" value={`MAD ${Number(transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending').reduce((acc, t) => acc + (t.amount || 0), 0)).toFixed(2)}`} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
         <KpiCard title="Total Transactions (24h)" value={transactions.length.toString()} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
       </div>
 
@@ -114,7 +117,7 @@ export default function WalletsView({ isDarkMode, cardClasses, textMutedClasses,
                     </span>
                   </td>
                   <td className={`px-6 py-4 font-mono font-bold ${['topup', 'release'].includes(t.type) ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`}>
-                    {['topup', 'release'].includes(t.type) ? '+' : '-'} MAD {t.amount.toLocaleString()}
+                    {['topup', 'release'].includes(t.type) ? '+' : '-'} MAD {Number(t.amount).toFixed(2)}
                   </td>
                   <td className={`px-6 py-4 ${textMutedClasses}`}>{new Date(t.created_at).toLocaleString()}</td>
                   <td className="px-6 py-4">

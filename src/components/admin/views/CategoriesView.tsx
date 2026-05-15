@@ -31,7 +31,10 @@ export default function CategoriesView({
   const fetchCategories = async () => {
     if (!token) return;
     try {
-      const response = await fetch('/api/admin/categories', { credentials: 'include'});
+      const response = await fetch('/api/admin/categories', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -59,6 +62,7 @@ export default function CategoriesView({
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({
           ...formData,
@@ -83,8 +87,11 @@ export default function CategoriesView({
   const handleDeleteCategory = async (id: string) => {
     if (!token || !confirm('Are you sure you want to delete this category?')) return;
     try {
-      const response = await fetch(`/api/admin/categories/${id}`, { credentials: 'include', 
-        method: 'DELETE'});
+      const response = await fetch(`/api/admin/categories/${id}`, { 
+        credentials: 'include', 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         fetchCategories();
         onAction?.('Category deleted successfully');
@@ -97,8 +104,11 @@ export default function CategoriesView({
   const toggleActive = async (id: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`/api/admin/categories/${id}/toggle-active`, { credentials: 'include', 
-        method: 'POST'});
+      const response = await fetch(`/api/admin/categories/${id}/toggle-active`, { 
+        credentials: 'include', 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         setCategories(prev => prev.map(c => c.id === id ? { ...c, is_active: c.is_active ? 0 : 1 } : c));
       }

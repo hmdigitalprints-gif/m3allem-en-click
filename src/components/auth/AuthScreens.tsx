@@ -4,6 +4,7 @@ import { Phone, Lock, User, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle, Ale
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { SymmetricalIcon } from '../common/SymmetricalIcon';
 
 interface AuthScreensProps {
   onSuccess: () => void;
@@ -41,19 +42,19 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
       case 'identifier':
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         const isPhone = /^0[567]\d{8}$/.test(value) || /^\+212[567]\d{8}$/.test(value);
-        if (!isEmail && !isPhone) error = 'Invalid phone format or email address';
+        if (!isEmail && !isPhone) error = t('auth_err_invalid_format', 'Invalid phone format or email address');
         break;
       case 'password':
-        if (value.length < 6) error = t('auth_err_missing', 'Password must be at least 6 characters');
+        if (value.length < 6) error = t('auth_err_password_short', 'Password must be at least 6 characters');
         break;
       case 'storeName':
-        if (role === 'seller' && value.trim().length < 2) error = t('auth_err_missing', 'Store name is required');
+        if (role === 'seller' && value.trim().length < 2) error = t('auth_err_store_required', 'Store name is required');
         break;
       case 'companyName':
-        if (role === 'company' && value.trim().length < 2) error = t('auth_err_missing', 'Company name is required');
+        if (role === 'company' && value.trim().length < 2) error = t('auth_err_company_required', 'Company name is required');
         break;
       case 'categoryId':
-        if (role === 'artisan' && !value) error = t('auth_err_missing', 'Category is required');
+        if (role === 'artisan' && !value) error = t('auth_err_category_required', 'Category is required');
         break;
     }
     setFieldErrors(prev => ({ ...prev, [name]: error }));
@@ -67,12 +68,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
 
     // Basic validation
     if (!identifier.trim()) {
-      setError('Phone or email is required');
+      setError(t('auth_err_identifier_required', 'Phone or email is required'));
       setIsLoading(false);
       return;
     }
     if (!password) {
-      setError('Password is required');
+      setError(t('auth_err_password_required', 'Password is required'));
       setIsLoading(false);
       return;
     }
@@ -109,13 +110,13 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
         body: JSON.stringify({ userId, channel })});
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to send OTP');
+        throw new Error(err.error || t('auth_err_otp_failed', 'Failed to send OTP'));
       }
       setOtpChannel(channel);
       setStep('otp');
     } catch (err: any) {
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError('Unable to connect to the server. Please check your internet connection.');
+        setError(t('auth_err_connection', 'Unable to connect to the server. Please check your internet connection.'));
       } else {
         setError(err.message);
       }
@@ -141,17 +142,17 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
 
   const validateRegister = () => {
     const errors: Record<string, string> = {};
-    if (['client', 'artisan'].includes(role) && name.trim().length < 3) errors.name = 'Name must be at least 3 characters';
+    if (['client', 'artisan'].includes(role) && name.trim().length < 3) errors.name = t('auth_err_name_short', 'Name must be at least 3 characters');
     
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
     const isPhone = /^0[567]\d{8}$/.test(identifier) || /^\+212[567]\d{8}$/.test(identifier);
-    if (!isEmail && !isPhone) errors.identifier = 'Invalid phone format or email address';
+    if (!isEmail && !isPhone) errors.identifier = t('auth_err_invalid_format', 'Invalid phone format or email address');
     
-    if (password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (password.length < 6) errors.password = t('auth_err_password_short', 'Password must be at least 6 characters');
     
-    if (role === 'seller' && !storeName.trim()) errors.storeName = 'Store name is required';
-    if (role === 'company' && !companyName.trim()) errors.companyName = 'Company name is required';
-    if (role === 'artisan' && !categoryId) errors.categoryId = 'Category is required';
+    if (role === 'seller' && !storeName.trim()) errors.storeName = t('auth_err_store_required', 'Store name is required');
+    if (role === 'company' && !companyName.trim()) errors.companyName = t('auth_err_company_required', 'Company name is required');
+    if (role === 'artisan' && !categoryId) errors.categoryId = t('auth_err_category_required', 'Category is required');
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -199,11 +200,11 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
       {onBack && (
         <button 
           onClick={onBack}
-          className="absolute top-6 left-6 z-50 py-3 px-6 rounded-full bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent)] text-[var(--accent-foreground)] transition-all shadow-xl flex items-center gap-3 active:scale-95 hover:scale-105"
-          title={t('nav_back_home', 'Back to Home')}
+          className="absolute top-6 start-6 z-50 py-3 px-6 rounded-full bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text)] hover:bg-[var(--accent)] hover:text-black transition-all shadow-xl flex items-center gap-3 active:scale-95 hover:scale-105"
+          title={t('back_to_home')}
         >
-          <ArrowLeft size={20} />
-          <span className="font-bold text-sm">{t('nav_back_home', 'Back to Home')}</span>
+          <SymmetricalIcon icon={ArrowLeft} size={20} />
+          <span className="font-bold text-sm">{t('back_to_home')}</span>
         </button>
       )}
       <div className="w-full max-w-md">
@@ -253,12 +254,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   </div>
                 )}
 
-                <button
+                  <button
                   type="submit"
                   disabled={isLoading}
                   className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-6 rounded-3xl font-bold text-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_btn_login')} {i18n.dir() === 'rtl' ? <ArrowLeft size={20} /> : <ArrowRight size={20} />}</>}
+                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_btn_login')} <SymmetricalIcon icon={ArrowRight} size={20} /></>}
                 </button>
 
                 <button 
@@ -269,6 +270,31 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   {t('auth_no_account')} {t('auth_btn_create')}
                 </button>
               </form>
+
+              {/* DEMO QUICK LOGIN */}
+              <div className="mt-8 border-t border-[var(--border)] pt-8">
+                <div className="flex items-center justify-center gap-2 mb-6 text-[var(--text-muted)]">
+                  <ShieldCheck size={16} />
+                  <span className="text-xs font-bold uppercase tracking-widest">Demo Quick Roles</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <button onClick={(e) => { e.preventDefault(); setIdentifier('admin@test.com'); setPassword('password123'); }} className="p-3 text-xs md:text-sm font-bold bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white rounded-xl transition-all">
+                    Admin
+                  </button>
+                  <button onClick={(e) => { e.preventDefault(); setIdentifier('client0@test.com'); setPassword('password123'); }} className="p-3 text-xs md:text-sm font-bold bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white rounded-xl transition-all">
+                    Client
+                  </button>
+                  <button onClick={(e) => { e.preventDefault(); setIdentifier('artisan0@test.com'); setPassword('password123'); }} className="p-3 text-xs md:text-sm font-bold bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white rounded-xl transition-all">
+                    Artisan
+                  </button>
+                  <button onClick={(e) => { e.preventDefault(); setIdentifier('seller0@test.com'); setPassword('password123'); }} className="p-3 text-xs md:text-sm font-bold bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white rounded-xl transition-all">
+                    Seller / Vendeur
+                  </button>
+                  <button onClick={(e) => { e.preventDefault(); setIdentifier('company0@test.com'); setPassword('password123'); }} className="p-3 text-xs md:text-sm font-bold bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white rounded-xl transition-all col-span-2 md:col-span-1">
+                    Company 
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -281,20 +307,20 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_verify')} <span className="text-[var(--accent)]">{t('auth_otp_short', 'OTP.')}</span></h1>
-                <p className="text-[var(--text-muted)]">{t('auth_enter_code', 'Enter the 6-digit code sent via')} {otpChannel.toUpperCase()}.</p>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_verify')} <span className="text-[var(--accent)]">{t('auth_otp_short')}</span></h1>
+                <p className="text-[var(--text-muted)]">{t('auth_enter_code')} {otpChannel.toUpperCase()}.</p>
               </div>
 
               <form onSubmit={handleVerify} className="space-y-6">
                 <div className="relative group">
-                  <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
+                  <ShieldCheck className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
                   <input
                     type="text"
-                    placeholder={t('auth_6_digit_code', '6-Digit Code')}
+                    placeholder={t('auth_otp_placeholder')}
                     maxLength={6}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-3xl py-6 pl-16 pr-8 text-xl tracking-[1em] text-center focus:outline-none focus:border-[var(--accent)]/50 transition-all font-mono"
+                    className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-3xl py-6 ps-16 pe-8 text-xl tracking-[1em] text-center focus:outline-none focus:border-[var(--accent)]/50 transition-all font-mono"
                     required
                     dir="ltr"
                   />
@@ -312,7 +338,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   disabled={isLoading}
                   className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-6 rounded-3xl font-bold text-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_verify_login', 'Verify & Login')} <CheckCircle size={20} /></>}
+                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_btn_verify_login')} <CheckCircle size={20} /></>}
                 </button>
                 
                 <div className="flex flex-col gap-2">
@@ -321,14 +347,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                     onClick={() => setStep('channel')}
                     className="w-full text-[var(--accent)] font-bold py-2"
                   >
-                    Resend Code / Change Channel
+                    {t('auth_otp_resend')}
                   </button>
                   <button 
                     type="button"
                     onClick={() => setStep('login')}
                     className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
                   >
-                    Back to Login
+                    {t('auth_btn_back_login')}
                   </button>
                 </div>
               </form>
@@ -344,8 +370,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter">CHOOSE <span className="text-[var(--accent)]">CHANNEL.</span></h1>
-                <p className="text-[var(--text-muted)]">Select how you want to receive your verification code.</p>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_choose')} <span className="text-[var(--accent)]">{t('auth_channel_short')}</span></h1>
+                <p className="text-[var(--text-muted)]">{t('auth_choose_desc')}</p>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
@@ -357,9 +383,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   <div className="p-3 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl group-hover:bg-[var(--accent)] group-hover:text-[var(--accent-foreground)] transition-all">
                     <Phone size={24} />
                   </div>
-                  <div>
+                  <div className={i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}>
                     <h3 className="text-xl font-bold">SMS</h3>
-                    <p className="text-[var(--text-muted)] text-xs">Receive code via text message.</p>
+                    <p className="text-[var(--text-muted)] text-xs">{t('auth_channel_sms_desc')}</p>
                   </div>
                 </button>
 
@@ -371,9 +397,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-all">
                     <Mail size={24} />
                   </div>
-                  <div>
+                  <div className={i18n.dir() === 'rtl' ? 'text-right' : 'text-left'}>
                     <h3 className="text-xl font-bold">Email</h3>
-                    <p className="text-[var(--text-muted)] text-xs">Receive code via email address.</p>
+                    <p className="text-[var(--text-muted)] text-xs">{t('auth_channel_email_desc')}</p>
                   </div>
                 </button>
               </div>
@@ -390,7 +416,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 onClick={() => setStep('login')}
                 className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2 text-center"
               >
-                Cancel
+                {t('auth_btn_cancel')}
               </button>
             </motion.div>
           )}
@@ -473,65 +499,65 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
               className="space-y-8"
             >
               <div className="text-center space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_create')} <span className="text-[var(--accent)]">{t('auth_account_short', 'ACCOUNT.')}</span></h1>
-                <p className="text-[var(--text-muted)]">{t('auth_register_as', 'Register as a')} {t(`role_${role}`, role)}.</p>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_create')} <span className="text-[var(--accent)]">{t('auth_account_short')}</span></h1>
+                <p className="text-[var(--text-muted)]">{t('auth_register_as')} {t(`role_${role}`)}.</p>
               </div>
 
-              <form onSubmit={prepareRegister} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <form onSubmit={prepareRegister} className="space-y-4 max-h-[60vh] overflow-y-auto pe-2 custom-scrollbar">
                 {['client', 'artisan'].includes(role) && (
                   <div className="relative group">
-                    <User className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.name ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                    <User className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.name ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                     <input
                       type="text"
-                      placeholder={t('auth_full_name', 'Full Name')}
+                      placeholder={t('auth_full_name')}
                       value={name}
                       onChange={(e) => {
                         setName(e.target.value);
                         if (fieldErrors.name) validateField('name', e.target.value);
                       }}
                       onBlur={(e) => validateField('name', e.target.value)}
-                      className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all ${fieldErrors.name ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                      className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all ${fieldErrors.name ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                       required
                     />
-                    {fieldErrors.name && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.name}</p>}
+                    {fieldErrors.name && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.name}</p>}
                   </div>
                 )}
 
                 <div className="relative group">
-                  <Phone className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.identifier ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                  <Phone className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.identifier ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                   <input
                     type="text"
-                    placeholder={t('auth_email_or_phone', 'Phone Number or Email Address')}
+                    placeholder={t('auth_email_or_phone')}
                     value={identifier}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
                       if (fieldErrors.identifier) validateField('identifier', e.target.value);
                     }}
                     onBlur={(e) => validateField('identifier', e.target.value)}
-                    className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all ${fieldErrors.identifier ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                    className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all ${fieldErrors.identifier ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                     required
                     dir="ltr"
                   />
-                  {fieldErrors.identifier && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.identifier}</p>}
+                  {fieldErrors.identifier && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.identifier}</p>}
                 </div>
 
                 {role === 'seller' && (
                   <>
                     <div className="relative group">
-                      <Sparkles className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.storeName ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                      <Sparkles className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.storeName ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                       <input
                         type="text"
-                        placeholder={t('auth_store_name', 'Store Name')}
+                        placeholder={t('auth_store_name')}
                         value={storeName}
                         onChange={(e) => {
                           setStoreName(e.target.value);
                           if (fieldErrors.storeName) validateField('storeName', e.target.value);
                         }}
                         onBlur={(e) => validateField('storeName', e.target.value)}
-                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all ${fieldErrors.storeName ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all ${fieldErrors.storeName ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                         required
                       />
-                      {fieldErrors.storeName && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.storeName}</p>}
+                      {fieldErrors.storeName && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.storeName}</p>}
                     </div>
                   </>
                 )}
@@ -539,20 +565,20 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 {role === 'company' && (
                   <>
                     <div className="relative group">
-                      <ArrowRight className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.companyName ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                      <SymmetricalIcon icon={ArrowRight} className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors border-none p-0 ${fieldErrors.companyName ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                       <input
                         type="text"
-                        placeholder={t('auth_company_name', 'Company Name')}
+                        placeholder={t('auth_company_name')}
                         value={companyName}
                         onChange={(e) => {
                           setCompanyName(e.target.value);
                           if (fieldErrors.companyName) validateField('companyName', e.target.value);
                         }}
                         onBlur={(e) => validateField('companyName', e.target.value)}
-                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all ${fieldErrors.companyName ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all ${fieldErrors.companyName ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                         required
                       />
-                      {fieldErrors.companyName && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.companyName}</p>}
+                      {fieldErrors.companyName && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.companyName}</p>}
                     </div>
                   </>
                 )}
@@ -560,43 +586,43 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 {role === 'artisan' && (
                   <>
                     <div className="relative group">
-                      <ShieldCheck className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.categoryId ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                      <ShieldCheck className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.categoryId ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                       <select
                         value={categoryId}
                         onChange={(e) => {
                           setCategoryId(e.target.value);
                           validateField('categoryId', e.target.value);
                         }}
-                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all appearance-none text-[var(--text-muted)] ${fieldErrors.categoryId ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all appearance-none text-[var(--text-muted)] ${fieldErrors.categoryId ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                         required
                       >
-                        <option value="" disabled className="bg-[var(--bg)]">{t('auth_select_category', 'Select Category')}</option>
-                        <option value="cat_1" className="bg-[var(--bg)]">{t('cat_plumbing', 'Plumbing')}</option>
-                        <option value="cat_2" className="bg-[var(--bg)]">{t('cat_electricity', 'Electricity')}</option>
-                        <option value="cat_3" className="bg-[var(--bg)]">{t('cat_carpentry', 'Carpentry')}</option>
-                        <option value="cat_4" className="bg-[var(--bg)]">{t('cat_painting', 'Painting')}</option>
-                        <option value="cat_5" className="bg-[var(--bg)]">{t('cat_cleaning', 'Cleaning')}</option>
+                        <option value="" disabled className="bg-[var(--bg)]">{t('auth_select_category')}</option>
+                        <option value="cat_1" className="bg-[var(--bg)]">{t('cat_plumbing')}</option>
+                        <option value="cat_2" className="bg-[var(--bg)]">{t('cat_electricity')}</option>
+                        <option value="cat_3" className="bg-[var(--bg)]">{t('cat_carpentry')}</option>
+                        <option value="cat_4" className="bg-[var(--bg)]">{t('cat_painting')}</option>
+                        <option value="cat_5" className="bg-[var(--bg)]">{t('cat_cleaning')}</option>
                       </select>
-                      {fieldErrors.categoryId && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.categoryId}</p>}
+                      {fieldErrors.categoryId && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.categoryId}</p>}
                     </div>
                   </>
                 )}
 
                 <div className="relative group">
-                  <Lock className={`absolute left-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.password ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
+                  <Lock className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.password ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                   <input
                     type="password"
-                    placeholder={t('auth_password', 'Password')}
+                    placeholder={t('auth_password')}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (fieldErrors.password) validateField('password', e.target.value);
                     }}
                     onBlur={(e) => validateField('password', e.target.value)}
-                    className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 pl-16 pr-8 text-xl focus:outline-none transition-all ${fieldErrors.password ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                    className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all ${fieldErrors.password ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
                     required
                   />
-                  {fieldErrors.password && <p className="text-rose-500 text-xs mt-2 ml-6 font-bold">{fieldErrors.password}</p>}
+                  {fieldErrors.password && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.password}</p>}
                   <div className="px-4">
                     <PasswordStrengthIndicator password={password} />
                   </div>
@@ -614,7 +640,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   disabled={isLoading}
                   className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-6 rounded-3xl font-bold text-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
                 >
-                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_register_btn', 'Register')} <ArrowRight size={20} className={i18n.dir() === 'rtl' ? 'rotate-180' : ''} /></>}
+                  {isLoading ? <Loader2 className="animate-spin" /> : <>{t('auth_register_btn')} <SymmetricalIcon icon={ArrowRight} size={20} /></>}
                 </button>
                 
                 <button 
@@ -622,7 +648,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   onClick={() => setStep('role')}
                   className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
                 >
-                  {t('auth_back_select_role', 'Back to Role Selection')}
+                  {t('auth_back_select_role')}
                 </button>
               </form>
             </motion.div>

@@ -6,7 +6,7 @@ import {
   Search, Menu, X, ChevronRight, ArrowUpRight, ArrowDownRight, 
   MoreVertical, Filter, Download, Plus, Save, Building2, BrainCircuit, 
   Sparkles, Wind, Bug, Lightbulb, Loader2, CheckCircle, AlertCircle, Zap,
-  Clock, FileText, ArrowRight, Info, DollarSign, TrendingUp, ShieldAlert, LogOut, Globe, Languages, ArrowLeft
+  Clock, FileText, ArrowRight, Info, DollarSign, TrendingUp, ShieldAlert, LogOut, Globe, Languages, ArrowLeft, Home as HomeIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,6 +18,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import NotificationBell from '../layout/NotificationBell';
 import { aiService } from '../../services/aiService';
+import NavButton from '../common/NavButton';
+import MobileNav from '../common/MobileNav';
+import { LanguageSwitcher } from '../layout/LanguageSwitcher';
 
 // Import extracted views
 import DashboardOverview from './views/DashboardOverview';
@@ -41,6 +44,8 @@ import AdminManagementView from './views/AdminManagementView';
 import AuditLogsView from './views/AuditLogsView';
 import CommissionRulesView from './views/CommissionRulesView';
 import CategoriesView from './views/CategoriesView';
+import BrandingView from './views/BrandingView';
+import SimulationDashboard from '../debug/SimulationDashboard';
 import { AdminLanguageManager } from './AdminLanguageManager';
 import { AdminTranslationManager } from './AdminTranslationManager';
 
@@ -51,7 +56,7 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
   isDarkMode: boolean,
   toggleTheme: () => void
 }) {
-  const { t } = useTranslation('dashboard');
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('overview');
@@ -65,9 +70,13 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
       if (!token) return;
       setIsLoading(true);
       try {
+        const options = { 
+          credentials: 'include' as const,
+          headers: { 'Authorization': `Bearer ${token}` }
+        };
         const [statsRes, analyticsRes] = await Promise.all([
-          fetch('/api/admin/stats', { credentials: 'include'}),
-          fetch('/api/admin/analytics', { credentials: 'include'})
+          fetch('/api/admin/stats', options),
+          fetch('/api/admin/analytics', options)
         ]);
 
         if (statsRes.ok) {
@@ -98,6 +107,7 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
   }, [token]);
 
   const navItems = [
+    { id: 'home-redirect', label: t('nav_home', 'Home'), icon: <HomeIcon size={18} />, section: 'MAIN', onClick: onSwitchView },
     { id: 'overview', label: t('nav_overview', 'Overview'), icon: <LayoutDashboard size={18} />, section: 'MAIN' },
     { id: 'analytics', label: t('nav_analytics', 'Analytics'), icon: <BarChart3 size={18} />, section: 'MAIN' },
     { id: 'users', label: t('nav_users', 'Users'), icon: <Users size={18} />, section: 'MANAGEMENT' },
@@ -113,10 +123,12 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     { id: 'cities', label: t('nav_cities', 'Cities'), icon: <MapPin size={18} />, section: 'SYSTEM' },
     { id: 'commission-rules', label: t('nav_commission', 'Commission'), icon: <Percent size={18} />, section: 'SYSTEM' },
     { id: 'subscriptions', label: t('nav_subscriptions', 'Subscriptions'), icon: <Zap size={18} />, section: 'SYSTEM' },
+    { id: 'branding', label: 'Branding', icon: <Sparkles size={18} />, section: 'SYSTEM' },
     { id: 'ai-insights', label: t('nav_ai_insights', 'AI Insights'), icon: <BrainCircuit size={18} />, section: 'FEATURES' },
     { id: 'languages', label: t('nav_languages', 'Languages'), icon: <Globe size={18} />, section: 'TOOLS' },
     { id: 'translations', label: t('nav_translations', 'Translations'), icon: <Languages size={18} />, section: 'TOOLS' },
     { id: 'audit-logs', label: t('nav_audit_logs', 'Audit Logs'), icon: <ScrollText size={18} />, section: 'TOOLS' },
+    { id: 'simulation', label: 'Simulation & QA', icon: <Bug size={18} />, section: 'TOOLS' },
     { id: 'settings', label: t('nav_settings', 'Settings'), icon: <Settings size={18} />, section: 'TOOLS' },
   ];
 
@@ -168,6 +180,8 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
         return <CashCollectionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'subscriptions':
         return <SubscriptionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'branding':
+        return <BrandingView settings={settings} updateSettings={updateSettings} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'cities':
         return <CitiesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'analytics':
@@ -176,6 +190,8 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
         return <AdminManagementView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'audit-logs':
         return <AuditLogsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'simulation':
+        return <SimulationDashboard />;
       case 'ai-insights':
         return <AiInsightsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'settings':
@@ -202,9 +218,9 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans transition-colors duration-300">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-72 flex-col border-r border-[var(--border)] bg-[var(--card-bg)]">
+    <div className="flex h-full overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans transition-colors duration-300">
+      {/* Sidebar (Desktop & Mobile) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-[var(--border)] bg-[var(--card-bg)] transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-8 flex items-center justify-between">
           <button 
             onClick={onSwitchView}
@@ -215,8 +231,11 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
             </div>
             <span className="font-black text-xl tracking-tighter italic">{t('admin_control', 'Admin Control')}</span>
           </button>
-          <button className="text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
-            <ChevronRight size={20} className="rotate-180" />
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden p-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors rounded-xl hover:bg-[var(--glass-bg)]"
+          >
+            <X size={24} />
           </button>
         </div>
         
@@ -228,7 +247,14 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
                 {(navItems as any[]).filter(item => item.section === section).map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => {
+                      if (item.onClick) {
+                        item.onClick();
+                      } else {
+                        setActiveTab(item.id);
+                      }
+                      setIsMobileMenuOpen(false);
+                    }}
                     className={`hynex-sidebar-item w-full ${activeTab === item.id ? 'active' : ''}`}
                   >
                     <span className={activeTab === item.id ? '' : 'text-[var(--text-muted)]'}>
@@ -256,75 +282,13 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-            />
-            <motion.aside
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className="fixed inset-y-0 left-0 w-72 flex flex-col border-r border-[var(--border)] bg-[var(--card-bg)] z-50 md:hidden"
-            >
-              <div className="p-6 flex items-center justify-between">
-                <button 
-                  onClick={onSwitchView}
-                  className="flex items-center gap-3 hover:opacity-80 transition-opacity group"
-                >
-                  <div className="w-10 h-10 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl flex items-center justify-center font-black italic shadow-[0_0_20px_rgba(var(--accent-rgb),0.3)] group-hover:scale-110 transition-transform">
-                    <Sparkles size={20} />
-                  </div>
-                  <span className="font-black text-xl tracking-tighter italic">admin</span>
-                </button>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors rounded-xl hover:bg-[var(--glass-bg)]"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-2 space-y-8">
-                {sections.map(section => (
-                  <div key={section} className="space-y-2">
-                    <h3 className="tech-label px-4 opacity-50">{sectionTitles[section]}</h3>
-                    <div className="space-y-1">
-                      {(navItems as any[]).filter(item => item.section === section).map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setActiveTab(item.id);
-                            setIsMobileMenuOpen(false);
-                          }}
-                          className={`hynex-sidebar-item w-full ${activeTab === item.id ? 'active' : ''}`}
-                        >
-                          <span className={activeTab === item.id ? '' : 'text-[var(--text-muted)]'}>
-                            {item.icon}
-                          </span>
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-6">
-                <button 
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-all active:scale-95 font-bold"
-                >
-                  <LogOut size={20} />
-                  <span>{t('profile_btn_logout')}</span>
-                </button>
-              </div>
-            </motion.aside>
-          </>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          />
         )}
       </AnimatePresence>
 
@@ -377,6 +341,14 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <button 
+              onClick={onSwitchView}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[var(--text-muted)] hover:bg-[var(--text)]/5 transition-all"
+            >
+              <HomeIcon size={18} />
+              <span className="text-[9px] font-bold uppercase tracking-widest hidden sm:block">{t('nav_home', 'Home')}</span>
+            </button>
+            <LanguageSwitcher />
+            <button 
               onClick={toggleTheme}
               className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--card-bg)] transition-all active:scale-95"
             >
@@ -415,6 +387,26 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav 
+        activeTab={activeTab}
+        onTabChange={(id) => {
+          if (id === 'home-redirect') {
+            onSwitchView();
+          } else {
+            setActiveTab(id);
+          }
+        }}
+        hiddenClassName=""
+        navItems={[
+          { id: 'home-redirect', label: 'Home', icon: <HomeIcon size={18} /> },
+          { id: 'overview', label: 'Dash', icon: <LayoutDashboard size={18} /> },
+          { id: 'users', label: 'Users', icon: <Users size={18} /> },
+          { id: 'orders', label: 'Orders', icon: <ShoppingCart size={18} /> },
+          { id: 'analytics', label: 'Data', icon: <BarChart3 size={18} /> }
+        ]}
+      />
     </div>
   );
 }

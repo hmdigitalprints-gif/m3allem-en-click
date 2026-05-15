@@ -12,11 +12,13 @@ import {
   X, 
   FileText, 
   Star, 
+  Phone,
+  MessageCircle,
   Info 
 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { jsPDF } from 'jspdf';
-import { bookingService, Booking } from '../../services/marketplaceService';
+import { bookingService, Booking, fetchJson } from '../../services/marketplaceService';
 import { formatDuration } from '../../lib/utils';
 import ReviewModal from './ReviewModal';
 import PaymentModal from './PaymentModal';
@@ -65,48 +67,47 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
 
   const handleApproveBookingProposal = async (bookingId: string, materialHandling: string = 'client_provides') => {
     try {
+      const token = localStorage.getItem('m3allem_token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-
-      const res = await fetch(`/api/bookings/${bookingId}/approve-proposal`, { credentials: 'include', 
+      const data = await fetchJson(`/api/bookings/${bookingId}/approve-proposal`, { 
         method: 'PATCH',
         headers,
         body: JSON.stringify({ materialHandling })
       });
-      if (res.ok) {
-        onAction('Proposal accepted! You can now proceed to payment.');
-        fetchBookings();
-      } else {
-        const errorData = await res.json();
-        onAction(`Error: ${errorData.error}`);
-      }
-    } catch (err) {
+      onAction('Proposal accepted! You can now proceed to payment.');
+      fetchBookings();
+    } catch (err: any) {
       console.error(err);
-      onAction('Failed to accept proposal.');
+      const errMsg = err.message || 'Failed to accept proposal.';
+      onAction(`Error: ${errMsg}`);
     }
   };
 
   const handleRejectBookingProposal = async (bookingId: string) => {
     try {
+      const token = localStorage.getItem('m3allem_token');
       const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
 
-      const res = await fetch(`/api/bookings/${bookingId}/reject-proposal`, { credentials: 'include', 
+      await fetchJson(`/api/bookings/${bookingId}/reject-proposal`, { 
         method: 'PATCH',
         headers
       });
-      if (res.ok) {
-        onAction('Proposal rejected. Artisan unassigned.');
-        fetchBookings();
-      } else {
-        const errorData = await res.json();
-        onAction(`Error: ${errorData.error}`);
-      }
-    } catch (err) {
+      onAction('Proposal rejected. Artisan unassigned.');
+      fetchBookings();
+    } catch (err: any) {
       console.error(err);
-      onAction('Failed to reject proposal.');
+      const errMsg = err.message || 'Failed to reject proposal.';
+      onAction(`Error: ${errMsg}`);
     }
   };
 
@@ -147,11 +148,11 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
     doc.setFontSize(14);
     doc.text('Pricing', 20, 85);
     doc.setFontSize(10);
-    doc.text(`Base Price: ${booking.price} MAD`, 20, 95);
-    doc.text(`Platform Fee: ${Math.round(booking.price * 0.05)} MAD`, 20, 100);
+    doc.text(`Base Price: ${Number(booking.price).toFixed(2)} MAD`, 20, 95);
+    doc.text(`Platform Fee: ${(booking.price * 0.05).toFixed(2)} MAD`, 20, 100);
     
     doc.setFontSize(16);
-    doc.text(`Total Paid: ${Math.round(booking.price * 1.05)} MAD`, 20, 115);
+    doc.text(`Total Paid: ${(booking.price * 1.05).toFixed(2)} MAD`, 20, 115);
     
     // Footer
     doc.setFontSize(8);
@@ -197,11 +198,23 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2">
                   <h4 className="text-xl font-bold">{booking.service_name}</h4>
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(booking.status)}`}>
-                      {booking.status === 'ongoing' || booking.status === 'in_progress' ? t('artisan_at_location') : 
-                       booking.status === 'en_route' ? t('artisan_en_route') : 
-                       t(`status_${booking.status}`, booking.status.replace('_', ' '))}
-                    </span>
+                    {booking.status === 'completed' && (
+                      <motion.span 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 flex items-center gap-1.5`}
+                      >
+                        <CheckCircle size={10} />
+                        {t('status_completed', 'Completed')}
+                      </motion.span>
+                    )}
+                    {(booking.status !== 'completed') && (
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(booking.status)}`}>
+                        {booking.status === 'ongoing' || booking.status === 'in_progress' ? t('artisan_at_location') : 
+                         booking.status === 'en_route' ? t('artisan_en_route') : 
+                         t(`status_${booking.status}`, booking.status.replace('_', ' '))}
+                      </span>
+                    )}
                     {booking.status === 'ongoing' && booking.started_at && (
                       <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-bold border border-emerald-500/20">
                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -216,7 +229,25 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                   </div>
                 </div>
                 <p className="text-[var(--text-muted)] text-sm mb-1">{t('with_artisan', 'With')} {booking.other_party_name}</p>
-                <div className="flex items-center justify-center md:justify-start gap-4 text-xs text-[var(--text-muted)] opacity-70">
+                {booking.artisan_phone && (
+                  <div className="flex items-center justify-center md:justify-start gap-4 mt-2">
+                    <button 
+                      onClick={() => window.open(`tel:${booking.artisan_phone}`)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[var(--text)]/5 hover:bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg text-[10px] font-bold border border-[var(--border)] transition-all"
+                    >
+                      <Phone size={12} />
+                      Call Artisan
+                    </button>
+                    <button 
+                      onClick={() => window.open(`https://wa.me/${booking.artisan_phone.replace(/\D/g, '')}`)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[var(--text)]/5 hover:bg-emerald-500/10 text-emerald-500 rounded-lg text-[10px] font-bold border border-[var(--border)] transition-all"
+                    >
+                      <MessageCircle size={12} />
+                      WhatsApp
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-center md:justify-start gap-4 text-xs text-[var(--text-muted)] opacity-70 mt-3">
                   <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(booking.scheduled_at).toLocaleDateString()}</span>
                   <span className="flex items-center gap-1"><Clock size={12} /> {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="flex items-center gap-1 capitalize">
@@ -228,7 +259,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                 </div>
               </div>
               <div className="text-center md:text-right">
-                <p className="text-2xl font-bold text-[var(--accent)] mb-4">{booking.price} MAD</p>
+                <p className="text-2xl font-bold text-[var(--accent)] mb-4">{Number(booking.price).toFixed(2)} MAD</p>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-end">
                   {booking.status === 'proposal_submitted' && (
                     <div className="w-full mt-4 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl p-4 text-left">
@@ -238,15 +269,15 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                       <div className="bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)] mb-4">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-[var(--text-muted)]">Proposed Labor Price:</span>
-                          <span className="text-sm font-bold">{booking.artisanProposedPrice} MAD</span>
+                          <span className="text-sm font-bold">{Number(booking.artisanProposedPrice).toFixed(2)} MAD</span>
                         </div>
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-[var(--text-muted)]">Material Cost:</span>
-                          <span className="text-sm font-bold">{booking.materialCost || 0} MAD</span>
+                          <span className="text-sm font-bold">{Number(booking.materialCost || 0).toFixed(2)} MAD</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
                           <span className="text-sm font-semibold">Total Proposed:</span>
-                          <span className="text-lg font-bold text-[var(--accent)]">{(Number(booking.artisanProposedPrice || 0) + Number(booking.materialCost || 0))} MAD</span>
+                          <span className="text-lg font-bold text-[var(--accent)]">{(Number(booking.artisanProposedPrice || 0) + Number(booking.materialCost || 0)).toFixed(2)} MAD</span>
                         </div>
                         {booking.artisanProposalComments && (
                           <div className="mt-3 text-sm text-[var(--text-muted)] bg-[var(--bg)] p-3 rounded-lg border border-[var(--border)]">
@@ -289,18 +320,22 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                   {booking.status === 'pending' && (!booking.payment_status || booking.payment_status === 'failed') && (
                     <button 
                       onClick={async () => {
+                        const token = localStorage.getItem('m3allem_token');
                         if (booking.payment_status === 'failed') {
                           onAction(`Retrying payment...`);
                           try {
-                            const res = await fetch(`/api/webhooks/retry/${booking.id}`, { credentials: 'include',  method: 'POST' });
-                            const data = await res.json();
+                            const data = await fetchJson(`/api/webhooks/retry/${booking.id}`, { 
+                              method: 'POST',
+                              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            });
                             if (data.checkoutUrl) {
                                onAction(`Redirecting to ${data.checkoutUrl}`);
+                               window.location.href = data.checkoutUrl;
                             } else {
-                               onAction(data.error || 'Failed to initialize retry');
+                               onAction('Failed to initialize retry');
                             }
-                          } catch (err) {
-                            onAction('Network error');
+                          } catch (err: any) {
+                            onAction(err.message || 'Network error');
                           }
                         } else {
                           onAction(`Initiating payment for ${booking.service_name}`);

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, CheckCircle, AlertCircle, Info, Clock, MessageSquare } from 'lucide-react';
 import { socket } from '../../services/socket';
 
-interface Notification {
+interface AppNotification {
   id: string;
   type: 'push' | 'email' | 'reminder';
   title: string;
@@ -12,8 +12,8 @@ interface Notification {
   created_at: string;
 }
 
-export default function NotificationBell({ userId, token, onNotification }: { userId: string, token: string | null, onNotification?: (notification: Notification) => void }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export default function NotificationBell({ userId, token, onNotification }: { userId: string, token: string | null, onNotification?: (notification: AppNotification) => void }) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -42,7 +42,7 @@ export default function NotificationBell({ userId, token, onNotification }: { us
       .catch(err => console.error("Failed to load notifications", err));
 
     // Listen for real-time notifications on the shared socket
-    socket.on('new_notification', (notification: Notification) => {
+    socket.on('new_notification', (notification: AppNotification) => {
       if (!notification) return;
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
@@ -51,14 +51,14 @@ export default function NotificationBell({ userId, token, onNotification }: { us
       onNotification?.(notification);
 
       // Show browser notification if permitted
-      if (Notification.permission === 'granted') {
-        new Notification(notification.title, { body: notification.message });
+      if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+        new window.Notification(notification.title, { body: notification.message });
       }
     });
 
     // Request notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
     }
 
     return () => {

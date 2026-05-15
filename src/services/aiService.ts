@@ -1,9 +1,13 @@
 export const getApiKey = () => { return null; }; // deprecated
 
 const aiFetch = async (endpoint: string, body: any) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('m3allem_token') : null;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
+  if (token) {
+    (headers as any)['Authorization'] = `Bearer ${token}`;
+  }
 
   const res = await fetch(`/api/ai${endpoint}`, {
     credentials: 'include', 
@@ -71,9 +75,10 @@ export async function getAutoEstimate(
         let marketContext = "";
         if (categoryId && city) {
           try {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('m3allem_token') : null;
             const res = await fetch(`/api/bookings/market-data?categoryId=${categoryId}&city=${city}`, {
               credentials: 'include', 
-              headers: { }
+              headers: token ? { 'Authorization': `Bearer ${token}` } : { }
             });
             if (res.ok) {
               const data = await res.json();

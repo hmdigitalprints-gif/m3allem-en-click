@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Star, ShieldCheck, Zap, Sparkles } from 'lucide-react';
+import { Star, ShieldCheck, Zap, Sparkles, ArrowRight } from 'lucide-react';
 import Layout from '../components/layout/Layout';
 import { useTranslation } from 'react-i18next';
+import { SymmetricalIcon } from '../components/common/SymmetricalIcon';
 
 export default function Home() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   return (
     <Layout>
@@ -40,7 +41,7 @@ export default function Home() {
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link to="/find-pro" className="bg-[var(--accent)] text-[var(--accent-foreground)] px-10 py-5 rounded-full font-bold text-lg hover:bg-[var(--accent)]/90 transition-colors flex items-center justify-center gap-3 shadow-2xl shadow-[var(--accent)]/20">
-            {t('home_new_btn_find')} {i18n.dir() === 'rtl' ? <ArrowLeft size={20} /> : <ArrowRight size={20} />}
+            {t('home_new_btn_find')} <SymmetricalIcon icon={ArrowRight} size={20} />
           </Link>
           <Link to="/auto-devis" className="bg-[var(--card-bg)]/50 border border-[var(--border)] text-[var(--text)] px-10 py-5 rounded-full font-bold text-lg hover:bg-[var(--card-bg)] transition-colors flex items-center justify-center gap-3">
             <Sparkles size={20} className="text-[var(--accent)]" /> {t('home_new_btn_quote')}

@@ -1,0 +1,265 @@
+import express from "express";
+import prisma from "../lib/prisma.ts";
+import { authenticateToken } from "./auth.ts";
+import { getPreferredLanguage, t } from "../lib/i18n.ts";
+
+const router = express.Router();
+
+// Get all artisans with optional filters
+router.get("/artisans", async (req, res) => {
+  try {
+    const lang = await getPreferredLanguage(req);
+    const { categoryId, city, search, page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
+
+    const where: any = {};
+
+    if (categoryId) {
+      where.categoryId = categoryId as string;
+    }
+
+    if (city) {
+      where.city = { contains: city as string, mode: 'insensitive' };
+    }
+
+    if (search) {
+      where.OR = [
+        { bio: { contains: search as string, mode: 'insensitive' } },
+        { expertise: { contains: search as string, mode: 'insensitive' } },
+        { user: { name: { contains: search as string, mode: 'insensitive' } } }
+      ];
+    }
+
+    const artisans = await prisma.artisan.findMany({
+      where,
+      include: {
+        user: { select: { name: true, avatarUrl: true } },
+        category: { select: { name: true, id: true } },
+        portfolio: { take: 1, orderBy: { createdAt: 'desc' } }
+      },
+      orderBy: { rating: 'desc' },
+      skip,
+      take
+    });
+
+    const formatted = await Promise.all(artisans.map(async a => {
+      const categoryNameKey = `cat_${a.category?.id || 'unknown'}`;
+      const translatedCatName = await t(categoryNameKey, lang);
+      
+      return {
+        ...a,
+        name: a.user?.name,
+        avatar_url: a.user?.avatarUrl,
+        category_name: translatedCatName !== categoryNameKey ? translatedCatName : (a.category?.name || 'Artisan')
+      };
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("Fetch artisans error:", error);
+    res.status(500).json({ error: "Failed to fetch artisans" });
+  }
+});
+
+// Get artisan by ID
+router.get("/artisans/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const lang = await getPreferredLanguage(req);
+    const artisan = await prisma.artisan.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, avatarUrl: true } },
+        category: { select: { name: true, id: true } },
+        portfolio: { orderBy: { createdAt: 'desc' } },
+        ratings: {
+          include: { client: { select: { name: true, avatarUrl: true } } },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!artisan) {
+      return res.status(404).json({ error: "Artisan not found" });
+    }
+
+    const categoryNameKey = `cat_${artisan.category?.id || 'unknown'}`;
+    const translatedCatName = await t(categoryNameKey, lang);
+
+    const services = await prisma.service.findMany({
+      where: { categoryId: artisan.categoryId }
+    });
+
+    res.json({ 
+      ...artisan,
+      name: artisan.user?.name,
+      avatar_url: artisan.user?.avatarUrl,
+      category_name: translatedCatName !== categoryNameKey ? translatedCatName : (artisan.category?.name || 'Artisan'),
+      portfolio: artisan.portfolio,
+      services,
+      reviews: artisan.ratings.map(r => ({
+        ...r,
+        client_name: r.client?.name,
+        client_avatar: r.client?.avatarUrl
+      }))
+    });
+  } catch (error) {
+    console.error("Fetch artisan details error:", error);
+    res.status(500).json({ error: "Failed to fetch artisan details" });
+  }
+});
+
+// Favorites
+router.get("/my-favorites", authenticateToken, async (req: any, res) => {
+  try {
+    const favorites = await prisma.favorite.findMany({
+      where: { userId: req.user.id },
+      include: { artisan: { include: { user: true, category: true } } },
+    });
+    const formatted = favorites.map(f => ({
+      ...f.artisan,
+      name: f.artisan.user?.name,
+      avatar_url: f.artisan.user?.avatarUrl,
+      category_name: f.artisan.category?.name
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch favorites" });
+  }
+});
+
+router.post("/favorites/add", authenticateToken, async (req: any, res) => {
+  try {
+    const { artisanId } = req.body;
+    if (!artisanId)
+      return res.status(400).json({ error: "artisanId is required" });
+
+    const favorite = await prisma.favorite.create({
+      data: { userId: req.user.id, artisanId },
+    });
+    res.json(favorite);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add favorite" });
+  }
+});
+
+router.delete("/favorites/remove", authenticateToken, async (req: any, res) => {
+  try {
+    const { artisanId } = req.body;
+    if (!artisanId)
+      return res.status(400).json({ error: "artisanId is required" });
+
+    await prisma.favorite.deleteMany({
+      where: { userId: req.user.id, artisanId },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to remove favorite" });
+  }
+});
+
+// Get public marketplace products with filters
+router.get("/products", async (req, res) => {
+  try {
+    const { category, city, minPrice, maxPrice, search, seller, page = "1", limit = "20" } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
+
+    const where: any = {
+      store: {
+        user: { role: "seller" }
+      }
+    };
+
+    if (category) {
+      where.category = category as string;
+    }
+
+    if (city) {
+      where.store = { 
+        ...where.store,
+        city: city as string 
+      };
+    }
+
+    if (seller) {
+      where.store = {
+        ...where.store,
+        name: { contains: seller as string, mode: "insensitive" }
+      };
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: "insensitive" } },
+        { description: { contains: search as string, mode: "insensitive" } }
+      ];
+    }
+
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price.gte = parseFloat(minPrice as string);
+      if (maxPrice) where.price.lte = parseFloat(maxPrice as string);
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        store: {
+          select: {
+            name: true,
+            city: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take
+    });
+
+    const formatted = products.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      category: p.category,
+      stock: p.stock,
+      image_url: p.imageUrl,
+      seller_name: p.store?.name,
+      seller_city: p.store?.city
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("Marketplace products error:", error);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
+
+// Get marketplace categories
+router.get("/categories", async (req, res) => {
+  try {
+    const lang = await getPreferredLanguage(req);
+    const categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" }
+    });
+    
+    // Translate category names based on DB translations
+    const translatedCategories = await Promise.all(categories.map(async (cat) => {
+      const key = `cat_${cat.id}`;
+      const translatedName = await t(key, lang);
+      return {
+        ...cat,
+        name: translatedName
+      };
+    }));
+    
+    res.json(translatedCategories);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
+export default router;

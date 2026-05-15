@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { 
   Activity, Sparkles, TrendingUp, Users, Calendar, DollarSign, 
   ArrowUpRight, ArrowDownRight, Clock, ChevronRight, Zap, AlertCircle, CheckCircle2,
-  MoreHorizontal
+  MoreHorizontal, Hammer, CreditCard, Bug
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
@@ -162,6 +162,23 @@ function RecentActivity() {
   );
 }
 
+function ActionButton({ onClick, icon, label, sub }: { onClick: () => void, icon: React.ReactNode, label: string, sub: string }) {
+  return (
+    <button 
+      onClick={onClick}
+      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 flex flex-col items-start gap-4 hover:border-[var(--accent)] transition-all hover:shadow-xl hover:shadow-[var(--accent)]/5 group text-left"
+    >
+      <div className="w-12 h-12 rounded-2xl bg-[var(--text)]/5 flex items-center justify-center text-xl transition-transform group-hover:scale-110 group-hover:bg-[var(--accent)]/10">
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-bold text-sm tracking-tight text-[var(--text)]">{label}</h4>
+        <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed">{sub}</p>
+      </div>
+    </button>
+  );
+}
+
 export default function DashboardOverview({ stats, isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: any) {
   const { t } = useTranslation();
   
@@ -185,6 +202,34 @@ export default function DashboardOverview({ stats, isDarkMode, cardClasses, text
             <Zap size={16} /> Manage Platform
           </button>
         </div>
+      </div>
+
+      {/* Admin Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <ActionButton 
+          onClick={() => onAction?.('users')}
+          icon={<Users size={20} className="text-blue-500" />}
+          label="Manage Users"
+          sub="Review & Permissions"
+        />
+        <ActionButton 
+          onClick={() => onAction?.('artisans')}
+          icon={<Hammer size={20} className="text-amber-500" />}
+          label="Artisans"
+          sub="Verification queue"
+        />
+        <ActionButton 
+          onClick={() => onAction?.('payments')}
+          icon={<CreditCard size={20} className="text-emerald-500" />}
+          label="Payouts"
+          sub="Global transactions"
+        />
+        <ActionButton 
+          onClick={() => onAction?.('simulation')}
+          icon={<Bug size={20} className="text-rose-500" />}
+          label="Sim & QA"
+          sub="Test roles & data"
+        />
       </div>
 
       {/* Top Metrics Row */}

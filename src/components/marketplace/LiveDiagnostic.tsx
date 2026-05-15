@@ -377,7 +377,7 @@ export default function LiveDiagnostic({ userId, userName, targetUserId, targetU
                     </div>
                     <div className="p-4 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20">
                       <p className="text-xs font-bold text-[var(--accent)] uppercase mb-1">Estimated Price</p>
-                      <p className="text-2xl font-black text-[var(--text)]">{receivedDiagnostic.price} <span className="text-sm font-bold opacity-50">MAD</span></p>
+                      <p className="text-2xl font-black text-[var(--text)]">{Number(receivedDiagnostic.price).toFixed(2)} <span className="text-sm font-bold opacity-50">MAD</span></p>
                     </div>
                     <button className="w-full bg-[var(--text)] text-[var(--bg)] py-3 rounded-xl font-bold hover:opacity-90 transition-all">
                       Book Service Now

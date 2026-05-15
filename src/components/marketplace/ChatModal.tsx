@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, User, Mic, Square, Play, Pause, Video, Image as ImageIcon, MapPin, Check, CheckCheck, Loader2 } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+import { socket } from '../../services/socket';
 
 interface ChatModalProps {
   artisan: any;
@@ -12,7 +12,6 @@ interface ChatModalProps {
 export default function ChatModal({ artisan, currentUser, onClose }: ChatModalProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -23,8 +22,12 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    const token = localStorage.getItem('m3allem_token');
     // Fetch initial messages
-    fetch(`/api/messages/${currentUser.id}/${artisan.user_id}`, { credentials: 'include' })
+    fetch(`/api/messages/${currentUser.id}/${artisan.user_id}`, { 
+      credentials: 'include',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch messages: ' + res.status);
         return res.json();
@@ -33,44 +36,52 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
         setMessages(data);
         // Mark unread messages as read
         const unreadIds = data
-          .filter((m: any) => m.receiver_id === currentUser.id && m.status !== 'read')
+          .filter((m: any) => m.receiverId === currentUser.id && m.status !== 'read')
           .map((m: any) => m.id);
         if (unreadIds.length > 0 && socket) {
-          socket.emit('mark_read', { credentials: 'include',  messageIds: unreadIds, readerId: currentUser.id, senderId: artisan.user_id });
+          socket.emit('mark_delivered', { messageIds: unreadIds, senderId: artisan.user_id });
+          socket.emit('mark_read', { messageIds: unreadIds, readerId: currentUser.id, senderId: artisan.user_id });
         }
       })
       .catch(err => console.error("Failed to load messages", err));
 
-    // Initialize socket
-    const newSocket = io();
-    setSocket(newSocket);
+    if (socket) {
+      socket.emit('join', currentUser.id);
 
-    newSocket.on('connect', () => {
-      newSocket.emit('join', currentUser.id);
-    });
+      socket.on('receive_message', (message) => {
+        setMessages(prev => [...prev, message]);
+        if (message.receiverId === currentUser.id) {
+          socket.emit('mark_delivered', { messageIds: [message.id], senderId: artisan.user_id });
+          socket.emit('mark_read', { messageIds: [message.id], readerId: currentUser.id, senderId: artisan.user_id });
+        }
+      });
 
-    newSocket.on('receive_message', (message) => {
-      setMessages(prev => [...prev, message]);
-      if (message.receiver_id === currentUser.id) {
-        newSocket.emit('mark_read', { messageIds: [message.id], readerId: currentUser.id, senderId: artisan.user_id });
-      }
-    });
+      socket.on('user_typing', (data) => {
+        if (data && data.from === artisan.user_id) {
+          setIsOtherTyping(data.isTyping);
+        }
+      });
 
-    newSocket.on('user_typing', (data) => {
-      if (data && data.from === artisan.user_id) {
-        setIsOtherTyping(data.isTyping);
-      }
-    });
+      socket.on('messages_read', (data) => {
+        if (!data || !data.messageIds) return;
+        setMessages(prev => prev.map(m => 
+          data.messageIds.includes(m.id) ? { ...m, status: 'read' } : m
+        ));
+      });
 
-    newSocket.on('messages_read', (data) => {
-      if (!data || !data.messageIds) return;
-      setMessages(prev => prev.map(m => 
-        data.messageIds.includes(m.id) ? { ...m, status: 'read' } : m
-      ));
-    });
+      socket.on('messages_delivered', (data) => {
+        if (!data || !data.messageIds) return;
+        setMessages(prev => prev.map(m => 
+          data.messageIds.includes(m.id) && m.status === 'sent' ? { ...m, status: 'delivered' } : m
+        ));
+      });
+    }
 
     return () => {
-      newSocket.disconnect();
+      socket?.off('receive_message');
+      socket?.off('user_typing');
+      socket?.off('messages_read');
+      socket?.off('messages_delivered');
     };
   }, [currentUser.id, artisan.user_id]);
 
@@ -85,10 +96,10 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     
-    socket.emit('typing_start', { to: artisan.user_id, from: currentUser.id });
+    socket.emit('typing_start', { to: artisan.user_id });
     
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('typing_stop', { to: artisan.user_id, from: currentUser.id });
+      socket.emit('typing_stop', { to: artisan.user_id });
     }, 2000);
   };
 
@@ -97,14 +108,13 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
     if (!newMessage.trim() || !socket) return;
 
     socket.emit('send_message', {
-      sender_id: currentUser.id,
-      receiver_id: artisan.user_id,
+      receiverId: artisan.user_id,
       content: newMessage.trim(),
       type: 'text'
     });
 
     setNewMessage('');
-    socket.emit('typing_stop', { to: artisan.user_id, from: currentUser.id });
+    socket.emit('typing_stop', { to: artisan.user_id });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,18 +127,22 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       try {
-        const res = await fetch('/api/upload', { credentials: 'include', 
+        const token = localStorage.getItem('m3allem_token');
+        const res = await fetch('/api/upload', { 
+          credentials: 'include', 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ file: base64, type: 'image' })
         });
         const { url } = await res.json();
         
         socket.emit('send_message', {
-          sender_id: currentUser.id,
-          receiver_id: artisan.user_id,
+          receiverId: artisan.user_id,
           type: 'image',
-          image_url: url
+          imageUrl: url
         });
       } catch (err) {
         console.error("Image upload failed", err);
@@ -143,8 +157,7 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
 
     navigator.geolocation.getCurrentPosition((position) => {
       socket.emit('send_message', {
-        sender_id: currentUser.id,
-        receiver_id: artisan.user_id,
+        receiverId: artisan.user_id,
         type: 'location',
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
@@ -175,9 +188,14 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
           const base64Audio = reader.result as string;
           
           // Upload audio
-          const res = await fetch('/api/upload', { credentials: 'include', 
+          const token = localStorage.getItem('m3allem_token');
+          const res = await fetch('/api/upload', { 
+            credentials: 'include', 
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ file: base64Audio, type: 'audio' })
           });
           const { url } = await res.json();
@@ -185,10 +203,9 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
           // Send voice message
           if (socket) {
             socket.emit('send_message', {
-              sender_id: currentUser.id,
-              receiver_id: artisan.user_id,
+              receiverId: artisan.user_id,
               type: 'voice',
-              audio_url: url
+              audioUrl: url
             });
           }
         };
@@ -275,62 +292,64 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
         {/* Messages List */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages?.map((msg, idx) => {
-            const isMe = msg.sender_id === currentUser.id;
-            return (
-              <div key={msg.id || idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe ? 'bg-[var(--accent)] text-[var(--accent-foreground)] rounded-br-sm' : 'bg-[var(--card-bg)]/80 text-[var(--text)] border border-[var(--border)] rounded-bl-sm'}`}>
-                  {msg.type === 'voice' ? (
-                    <div className="flex items-center gap-3 min-w-[150px]">
-                      <button className="p-2 bg-[var(--text)]/10 rounded-full text-inherit">
-                        <Play size={16} fill="currentColor" />
-                      </button>
-                      <div className="flex-1 h-1 bg-[var(--text)]/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--text)]/40 w-1/3" />
-                      </div>
-                      <audio src={msg.audio_url} className="hidden" />
+          const isMe = msg.senderId === currentUser.id;
+          return (
+            <div key={msg.id || idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe ? 'bg-[var(--accent)] text-[var(--accent-foreground)] rounded-br-sm' : 'bg-[var(--card-bg)]/80 text-[var(--text)] border border-[var(--border)] rounded-bl-sm'}`}>
+                {msg.type === 'voice' ? (
+                  <div className="flex items-center gap-3 min-w-[150px]">
+                    <button className="p-2 bg-[var(--text)]/10 rounded-full text-inherit">
+                      <Play size={16} fill="currentColor" />
+                    </button>
+                    <div className="flex-1 h-1 bg-[var(--text)]/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-[var(--text)]/40 w-1/3" />
                     </div>
-                  ) : msg.type === 'image' ? (
-                    <img 
-                      src={msg.image_url} 
-                      alt="Shared photo" 
-                      className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(msg.image_url, '_blank')}
-                    />
-                  ) : msg.type === 'location' ? (
-                    <a 
-                      href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 hover:underline"
-                    >
-                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                        <MapPin size={20} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold">Shared Location</p>
-                        <p className="text-[10px] opacity-70">View on Google Maps</p>
-                      </div>
-                    </a>
-                  ) : (
-                    <p className="text-sm">{msg.content}</p>
-                  )}
-                </div>
-                
-                {isMe && (
-                  <div className="flex items-center gap-1 mt-1 px-1">
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {msg.status === 'read' ? (
-                      <CheckCheck size={12} className="text-[var(--accent)]" />
-                    ) : (
-                      <Check size={12} className="text-[var(--text-muted)]" />
-                    )}
+                    <audio src={msg.audioUrl} className="hidden" />
                   </div>
+                ) : msg.type === 'image' ? (
+                  <img 
+                    src={msg.imageUrl} 
+                    alt="Shared photo" 
+                    className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(msg.imageUrl, '_blank')}
+                  />
+                ) : msg.type === 'location' ? (
+                  <a 
+                    href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 hover:underline"
+                  >
+                    <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                      <MapPin size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Shared Location</p>
+                      <p className="text-[10px] opacity-70">View on Google Maps</p>
+                    </div>
+                  </a>
+                ) : (
+                  <p className="text-sm">{msg.content}</p>
                 )}
               </div>
-            );
-          })}
+              
+                  {isMe && (
+                    <div className="flex items-center gap-1 mt-1 px-1">
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {msg.status === 'read' ? (
+                        <CheckCheck size={12} className="text-blue-500" />
+                      ) : msg.status === 'delivered' ? (
+                        <CheckCheck size={12} className="text-[var(--text-muted)] opacity-70" />
+                      ) : (
+                        <Check size={12} className="text-[var(--text-muted)] opacity-50" />
+                      )}
+                    </div>
+                  )}
+            </div>
+          );
+        })}
           
           {isOtherTyping && (
             <div className="flex justify-start">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, Star, Filter, ChevronDown, SlidersHorizontal, MessageSquare, ShieldCheck, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Search, MapPin, Star, Filter, ChevronDown, MessageSquare, ShieldCheck, ArrowLeft, Plus, Map as MapIcon, Grid } from 'lucide-react';
+import { SymmetricalIcon } from '../components/common/SymmetricalIcon';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ChatModal from '../components/marketplace/ChatModal';
 import BookingModal from '../components/marketplace/BookingModal';
@@ -10,6 +11,7 @@ import ArtisanProfile from '../components/marketplace/ArtisanProfile';
 import { marketplaceService } from '../services/marketplaceService';
 import { useFilterStore } from '../store/filterStore';
 import { useAuth } from '../context/AuthContext';
+import NearbyArtisansMap from '../components/marketplace/NearbyArtisansMap';
 
 import { LanguageSwitcher } from '../components/layout/LanguageSwitcher';
 
@@ -17,14 +19,14 @@ const categories = ["All", "Plumbing", "Electricity", "Painting", "Cleaning", "A
 const cities = ["All", "Casablanca", "Rabat", "Marrakech", "Tangier", "Fes"];
 
 export default function FindM3allem() {
-  const { token } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { token, user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const [artisans, setArtisans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   
-  const { filters, setFilters, resetFilters } = useFilterStore();
+  const { filters, setFilters } = useFilterStore();
   
   const [chatArtisan, setChatArtisan] = useState<any | null>(null);
   const [bookingArtisan, setBookingArtisan] = useState<any | null>(null);
@@ -63,17 +65,35 @@ export default function FindM3allem() {
   };
 
   return (
-    <div className="flex-1 bg-[var(--bg)] pt-20 min-h-screen">
+    <div className="flex-1 bg-[var(--bg)] pt-20 min-h-screen text-start">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-8 flex items-center justify-between">
           <button 
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
           >
-            {i18n.dir() === 'rtl' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-            <span>{t('find_ar_back')}</span>
+            <SymmetricalIcon icon={ArrowLeft} size={20} />
+            <span>{t('find_ar_back', 'Back')}</span>
           </button>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-4">
+            <div className="flex bg-[var(--card-bg)]/50 border border-[var(--border)] p-1 rounded-2xl">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
+                title={t('view_grid')}
+              >
+                <Grid size={20} />
+              </button>
+              <button 
+                onClick={() => setViewMode('map')}
+                className={`p-3 rounded-xl transition-all ${viewMode === 'map' ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
+                title={t('view_map')}
+              >
+                <MapIcon size={20} />
+              </button>
+            </div>
+            <LanguageSwitcher />
+          </div>
         </div>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div>
@@ -90,7 +110,7 @@ export default function FindM3allem() {
             </button>
             <div className="bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-2xl px-4 py-2 flex items-center gap-2">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-sm font-bold text-[var(--text-muted)]">1,240 {t('find_ar_online_now', 'Artisans Online')}</span>
+              <span className="text-sm font-bold text-[var(--text-muted)]">{t('find_ar_online_count', { count: 1240 })}</span>
             </div>
           </div>
         </div>
@@ -104,7 +124,7 @@ export default function FindM3allem() {
               placeholder={t('find_ar_search')} 
               value={filters.search}
               onChange={(e) => setFilters({ search: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
+              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all shadow-sm"
             />
           </div>
           
@@ -115,7 +135,7 @@ export default function FindM3allem() {
               onChange={(e) => setFilters({ category: e.target.value })}
               className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
             >
-              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all', 'All')}</option>
+              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all')}</option>
               {categories?.filter(c => c !== 'All').map(cat => <option key={cat} value={cat} className="bg-[var(--card-bg)]">{t(`cat_${cat.toLowerCase().replace(/ /g, '_')}`, cat)}</option>)}
             </select>
             <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
@@ -128,7 +148,7 @@ export default function FindM3allem() {
               onChange={(e) => setFilters({ city: e.target.value })}
               className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
             >
-              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all', 'All')}</option>
+              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all')}</option>
               {cities?.filter(c => c !== 'All').map(city => <option key={city} value={city} className="bg-[var(--card-bg)]">{t(`city_${city.toLowerCase()}`, city)}</option>)}
             </select>
             <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
@@ -157,18 +177,18 @@ export default function FindM3allem() {
               placeholder={t('find_ar_min_price')} 
               value={filters.minPrice}
               onChange={(e) => setFilters({ minPrice: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
+              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
             />
             <input 
               type="number" 
               placeholder={t('find_ar_max_price')} 
               value={filters.maxPrice}
               onChange={(e) => setFilters({ maxPrice: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
+              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
             />
           </div>
 
-          <div className="flex items-center justify-center bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-4 px-6">
+          <div className="flex items-center justify-center bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6">
             <label className="flex items-center gap-3 cursor-pointer group w-full justify-center" onClick={() => setFilters({ isOnline: !filters.isOnline })}>
               <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center ${filters.isOnline ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`}>
                 {filters.isOnline && <div className="w-2 h-2 bg-[var(--accent-foreground)] rounded-full" />}
@@ -178,74 +198,83 @@ export default function FindM3allem() {
           </div>
         </div>
 
-        {/* Results Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {loading ? (
-            <div className="col-span-full flex justify-center py-24">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
-            </div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {artisans?.map((artisan) => (
-                <motion.div 
-                  key={artisan.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  whileHover={{ y: -10 }}
-                  onClick={() => setSelectedArtisan(artisan)}
-                  className="bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] overflow-hidden group hover:border-[#FFD700]/30 transition-all cursor-pointer"
-                >
-                  <div className="h-64 relative overflow-hidden">
-                    <img src={artisan.avatar_url || artisan.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={artisan.name} referrerPolicy="no-referrer" />
-                    <div className="absolute top-6 start-6 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 text-[var(--accent)] text-xs font-bold border border-[var(--border)]">
-                      <ShieldCheck size={14} />
-                      {t('find_ar_verified')}
+        {/* Results */}
+        {viewMode === 'map' ? (
+          <div className="h-[600px] mb-16 relative z-0">
+            <NearbyArtisansMap 
+              artisans={artisans} 
+              center={artisans.length > 0 && artisans[0].latitude ? [Number(artisans[0].latitude), Number(artisans[0].longitude)] : undefined} 
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {loading ? (
+              <div className="col-span-full flex justify-center py-24">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {artisans?.map((artisan) => (
+                  <motion.div 
+                    key={artisan.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    whileHover={{ y: -10 }}
+                    onClick={() => setSelectedArtisan(artisan)}
+                    className="bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] overflow-hidden group hover:border-[#FFD700]/30 transition-all cursor-pointer shadow-lg"
+                  >
+                    <div className="h-64 relative overflow-hidden">
+                      <img src={artisan.avatar_url || artisan.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={artisan.name} referrerPolicy="no-referrer" />
+                      <div className="absolute top-6 start-6 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 text-[var(--accent)] text-xs font-bold border border-[var(--border)]">
+                        <ShieldCheck size={14} />
+                        {t('find_ar_verified')}
+                      </div>
+                      <div className="absolute top-6 end-6 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 text-[var(--accent)] text-sm font-bold border border-[var(--border)]">
+                        <Star size={14} fill="currentColor" />
+                        {artisan.rating}
+                      </div>
                     </div>
-                    <div className="absolute top-6 end-6 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 text-[var(--accent)] text-sm font-bold border border-[var(--border)]">
-                      <Star size={14} fill="currentColor" />
-                      {artisan.rating}
-                    </div>
-                  </div>
-                  <div className="p-8">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-2xl font-bold text-[var(--text)]">{artisan.name}</h3>
-                        <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm font-medium mt-1">
-                          <MapPin size={14} />
-                          {artisan.city || artisan.location} • {artisan.category_name || artisan.category}
+                    <div className="p-8">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="text-start">
+                          <h3 className="text-2xl font-bold text-[var(--text)]">{artisan.name}</h3>
+                          <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm font-medium mt-1">
+                            <MapPin size={14} />
+                            {t(artisan.city || artisan.location, artisan.city || artisan.location) as string} • {t(artisan.category_name || artisan.category, artisan.category_name || artisan.category) as string}
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <p className="text-[var(--accent)] font-bold text-lg">{Number(artisan.starting_price || artisan.price).toFixed(2)} MAD</p>
+                          <p className="text-[10px] text-[var(--text-muted)]/50 uppercase tracking-widest font-bold">{t('find_ar_per_hour')}</p>
                         </div>
                       </div>
-                      <div className="text-end">
-                        <p className="text-[var(--accent)] font-bold text-lg">{artisan.starting_price || artisan.price} MAD</p>
-                        <p className="text-[10px] text-[var(--text-muted)]/50 uppercase tracking-widest font-bold">{t('find_ar_per_hour')}</p>
+                      <div className="flex gap-3 mt-8">
+                        <button 
+                          onClick={(e) => handleBookClick(e, artisan)} 
+                          className="flex-1 bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold text-sm hover:opacity-90 transition-colors shadow-lg shadow-[var(--accent)]/20"
+                        >
+                          {t('find_ar_book_now')}
+                        </button>
+                        <button 
+                          onClick={(e) => handleChatClick(e, artisan)}
+                          className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--card-bg)] transition-all"
+                        >
+                          <MessageSquare size={24} />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-3 mt-8">
-                      <button 
-                        onClick={(e) => handleBookClick(e, artisan)} 
-                        className="flex-1 bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold text-sm hover:opacity-90 transition-colors shadow-lg shadow-[var(--accent)]/20"
-                      >
-                        {t('find_ar_book_now')}
-                      </button>
-                      <button 
-                        onClick={(e) => handleChatClick(e, artisan)}
-                        className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--card-bg)] transition-colors"
-                      >
-                        <MessageSquare size={24} />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+        )}
 
         {!loading && artisans?.length === 0 && (
           <div className="text-center py-24">
-            <div className="inline-flex p-6 rounded-full bg-[var(--card-bg)]/50 mb-6">
+            <div className="inline-flex p-6 rounded-full bg-[var(--card-bg)]/50 mb-6 font-display">
               <Search size={48} className="text-[var(--text-muted)]/20" />
             </div>
             <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{t('find_ar_no_pros')}</h3>
@@ -258,7 +287,7 @@ export default function FindM3allem() {
         {chatArtisan && (
           <ChatModal
             artisan={{...chatArtisan, user_id: `user_${chatArtisan.id}`}}
-            currentUser={localStorage.getItem('m3allem_user') ? JSON.parse(localStorage.getItem('m3allem_user') as string) : {id: 'user_client_1', name: 'Guest Client'}}
+            currentUser={user || {id: 'user_client_1', name: 'Guest Client'}}
             onClose={() => setChatArtisan(null)}
           />
         )}

@@ -87,7 +87,11 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
-    fetch('/api/auth/users/me', { credentials: 'include'})
+    const token = localStorage.getItem('m3allem_token');
+    fetch('/api/auth/users/me', { 
+      credentials: 'include',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch user');
         return res.json();
@@ -153,7 +157,11 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
 
   useEffect(() => {
     // Fetch services for this artisan's category
-    fetch(`/api/marketplace/artisans/${artisan.id}`, { credentials: 'include' })
+    const token = localStorage.getItem('m3allem_token');
+    fetch(`/api/marketplace/artisans/${artisan.id}`, { 
+      credentials: 'include',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch artisan services');
         return res.json();
@@ -290,7 +298,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                       className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${formData.serviceId === s.id ? 'bg-[var(--accent)]/10 border-[var(--accent)] text-[var(--accent)]' : fieldErrors.serviceId ? 'border-rose-500/50 bg-rose-500/5' : 'bg-[var(--card-bg)]/5 border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/20'}`}
                     >
                       <span className="font-bold">{s.name}</span>
-                      <span className="font-bold">{s.base_price} MAD</span>
+                      <span className="font-bold">{Number(s.base_price).toFixed(2)} MAD</span>
                     </button>
                   ))}
                 </div>
@@ -395,12 +403,12 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold mr-2">Suggested:</span>
-                        <span className="text-sm font-bold text-[var(--accent)]">{aiEstimate.suggested} MAD</span>
+                        <span className="text-sm font-bold text-[var(--accent)]">{Number(aiEstimate.suggested).toFixed(2)} MAD</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center border-b border-[var(--accent)]/10 pb-2">
-                      <p className="text-xs font-bold text-[var(--text)]">{aiEstimate.minPrice} - {aiEstimate.maxPrice} MAD</p>
+                      <p className="text-xs font-bold text-[var(--text)]">{Number(aiEstimate.minPrice).toFixed(2)} - {Number(aiEstimate.maxPrice).toFixed(2)} MAD</p>
                       <p className="text-[9px] text-[var(--text-muted)] italic">Based on demand & history</p>
                     </div>
 
@@ -519,7 +527,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 <h3 className="font-bold text-lg border-b border-[var(--border)] pb-4 text-[var(--text)]">Order Summary</h3>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[var(--text-muted)]">Service: {selectedService?.name}</span>
-                  <span className="font-bold text-[var(--text)]">{selectedService?.base_price} MAD</span>
+                  <span className="font-bold text-[var(--text)]">{Number(selectedService?.base_price || 0).toFixed(2)} MAD</span>
                 </div>
                 
                 {userPoints > 0 && (
@@ -547,7 +555,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                       Loyalty Discount
                     </span>
                     <span className="font-bold">
-                      -{Math.min(userPoints / 10, (selectedService?.base_price || 0) * 0.5)} MAD
+                      -{Math.min(userPoints / 10, (selectedService?.base_price || 0) * 0.5).toFixed(2)} MAD
                     </span>
                   </div>
                 )}
@@ -555,16 +563,16 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[var(--text-muted)] line-through">Platform Fee (5%)</span>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="font-bold text-[var(--text-muted)] line-through">{selectedService ? Math.round(selectedService.base_price * 0.05) : 0} MAD</span>
-                    <span className="font-bold text-yellow-500 text-xs bg-yellow-500/10 px-2 py-0.5 rounded uppercase tracking-wider">0 MAD (Promo)</span>
+                    <span className="font-bold text-[var(--text-muted)] line-through">{selectedService ? (selectedService.base_price * 0.05).toFixed(2) : '0.00'} MAD</span>
+                    <span className="font-bold text-yellow-500 text-xs bg-yellow-500/10 px-2 py-0.5 rounded uppercase tracking-wider">0.00 MAD (Promo)</span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t border-[var(--border)]">
                   <span className="font-bold text-lg text-[var(--text)]">Total</span>
                   <span className="font-bold text-xl text-[var(--accent)]">
-                    {selectedService ? Math.round(
-                      (selectedService.base_price - (formData.usePoints ? Math.min(userPoints / 10, selectedService.base_price * 0.5) : 0))
-                    ) : 0} MAD
+                    {selectedService ? (
+                      selectedService.base_price - (formData.usePoints ? Math.min(userPoints / 10, selectedService.base_price * 0.5) : 0)
+                    ).toFixed(2) : '0.00'} MAD
                   </span>
                 </div>
               </div>
@@ -656,7 +664,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                     <img src={material.image} alt={material.name} className="w-16 h-16 rounded-xl object-cover" />
                     <div className="flex-1">
                       <h4 className="font-bold text-sm text-[var(--text)]">{material.name}</h4>
-                      <p className="text-[var(--accent)] font-bold text-sm">{material.price} MAD</p>
+                      <p className="text-[var(--accent)] font-bold text-sm">{Number(material.price).toFixed(2)} MAD</p>
                     </div>
                     <button 
                       onClick={() => toggleMaterial(material.id)}

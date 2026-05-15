@@ -16,7 +16,10 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/cities', { credentials: 'include'});
+      const res = await fetch('/api/admin/cities', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setCities(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -35,10 +38,12 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
     if (!token) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/admin/cities', { credentials: 'include', 
+      const res = await fetch('/api/admin/cities', { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ name: newCityName })
       });
@@ -58,8 +63,11 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   const handleDeleteCity = async (id: string) => {
     if (!token || !confirm('Are you sure you want to delete this city?')) return;
     try {
-      const res = await fetch(`/api/admin/cities/${id}`, { credentials: 'include', 
-        method: 'DELETE'});
+      const res = await fetch(`/api/admin/cities/${id}`, { 
+        credentials: 'include', 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         fetchCities();
         onAction?.('City deleted successfully');
@@ -72,8 +80,11 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   const toggleCityStatus = async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/cities/${id}/toggle-active`, { credentials: 'include', 
-        method: 'POST'});
+      const res = await fetch(`/api/admin/cities/${id}/toggle-active`, { 
+        credentials: 'include', 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         fetchCities();
       }

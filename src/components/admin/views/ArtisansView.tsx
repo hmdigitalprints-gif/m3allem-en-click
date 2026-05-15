@@ -19,7 +19,10 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
   const fetchArtisans = async () => {
     if (!token) return;
     try {
-      const response = await fetch('/api/admin/artisans', { credentials: 'include'});
+      const response = await fetch('/api/admin/artisans', { 
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
       setArtisans(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -32,8 +35,11 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
   const toggleFeatured = async (id: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`/api/admin/artisans/${id}/toggle-featured`, { credentials: 'include', 
-        method: 'POST'});
+      const response = await fetch(`/api/admin/artisans/${id}/toggle-featured`, { 
+        credentials: 'include', 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         setArtisans(prev => prev.map(a => a.id === id ? { ...a, is_featured: a.is_featured ? 0 : 1 } : a));
       }
@@ -45,10 +51,12 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
   const handleVerify = async (id: string, currentStatus: boolean) => {
     if (!token) return;
     try {
-      const response = await fetch(`/api/admin/artisans/${id}/verify`, { credentials: 'include', 
+      const response = await fetch(`/api/admin/artisans/${id}/verify`, { 
+        credentials: 'include', 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
           },
         body: JSON.stringify({ verified: !currentStatus })
       });

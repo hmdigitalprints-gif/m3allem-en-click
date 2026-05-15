@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Save, Wallet, ShieldCheck, Settings, Globe, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { ViewProps } from '../types';
 
+import { useAuth } from '../../../context/AuthContext';
+
 interface SettingsViewProps extends ViewProps {
   settings: any;
   updateSettings: (settings: any) => Promise<void>;
 }
 
 export default function SettingsView({ settings, updateSettings, isDarkMode, cardClasses, textMutedClasses, onAction }: SettingsViewProps) {
+  const { token } = useAuth();
   const [localSettings, setLocalSettings] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [languages, setLanguages] = useState<any[]>([]);
@@ -34,10 +37,13 @@ export default function SettingsView({ settings, updateSettings, isDarkMode, car
   }, [settings]);
 
   useEffect(() => {
-    fetch('/api/languages', { credentials: 'include' })
+    fetch('/api/languages', { 
+      credentials: 'include',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => setLanguages(data.filter((l: any) => l.is_active)));
-  }, []);
+  }, [token]);
 
   const handleSave = async () => {
     setSaving(true);
