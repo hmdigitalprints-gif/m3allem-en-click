@@ -16,6 +16,7 @@ if (typeof window !== 'undefined') {
   }
 
   // Intercept fetch to automatically securely handle HTTPOnly Cookies and Accept-Language header
+  // Note: Some environments protect window.fetch, so we use a safe approach
   const originalFetch = window.fetch;
   const interceptedFetch = async function(resource: string | Request, config?: RequestInit) {
     try {
@@ -33,7 +34,6 @@ if (typeof window !== 'undefined') {
           try {
             (resource as Request).headers.set('Accept-Language', currentLang);
           } catch (headerError) {
-            // Headers might be immutable if the Request was already used or created from an existing request
             console.warn('Could not set Accept-Language on Request object:', headerError);
           }
         } else {
@@ -48,29 +48,30 @@ if (typeof window !== 'undefined') {
           }
         }
         
-        return originalFetch(resource, newConfig);
+        return originalFetch.call(window, resource, newConfig);
       }
-      return originalFetch(resource, config);
+      return originalFetch.call(window, resource, config);
     } catch (err) {
       console.error('Fetch interceptor error:', err);
-      return originalFetch(resource, config);
+      return originalFetch.call(window, resource, config);
     }
   };
 
+  // Only attempt to override if possible
   try {
-    Object.defineProperty(window, 'fetch', {
-      value: interceptedFetch,
-      configurable: true,
-      enumerable: true,
-      writable: true
-    });
-  } catch (e) {
-    console.warn('Could not redefine window.fetch via defineProperty, trying direct assignment:', e);
-    try {
-      (window as any).fetch = interceptedFetch;
-    } catch (e2) {
-      console.error('Failed to intercept fetch entirely:', e2);
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'fetch');
+    if (!descriptor || descriptor.configurable || descriptor.writable) {
+      Object.defineProperty(window, 'fetch', {
+        value: interceptedFetch,
+        configurable: true,
+        enumerable: true,
+        writable: true
+      });
+    } else {
+      console.warn('window.fetch is not configurable or writable. Global interception disabled.');
     }
+  } catch (e) {
+    console.warn('Could not intercept window.fetch:', e);
   }
 }
 

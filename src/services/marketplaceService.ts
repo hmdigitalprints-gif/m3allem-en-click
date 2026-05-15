@@ -60,6 +60,20 @@ const getAuthHeaders = () => {
 
 export const fetchJson = async (url: string, options: RequestInit = {}) => {
   options.credentials = 'include';
+  
+  // Explicitly add language header as fallback if global interception fails
+  const currentLang = typeof window !== 'undefined' ? (localStorage.getItem('m3allem_lang') || localStorage.getItem('i18nextLng') || 'en') : 'en';
+  if (options.headers instanceof Headers) {
+    if (!options.headers.has('Accept-Language')) {
+      options.headers.set('Accept-Language', currentLang);
+    }
+  } else {
+    options.headers = {
+      'Accept-Language': currentLang,
+      ...(options.headers || {}),
+    };
+  }
+
   const res = await fetch(url, options);
   const contentType = res.headers.get("content-type");
   
