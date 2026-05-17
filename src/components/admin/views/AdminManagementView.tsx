@@ -18,7 +18,6 @@ export default function AdminManagementView({
   hoverClasses, 
   onAction 
 }: AdminManagementViewProps) {
-  const { token } = useAuth();
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -26,12 +25,10 @@ export default function AdminManagementView({
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: 'password123' });
 
   const fetchAdmins = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/users?role=admin', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setAdmins(Array.isArray(data) ? data : []);
@@ -44,19 +41,17 @@ export default function AdminManagementView({
 
   useEffect(() => {
     fetchAdmins();
-  }, [token]);
+  }, []);
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/auth/register', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ ...formData, role: 'admin' })
       });

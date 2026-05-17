@@ -29,9 +29,8 @@ export default function StoreSection({ onAction }: { onAction: (msg: string) => 
           Object.entries(filters).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
         );
         const queryParams = new URLSearchParams(cleanFilters as any).toString();
-        const token = localStorage.getItem('m3allem_token');
         const data = await fetchJson(`/api/marketplace/products?${queryParams}`, { 
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          headers: {}
         });
         setProducts(data);
       } catch (error) {
@@ -179,7 +178,14 @@ export default function StoreSection({ onAction }: { onAction: (msg: string) => 
                   className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] overflow-hidden group hover:border-[var(--accent)]/30 transition-all flex flex-col shadow-sm hover:shadow-xl"
                 >
                   <div className="h-48 relative overflow-hidden shrink-0">
-                    <img src={product.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} referrerPolicy="no-referrer" />
+                    <img 
+                      src={product.image_url} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      alt={product.name} 
+                      referrerPolicy="no-referrer" 
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <div className="absolute top-4 start-4 bg-[var(--bg)]/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-[var(--text)]">
                       {product.category}
                     </div>

@@ -11,7 +11,7 @@ interface MessagesSectionProps {
 
 export default function MessagesSection({ minimal = false }: MessagesSectionProps) {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -32,15 +32,12 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (token) {
-      connectSocket(token);
-    }
+    connectSocket();
     
     const fetchConversations = async () => {
-      if (!token) return;
       try {
         const res = await fetch('/api/messages/conversations', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -119,16 +116,16 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
       socket.off('messages_read');
       socket.off('messages_delivered');
     };
-  }, [token, activeConversation, user?.id]);
+  }, [activeConversation, user?.id]);
 
   useEffect(() => {
-    if (!activeConversation || !token) return;
+    if (!activeConversation) return;
 
     const fetchMessages = async () => {
       try {
         const otherUserId = activeConversation.userId;
         const res = await fetch(`/api/messages/${user?.id}/${otherUserId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -167,7 +164,7 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
     };
 
     fetchMessages();
-  }, [activeConversation, user?.id, token]);
+  }, [activeConversation, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -193,7 +190,7 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeConversation || !token) return;
+    if (!newMessage.trim() || !activeConversation) return;
 
     socket.emit('send_message', {
       receiverId: activeConversation.userId,
@@ -210,7 +207,7 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeConversation || !token) return;
+    if (!file || !activeConversation) return;
 
     setIsUploading(true);
     const reader = new FileReader();
@@ -220,9 +217,9 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
       try {
         const res = await fetch('/api/upload', { 
           method: 'POST',
+          credentials: 'include',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ file: base64, type: 'image' })
         });
@@ -277,9 +274,9 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
           try {
             const res = await fetch('/api/upload', { 
               method: 'POST',
+              credentials: 'include',
               headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({ file: base64Audio, type: 'audio' })
             });
@@ -391,7 +388,7 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
                 >
                   <div className="w-12 h-12 rounded-2xl bg-[var(--bg)] relative shrink-0 border border-[var(--border)] overflow-hidden shadow-sm group-hover:scale-105 transition-transform">
                     {conv.avatarUrl ? (
-                      <img src={conv.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      <img src={conv.avatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-[var(--accent)]/5 text-[var(--accent)] font-bold">
                         {conv.name?.charAt(0)}
@@ -531,6 +528,7 @@ export default function MessagesSection({ minimal = false }: MessagesSectionProp
                                     alt="Sent image" 
                                     className="max-w-full h-auto cursor-zoom-in hover:scale-[1.02] transition-transform duration-500"
                                     onClick={() => window.open(msg.imageUrl, '_blank')}
+                                    loading="lazy"
                                   />
                                 </div>
                                 {msg.content && <p className="text-sm md:text-lg font-medium leading-relaxed italic">{msg.content}</p>}

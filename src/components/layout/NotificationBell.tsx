@@ -12,18 +12,17 @@ interface AppNotification {
   created_at: string;
 }
 
-export default function NotificationBell({ userId, token, onNotification }: { userId: string, token: string | null, onNotification?: (notification: AppNotification) => void }) {
+export default function NotificationBell({ userId, onNotification }: { userId: string, onNotification?: (notification: AppNotification) => void }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!userId || !token) return;
+    if (!userId) return;
 
     // Fetch initial notifications
     fetch(`/api/notifications/${userId}`, { 
-      credentials: 'include',
-      headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -64,15 +63,13 @@ export default function NotificationBell({ userId, token, onNotification }: { us
     return () => {
       socket.off('new_notification');
     };
-  }, [userId, token]);
+  }, [userId]);
 
   const markAsRead = async (id: string) => {
-    if (!token) return;
     try {
       await fetch(`/api/notifications/${id}/read`, { 
         credentials: 'include',  
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'POST'
       });
       setNotifications(prev => prev?.map(n => n.id === id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));

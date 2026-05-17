@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [cities, setCities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,12 +12,10 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   const [submitting, setSubmitting] = useState(false);
 
   const fetchCities = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/cities', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setCities(Array.isArray(data) ? data : []);
@@ -31,19 +28,17 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
 
   useEffect(() => {
     fetchCities();
-  }, [token]);
+  }, []);
 
   const handleAddCity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/cities', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ name: newCityName })
       });
@@ -61,12 +56,11 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   };
 
   const handleDeleteCity = async (id: string) => {
-    if (!token || !confirm('Are you sure you want to delete this city?')) return;
+    if (!confirm('Are you sure you want to delete this city?')) return;
     try {
       const res = await fetch(`/api/admin/cities/${id}`, { 
         credentials: 'include', 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'DELETE'
       });
       if (res.ok) {
         fetchCities();
@@ -78,12 +72,10 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   };
 
   const toggleCityStatus = async (id: string) => {
-    if (!token) return;
     try {
       const res = await fetch(`/api/admin/cities/${id}/toggle-active`, { 
         credentials: 'include', 
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'POST'
       });
       if (res.ok) {
         fetchCities();

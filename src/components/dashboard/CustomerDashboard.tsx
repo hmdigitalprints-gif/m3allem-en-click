@@ -12,7 +12,8 @@ import {
   ArrowRight,
   MessageSquare,
   FileText,
-  LayoutDashboard
+  LayoutDashboard,
+  Sparkles
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +25,7 @@ interface CustomerDashboardProps {
 }
 
 export default function CustomerDashboard({ onNavigate, onAction }: CustomerDashboardProps) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -37,11 +38,9 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!token) return;
       try {
         const res = await fetch('/api/bookings', { 
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -64,7 +63,7 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
       }
     };
     fetchDashboardData();
-  }, [token]);
+  }, [user]);
 
   if (loading) {
     return <div className="p-8 flex justify-center"><div className="w-8 h-8 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin" /></div>;
@@ -97,10 +96,11 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard title={t('active_jobs')} value={stats.activeBookings} icon={<Clock size={20} className="text-blue-500" />} />
         <StatCard title={t('completed')} value={stats.completedBookings} icon={<CheckCircle2 size={20} className="text-emerald-500" />} />
-        <StatCard title={t('nav_documents')} value={stats.totalBookings} icon={<FileText size={20} className="text-indigo-500" />} />
+        {/* <StatCard title={t('nav_documents')} value={stats.totalBookings} icon={<FileText size={20} className="text-indigo-500" />} /> */}
+        <StatCard title={t('points_balance')} value={user?.points || 0} icon={<Sparkles size={20} className="text-amber-500" />} />
         <StatCard title={t('total_spent')} value={`${Number(stats.totalSpent).toFixed(2)} MAD`} icon={<CreditCard size={20} className="text-amber-500" />} />
       </div>
 
@@ -125,12 +125,12 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
             label={t('nav_messages')} 
             sub={t('chat_anytime')} 
           />
-          <ActionButton 
+          {/* <ActionButton 
             onClick={() => onNavigate('documents')} 
             icon={<FileText className="text-purple-500" />} 
             label={t('nav_documents')} 
             sub={t('profile_desc_payments')} 
-          />
+          /> */}
         </div>
 
         {/* Recent Activity */}

@@ -105,7 +105,7 @@ export default function App() {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
   const { toast, showToast } = useToast();
-  const { user, token, logout, isLoading: authLoading } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [view, setView] = useState<'admin' | 'customer' | 'artisan' | 'seller' | 'company'>('customer');
   const [customerTab, setCustomerTab] = useState<'dashboard' | 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages'>(() => (sessionStorage.getItem('m3allem_customerTab') as any) || 'dashboard');
@@ -161,22 +161,19 @@ export default function App() {
     }
 
     const handleStartDiagnostic = (e: any) => {
-      const currentUser = JSON.parse(localStorage.getItem('m3allem_user') || '{}');
       setActiveCall({ 
         artisanId: e.detail.artisanId, 
         artisanName: e.detail.artisanName, 
         artisanUserId: e.detail.artisanUserId,
-        isArtisan: currentUser.role === 'artisan'
+        isArtisan: user?.role === 'artisan'
       });
     };
 
     window.addEventListener('start-live-diagnostic', handleStartDiagnostic);
 
-    if (token) {
-      connectSocket(token);
-      if (user?.id) {
-        socket.emit('join', user.id);
-      }
+    if (user?.id) {
+      connectSocket();
+      socket.emit('join', user.id);
     }
 
     socket.on('incoming_call', (data) => {
@@ -187,7 +184,7 @@ export default function App() {
       window.removeEventListener('start-live-diagnostic', handleStartDiagnostic);
       socket.off('incoming_call');
     };
-  }, [user, token]);
+  }, [user]);
 
   if (authLoading) {
     return (
@@ -251,7 +248,7 @@ export default function App() {
               >
                 {isDarkMode ? <Sun className="text-yellow-400" size={16} /> : <Moon className="text-blue-500" size={16} />}
               </button>
-              <NotificationBell userId={user.id} token={token} />
+              <NotificationBell userId={user.id} />
               {user.role === 'admin' && (
                 <button 
                   onClick={() => setView('admin')}
@@ -303,7 +300,7 @@ export default function App() {
               { id: 'dashboard', label: t('nav_overview'), icon: <LayoutDashboard size={18} /> },
               { id: 'home', label: t('nav_home'), icon: <HomeIcon size={18} /> },
               { id: 'find', label: t('nav_find'), icon: <SearchIcon size={18} /> },
-              { id: 'documents', label: t('nav_projects'), icon: <FileText size={18} /> },
+              // { id: 'documents', label: t('nav_projects'), icon: <FileText size={18} /> },
               { id: 'store', label: t('nav_store_short'), icon: <ShoppingBag size={18} /> },
               { id: 'bookings', label: t('nav_bookings'), icon: <Clock size={18} /> },
               { id: 'messages', label: t('nav_messages'), icon: <MessageSquare size={18} /> },
@@ -467,7 +464,9 @@ export default function App() {
         <Route path="/careers" element={<Careers />} />
         <Route path="/phone-auth" element={<Auth />} />
         <Route path="/phone-dashboard" element={<AuthRouteGuard><PhoneDashboard /></AuthRouteGuard>} />
-        <Route path="/debug" element={<SimulationDashboard />} />
+        {!import.meta.env.PROD && (
+          <Route path="/debug" element={<AuthRouteGuard role="admin"><SimulationDashboard /></AuthRouteGuard>} />
+        )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <AnimatePresence>

@@ -10,7 +10,6 @@ interface SettingsViewProps extends ViewProps {
 }
 
 export default function SettingsView({ settings, updateSettings, isDarkMode, cardClasses, textMutedClasses, onAction }: SettingsViewProps) {
-  const { token } = useAuth();
   const [localSettings, setLocalSettings] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [languages, setLanguages] = useState<any[]>([]);
@@ -38,12 +37,11 @@ export default function SettingsView({ settings, updateSettings, isDarkMode, car
 
   useEffect(() => {
     fetch('/api/languages', { 
-      credentials: 'include',
-      headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => setLanguages(data.filter((l: any) => l.is_active)));
-  }, [token]);
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);

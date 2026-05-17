@@ -22,11 +22,9 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('m3allem_token');
     // Fetch initial messages
     fetch(`/api/messages/${currentUser.id}/${artisan.user_id}`, { 
-      credentials: 'include',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch messages: ' + res.status);
@@ -127,13 +125,11 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       try {
-        const token = localStorage.getItem('m3allem_token');
         const res = await fetch('/api/upload', { 
           credentials: 'include', 
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ file: base64, type: 'image' })
         });
@@ -188,13 +184,11 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
           const base64Audio = reader.result as string;
           
           // Upload audio
-          const token = localStorage.getItem('m3allem_token');
           const res = await fetch('/api/upload', { 
             credentials: 'include', 
             method: 'POST',
             headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ file: base64Audio, type: 'audio' })
           });
@@ -251,6 +245,7 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
                 alt={artisan.name} 
                 className="w-12 h-12 rounded-full object-cover"
                 referrerPolicy="no-referrer"
+                loading="lazy"
               />
               <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[var(--card-bg)] ${artisan.is_online ? 'bg-emerald-500' : 'bg-gray-400'}`} />
             </div>
@@ -312,6 +307,7 @@ export default function ChatModal({ artisan, currentUser, onClose }: ChatModalPr
                     alt="Shared photo" 
                     className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => window.open(msg.imageUrl, '_blank')}
+                    loading="lazy"
                   />
                 ) : msg.type === 'location' ? (
                   <a 

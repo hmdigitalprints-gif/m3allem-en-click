@@ -50,7 +50,7 @@ export default function NearbyArtisansMap({ artisans, center = [33.5731, -7.5898
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-[var(--accent)]/10 flex items-center justify-center overflow-hidden border border-[var(--accent)]/20">
                     {artisan.avatar_url ? (
-                      <img src={artisan.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <img src={artisan.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <User size={18} className="text-[var(--accent)]" />
                     )}

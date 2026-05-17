@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,12 +12,10 @@ export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedCl
   const [formData, setFormData] = useState({ name: '', price: '', duration_days: '30', description: '' });
 
   const fetchPlans = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/subscriptions', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setPlans(Array.isArray(data) ? data : []);
@@ -31,19 +28,17 @@ export default function SubscriptionsView({ isDarkMode, cardClasses, textMutedCl
 
   useEffect(() => {
     fetchPlans();
-  }, [token]);
+  }, []);
 
   const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/subscriptions', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({
           ...formData,

@@ -37,7 +37,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
   onAction?: (msg: string) => void
 }) {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [completingProjectId, setCompletingProjectId] = useState<string | null>(null);
@@ -63,8 +63,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
     const fetchCompanyData = async () => {
       try {
         const options = {
-          credentials: 'include' as const,
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include' as const
         };
         const [projectsRes] = await Promise.all([
           fetch('/api/companies/projects', options)
@@ -102,10 +101,10 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
       }
     };
 
-    if (token) {
+    if (user) {
       fetchCompanyData();
     }
-  }, [token]);
+  }, [user]);
 
   const handleAddProject = async () => {
     if (!newProject.name || !newProject.client || !newProject.budget || !newProject.deadline) {
@@ -118,8 +117,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
         credentials: 'include', 
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newProject)
       });
@@ -161,8 +159,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
         credentials: 'include', 
         method: 'PATCH',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -191,7 +188,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
     { id: 'dashboard', label: t('nav_dashboard', 'Dashboard'), icon: <LayoutDashboard size={18} /> },
     { id: 'projects', label: t('nav_projects', 'Projects'), icon: <Briefcase size={18} /> },
     { id: 'team', label: t('nav_team', 'Team'), icon: <Users size={18} /> },
-    { id: 'invoices', label: t('nav_invoices', 'Invoices'), icon: <FileText size={18} /> },
+    // { id: 'invoices', label: t('nav_invoices', 'Invoices'), icon: <FileText size={18} /> },
     { id: 'settings', label: t('nav_settings', 'Settings'), icon: <Settings size={18} /> },
   ];
 
@@ -225,13 +222,13 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
                 <Users size={24} className="text-blue-500 group-hover:text-white" />
                 <span className="font-bold text-sm">Manage Team</span>
               </button>
-              <button 
+              {/* <button 
                 onClick={() => setActiveTab('invoices')}
                 className="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center gap-3 hover:bg-emerald-500 hover:text-white transition-all group"
               >
                 <FileText size={24} className="text-emerald-500 group-hover:text-white" />
                 <span className="font-bold text-sm">Invoices</span>
-              </button>
+              </button> */}
               <button 
                 onClick={() => setActiveTab('settings')}
                 className="p-6 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex flex-col items-center gap-3 hover:bg-purple-500 hover:text-white transition-all group"
@@ -393,7 +390,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
       case 'settings':
         return <AccountSection onAction={(msg) => onAction?.(msg)} />;
       default:
-        return <div className="p-12 text-center text-[var(--text-muted)]">Coming soon</div>;
+        return null;
     }
   };
 
@@ -488,7 +485,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
             >
               {isDarkMode ? <Sun className="text-yellow-400" size={20} /> : <Moon className="text-blue-500" size={20} />}
             </button>
-            {user && <NotificationBell userId={user.id} token={token} />}
+            {user && <NotificationBell userId={user.id} />}
             <div className="w-10 h-10 rounded-full bg-[var(--text)]/10 border border-[var(--border)] overflow-hidden">
               <img src={`https://ui-avatars.com/api/?name=${user?.name || 'Company'}&background=FFD700&color=000`} alt="Profile" className="w-full h-full object-cover" />
             </div>
@@ -527,7 +524,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
           { id: 'dashboard', label: 'Dash', icon: <LayoutDashboard size={18} /> },
           { id: 'projects', label: 'Works', icon: <Briefcase size={18} /> },
           { id: 'team', label: 'Team', icon: <Users size={18} /> },
-          { id: 'invoices', label: 'Docs', icon: <FileText size={18} /> },
+          // { id: 'invoices', label: 'Docs', icon: <FileText size={18} /> },
           { id: 'settings', label: 'Set', icon: <Settings size={18} /> }
         ]}
       />

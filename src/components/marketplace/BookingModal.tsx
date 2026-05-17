@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, MapPin, CreditCard, CheckCircle2, AlertCircle, Wallet, ShieldCheck, Banknote, ShoppingCart, Plus, MessageSquare, Navigation, Sparkles, BrainCircuit, Video, ChevronRight } from 'lucide-react';
 import { AddressInput } from '../ui/AddressInput';
+import { useAuth } from '../../context/AuthContext';
 import { bookingService, Artisan } from '../../services/marketplaceService';
 import { aiService } from '../../services/aiService';
 import LiveDiagnostic from './LiveDiagnostic';
@@ -33,6 +34,7 @@ const RECOMMENDED_MATERIALS: Record<string, any[]> = {
 };
 
 export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess, onAction }: BookingModalProps) {
+  const { user: authUser } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +89,8 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem('m3allem_token');
     fetch('/api/auth/users/me', { 
-      credentials: 'include',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch user');
@@ -112,8 +112,6 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
   const [suggestingService, setSuggestingService] = useState(false);
   const [showLiveDiagnostic, setShowLiveDiagnostic] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-  const currentUser = JSON.parse(localStorage.getItem('m3allem_user') || '{}');
 
   const handleGetAiEstimate = async () => {
     if (!formData.description || !selectedService) return;
@@ -157,10 +155,8 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
 
   useEffect(() => {
     // Fetch services for this artisan's category
-    const token = localStorage.getItem('m3allem_token');
     fetch(`/api/marketplace/artisans/${artisan.id}`, { 
-      credentials: 'include',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch artisan services');
@@ -661,7 +657,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
               <div className="space-y-4">
                 {categoryMaterials?.map(material => (
                   <div key={material.id} className="flex items-center gap-4 p-4 bg-[var(--card-bg)]/5 border border-[var(--border)] rounded-2xl">
-                    <img src={material.image} alt={material.name} className="w-16 h-16 rounded-xl object-cover" />
+                    <img src={material.image} alt={material.name} className="w-16 h-16 rounded-xl object-cover" loading="lazy" />
                     <div className="flex-1">
                       <h4 className="font-bold text-sm text-[var(--text)]">{material.name}</h4>
                       <p className="text-[var(--accent)] font-bold text-sm">{Number(material.price).toFixed(2)} MAD</p>
@@ -710,6 +706,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                   className="w-full h-full object-cover opacity-60" 
                   alt="Map" 
                   referrerPolicy="no-referrer"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] to-transparent" />
                 
@@ -736,7 +733,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 >
                   <div className="relative z-10">
                     <div className="w-10 h-10 rounded-full border-2 border-[var(--accent)] overflow-hidden bg-[var(--bg)] shadow-lg">
-                      <img src={artisan.avatar_url || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200'} className="w-full h-full object-cover" alt={artisan.name} referrerPolicy="no-referrer" />
+                      <img src={artisan.avatar_url || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200'} className="w-full h-full object-cover" alt={artisan.name} referrerPolicy="no-referrer" loading="lazy" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 bg-[var(--success)] w-3 h-3 rounded-full border-2 border-[var(--bg)]" />
                   </div>
@@ -929,8 +926,8 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
       <AnimatePresence>
         {showLiveDiagnostic && (
           <LiveDiagnostic 
-            userId={currentUser.id}
-            userName={currentUser.name}
+            userId={authUser?.id}
+            userName={authUser?.name}
             targetUserId={artisan.user_id}
             targetUserName={artisan.name}
             isArtisan={false}

@@ -43,9 +43,14 @@ router.get("/artisans", async (req, res) => {
       take
     });
 
-    const formatted = await Promise.all(artisans.map(async a => {
+    // Batch translate categories to avoid N+1
+    const categoryKeys = Array.from(new Set(artisans.map(a => `cat_${a.category?.id || 'unknown'}`))) as string[];
+    const { getTranslations } = await import("../lib/i18n.ts");
+    const translations = await getTranslations(categoryKeys, lang);
+
+    const formatted = artisans.map(a => {
       const categoryNameKey = `cat_${a.category?.id || 'unknown'}`;
-      const translatedCatName = await t(categoryNameKey, lang);
+      const translatedCatName = translations[categoryNameKey];
       
       return {
         ...a,
@@ -53,7 +58,7 @@ router.get("/artisans", async (req, res) => {
         avatar_url: a.user?.avatarUrl,
         category_name: translatedCatName !== categoryNameKey ? translatedCatName : (a.category?.name || 'Artisan')
       };
-    }));
+    });
 
     res.json(formatted);
   } catch (error) {
@@ -246,15 +251,18 @@ router.get("/categories", async (req, res) => {
       orderBy: { name: "asc" }
     });
     
-    // Translate category names based on DB translations
-    const translatedCategories = await Promise.all(categories.map(async (cat) => {
+    // Batch translate category names
+    const categoryKeys = categories.map(cat => `cat_${cat.id}`);
+    const { getTranslations } = await import("../lib/i18n.ts");
+    const translations = await getTranslations(categoryKeys, lang);
+    
+    const translatedCategories = categories.map((cat) => {
       const key = `cat_${cat.id}`;
-      const translatedName = await t(key, lang);
       return {
         ...cat,
-        name: translatedName
+        name: translations[key] || cat.name
       };
-    }));
+    });
     
     res.json(translatedCategories);
   } catch (error) {

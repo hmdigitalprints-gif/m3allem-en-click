@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
-export function AuthRouteGuard({ children }: { children: React.ReactNode }) {
+export function AuthRouteGuard({ children, role }: { children: React.ReactNode, role?: string }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -18,6 +18,10 @@ export function AuthRouteGuard({ children }: { children: React.ReactNode }) {
   if (!user) {
     // Redirect to home and append ?login=true to show the login modal
     return <Navigate to="/?login=true" state={{ from: location }} replace />;
+  }
+
+  if (role && user.role !== role) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

@@ -10,7 +10,6 @@ interface BrandingViewProps extends ViewProps {
 }
 
 export default function BrandingView({ settings, updateSettings, isDarkMode, onAction }: BrandingViewProps) {
-  const { token } = useAuth();
   const [localSettings, setLocalSettings] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [uploadingState, setUploadingState] = useState<string | null>(null);
@@ -78,8 +77,7 @@ export default function BrandingView({ settings, updateSettings, isDarkMode, onA
         const res = await fetch('/api/upload', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ file: base64data, type: 'image' })
         });

@@ -11,3 +11,20 @@ firebase-applet-config.json
 /src/generated/prisma
 *.db
 *.db-journal
+
+# Debug and utility scripts
+fix_*.js
+check_*.js
+test-*.js
+patch_*.js
+problematic_fetch.txt
+server_log.txt
+fetch_calls.txt
+migration.sql
+check-orders.ts
+fix-missing-tables.ts
+verify.ts
+count*.js
+diff.js
+extract_translations.js
+push.js

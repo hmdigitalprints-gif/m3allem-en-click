@@ -9,17 +9,27 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import WalletSection from './WalletSection';
+import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 export default function AccountSection({ onAction }: { onAction: (msg: string) => void }) {
   const { t } = useTranslation();
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('m3allem_user') || '{}'));
-  const [name, setName] = useState(user.name || '');
-  const [phone, setPhone] = useState(user.phone || '');
-  const [address, setAddress] = useState(user.address || '');
-  const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || '');
+  const { user: authUser, updateProfile } = useAuth();
+  const [name, setName] = useState(authUser?.name || '');
+  const [phone, setPhone] = useState(authUser?.phone || '');
+  const [address, setAddress] = useState(authUser?.address || '');
+  const [avatarUrl, setAvatarUrl] = useState(authUser?.avatar_url || '');
   const [showWallet, setShowWallet] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (authUser) {
+      setName(authUser.name || '');
+      setPhone(authUser.phone || '');
+      setAddress(authUser.address || '');
+      setAvatarUrl(authUser.avatar_url || '');
+    }
+  }, [authUser]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -28,12 +38,10 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         try {
-          const token = localStorage.getItem('m3allem_token');
           const res = await fetch('/api/upload', { credentials: 'include', 
             method: 'POST',
             headers: { 
-              'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              'Content-Type': 'application/json'
               },
             body: JSON.stringify({ file: base64, type: 'image' })
           });
@@ -52,23 +60,11 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
   const handleSave = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('m3allem_token');
-      const res = await fetch(`/api/auth/users/${user.id}`, { credentials: 'include', 
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          },
-        body: JSON.stringify({ name, avatarUrl, phone, address })
-      });
-      if (res.ok) {
-        const updatedUser = { ...user, name, phone, address, avatar_url: avatarUrl };
-        localStorage.setItem('m3allem_user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        onAction('Profile updated successfully');
-      }
+      await updateProfile({ name, avatarUrl, phone, address });
+      onAction('Profile updated successfully');
     } catch (err) {
       console.error(err);
+      onAction('Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -112,11 +108,11 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               </label>
             </div>
-            <h3 className="text-2xl font-bold mb-1">{user.name}</h3>
-            <p className="text-[var(--text-muted)] text-sm mb-6">{user.phone}</p>
+            <h3 className="text-2xl font-bold mb-1">{authUser?.name}</h3>
+            <p className="text-[var(--text-muted)] text-sm mb-6">{authUser?.phone}</p>
             <div className="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full text-xs font-bold uppercase tracking-widest border border-[var(--accent)]/20">
               <ShieldCheck size={14} />
-              {t('verified_role')} {user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'User'}
+              {t('verified_role')} {authUser?.role ? (authUser.role.charAt(0).toUpperCase() + authUser.role.slice(1)) : 'User'}
             </div>
           </div>
 
@@ -131,7 +127,7 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors" />
             </button>
-            <button 
+            {/* <button 
               onClick={() => {
                 onAction('Opening your saved favorites...');
                 // We could navigate to a favorites tab if it existed, but for now we'll just show the toast
@@ -143,7 +139,7 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
                 <span className="font-bold">{t('my_favorites')}</span>
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors" />
-            </button>
+            </button> */}
           </div>
         </div>
 

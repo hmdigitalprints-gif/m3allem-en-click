@@ -19,7 +19,7 @@ const categories = ["All", "Plumbing", "Electricity", "Painting", "Cleaning", "A
 const cities = ["All", "Casablanca", "Rabat", "Marrakech", "Tangier", "Fes"];
 
 export default function FindM3allem() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [artisans, setArtisans] = useState<any[]>([]);
@@ -48,7 +48,7 @@ export default function FindM3allem() {
 
   const handleBookClick = (e: React.MouseEvent, artisan: any) => {
     e.stopPropagation();
-    if (!token) {
+    if (!user) {
       navigate('/?login=true');
       return;
     }
@@ -57,7 +57,7 @@ export default function FindM3allem() {
 
   const handleChatClick = (e: React.MouseEvent, artisan: any) => {
     e.stopPropagation();
-    if (!token) {
+    if (!user) {
       navigate('/?login=true');
       return;
     }
@@ -314,7 +314,7 @@ export default function FindM3allem() {
             onClose={() => setSelectedArtisan(null)}
             onBook={(artisan) => {
               setSelectedArtisan(null);
-              if (!token) {
+              if (!user) {
                 navigate('/?login=true');
                 return;
               }
@@ -322,7 +322,7 @@ export default function FindM3allem() {
             }}
             onChat={(artisan) => {
               setSelectedArtisan(null);
-              if (!token) {
+              if (!user) {
                 navigate('/?login=true');
                 return;
               }

@@ -15,6 +15,7 @@ import sellerRoutes from "./routes/sellers.ts";
 import marketplaceRoutes from "./routes/marketplace.ts";
 import companyRoutes from "./routes/companies.ts";
 import aiRoutes from "./routes/ai.ts";
+import messageRoutes from "./routes/messages.ts";
 import simulationRoutes from "./routes/simulation.ts";
 import {
   initNotificationService,
@@ -44,6 +45,11 @@ Sentry.init({
 });
 
 const langCache = new NodeCache({ stdTTL: 300 });
+
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is missing.");
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 async function startServer() {
   const app = express();
@@ -490,6 +496,7 @@ async function startServer() {
   app.use("/api/sellers", sellerRoutes);
   app.use("/api/companies", companyRoutes);
   app.use("/api/ai", aiRoutes);
+  app.use("/api/messages", messageRoutes);
   app.use("/api/simulation", simulationRoutes);
 
   // Custom auth / webhooks
@@ -706,150 +713,6 @@ async function startServer() {
     }
   });
 
-  // Chat
-  app.get(
-    "/api/messages/conversations",
-    authenticateToken,
-    async (req: any, res) => {
-      try {
-        const userId = req.user.id;
-        
-        // Find all users who sent messages to this user OR received messages from this user
-        const messages = await prisma.message.findMany({
-          where: {
-            OR: [
-              { senderId: userId },
-              { receiverId: userId }
-            ]
-          },
-          orderBy: { createdAt: 'desc' },
-          distinct: ['senderId', 'receiverId'] // This is tricky in Prisma, might need manually processing
-        });
-
-        // Unique set of other users
-        const otherUserIds = new Set<string>();
-        messages.forEach(m => {
-          if (m.senderId !== userId) otherUserIds.add(m.senderId);
-          if (m.receiverId !== userId) otherUserIds.add(m.receiverId);
-        });
-
-        const otherUsers = await prisma.user.findMany({
-          where: { id: { in: Array.from(otherUserIds) } },
-          select: { id: true, name: true, avatarUrl: true, role: true }
-        });
-
-        // Get last message and unread count for each
-        const conversations = await Promise.all(otherUsers.map(async (u) => {
-          const lastMsg = await prisma.message.findFirst({
-            where: {
-              OR: [
-                { senderId: userId, receiverId: u.id },
-                { senderId: u.id, receiverId: userId }
-              ]
-            },
-            orderBy: { createdAt: 'desc' }
-          });
-
-          const unreadCount = await prisma.message.count({
-            where: {
-              senderId: u.id,
-              receiverId: userId,
-              status: { not: 'read' }
-            }
-          });
-
-          return {
-            id: u.id, // Using user ID as conversation ID
-            userId: u.id,
-            name: u.name,
-            avatarUrl: u.avatarUrl,
-            lastMessage: lastMsg?.content || (lastMsg?.type === 'voice' ? 'Voice message' : lastMsg?.type === 'image' ? 'Image message' : ''),
-            lastMessageTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            unreadCount,
-            online: false // Could check a heartbeat service if we had one
-          };
-        }));
-
-        res.json(conversations);
-      } catch (error) {
-        console.error("Conversations error:", error);
-        res.status(500).json({ error: "Failed to fetch conversations" });
-      }
-    }
-  );
-
-  app.get(
-    "/api/messages/:userId/:otherUserId",
-    authenticateToken,
-    async (req: any, res) => {
-      const { userId, otherUserId } = req.params;
-      const { cursor } = req.query;
-      const requesterId = req.user.id;
-      const role = req.user.role;
-
-      // Only participants or admin can read messages
-      if (
-        role !== "admin" &&
-        requesterId !== userId &&
-        requesterId !== otherUserId
-      ) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      try {
-        const messages = await prisma.message.findMany({
-          where: {
-            OR: [
-              { senderId: userId, receiverId: otherUserId },
-              { senderId: otherUserId, receiverId: userId },
-            ],
-          },
-          orderBy: { createdAt: "desc" },
-          take: 50,
-          ...(cursor ? { skip: 1, cursor: { id: cursor as string } } : {}),
-        });
-
-        const nextCursor = messages.length === 50 ? messages[49].id : null;
-        if (nextCursor) res.setHeader("X-Next-Cursor", nextCursor);
-        res.json(messages.reverse());
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch messages" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/messages",
-    authenticateToken,
-    async (req: any, res) => {
-      try {
-        const { receiverId, content, type, audioUrl, imageUrl } = req.body;
-        const senderId = req.user.id;
-
-        if (!receiverId) {
-          return res.status(400).json({ error: "receiverId is required" });
-        }
-
-        const message = await prisma.message.create({
-          data: {
-            senderId,
-            receiverId,
-            content: content || null,
-            type: type || "text",
-            audioUrl: audioUrl || null,
-            imageUrl: imageUrl || null,
-            status: "sent",
-          },
-        });
-
-        res.status(201).json(message);
-      } catch (error) {
-        console.error("Post message error:", error);
-        res.status(500).json({ error: "Failed to send message" });
-      }
-    }
-  );
-
   // --- WebSockets ---
 
   // Secure socket connection
@@ -868,7 +731,7 @@ async function startServer() {
     import("jsonwebtoken").then((jwt) => {
       jwt.default.verify(
         token,
-        process.env.JWT_SECRET || "",
+        JWT_SECRET,
         (err, decoded) => {
           if (err) return next(new Error("Authentication error"));
           socket.data.user = decoded;
@@ -1103,7 +966,7 @@ async function startServer() {
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`Database: SQLite`);
+    console.log(`Database: PostgreSQL`);
   });
 }
 

@@ -90,6 +90,7 @@ model User {
   createdDevis         Devis[]               @relation("CreatedDevis")
   createdFactures      Facture[]             @relation("CreatedFactures")
   clientProductOrders  ProductOrder[]        @relation("ClientProductOrders")
+  withdrawalRequests   WithdrawalRequest[]
 
   @@map("users")
 }
@@ -349,6 +350,7 @@ model Booking {
   bookingStatus           BookingStatus?    @default(pending) @map("booking_status")
   adminAmount             Decimal?          @map("admin_amount")
   artisanAmount           Decimal?          @map("artisan_amount")
+  commissionAmount        Decimal?          @map("commission_amount")
   scheduledAt             DateTime?         @map("scheduled_at")
   isUrgent                Boolean           @default(false) @map("is_urgent")
   attachments             Json?
@@ -825,6 +827,23 @@ model FactureItem {
   facture     Facture  @relation(fields: [factureId], references: [id], onDelete: Cascade)
 
   @@map("facture_items")
+}
+
+model WithdrawalRequest {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  amount         Decimal
+  method         String   // bank_transfer, ciih_bank, etc.
+  accountDetails String?  @map("account_details") // JSON stringified
+  status         String   @default("pending") // pending, approved, rejected
+  transactionId  String?  @unique @map("transaction_id")
+  adminNote      String?  @map("admin_note")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("withdrawal_requests")
 }
 
 model ProductOrder {

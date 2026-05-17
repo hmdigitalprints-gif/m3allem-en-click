@@ -5,18 +5,15 @@ import { ViewProps } from '../types';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchOrders = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/orders', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
@@ -29,7 +26,7 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
 
   useEffect(() => {
     fetchOrders();
-  }, [token]);
+  }, []);
 
   const filteredOrders = orders.filter(o => 
     o.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -128,7 +125,7 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
                       {order.status === 'completed' && <CheckCircle size={14} />}
                       {order.status === 'pending' && <Clock size={14} />}
                       {order.status === 'disputed' && <AlertTriangle size={14} />}
-                      {order.status.replace('_', ' ')}
+                      {(order.status || 'pending').replace('_', ' ')}
                     </span>
                   </td>
                   <td className="px-10 py-8 text-right">

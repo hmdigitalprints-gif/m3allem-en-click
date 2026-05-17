@@ -5,18 +5,15 @@ import { ViewProps } from '../types';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function PaymentsView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchTransactions = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/transactions', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setTransactions(Array.isArray(data) ? data : []);
@@ -29,7 +26,7 @@ export default function PaymentsView({ isDarkMode, cardClasses, textMutedClasses
 
   useEffect(() => {
     fetchTransactions();
-  }, [token]);
+  }, []);
 
   const filteredTransactions = transactions.filter(t => 
     t.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -46,7 +46,7 @@ export default function ReviewModal({ booking, onClose, onSuccess }: ReviewModal
         </div>
 
         <div className="text-center mb-8">
-          <img src={booking.other_party_avatar} className="w-20 h-20 rounded-2xl mx-auto mb-4 object-cover" alt="" referrerPolicy="no-referrer" />
+          <img src={booking.other_party_avatar} className="w-20 h-20 rounded-2xl mx-auto mb-4 object-cover" alt="" referrerPolicy="no-referrer" loading="lazy" />
           <h4 className="font-bold text-lg">{booking.other_party_name}</h4>
           <p className="text-[var(--text-muted)] text-sm">{booking.service_name}</p>
         </div>

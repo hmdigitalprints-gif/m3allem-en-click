@@ -20,7 +20,6 @@ interface Language {
 }
 
 export function AdminTranslationManager() {
-  const { token } = useAuth();
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,20 +33,17 @@ export function AdminTranslationManager() {
 
   useEffect(() => {
     fetchData();
-  }, [token]);
+  }, []);
 
   const fetchData = async () => {
-    if (!token) return;
     try {
       setLoading(true);
       const [transRes, langRes] = await Promise.all([
         fetch('/api/admin/translations', { 
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         }),
         fetch('/api/languages', { 
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
       ]);
       
@@ -64,14 +60,12 @@ export function AdminTranslationManager() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     try {
       const res = await fetch('/api/admin/translations', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newTranslation)
       });
@@ -91,14 +85,12 @@ export function AdminTranslationManager() {
   };
 
   const handleUpdate = async (id: string) => {
-    if (!token) return;
     try {
       const res = await fetch(`/api/admin/translations/${id}`, { 
         credentials: 'include', 
         method: 'PUT',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ value: editValue })
       });
@@ -333,8 +325,7 @@ export function AdminTranslationManager() {
                           if (confirm('Are you sure you want to delete this translation?')) {
                             await fetch(`/api/admin/translations/${t.id}`, { 
                               credentials: 'include',  
-                              method: 'DELETE',
-                              headers: { 'Authorization': `Bearer ${token}` }
+                              method: 'DELETE'
                             });
                             fetchData();
                           }

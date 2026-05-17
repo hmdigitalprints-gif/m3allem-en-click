@@ -6,7 +6,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettings } from '../../context/SettingsContext';
-import premiumLogo from '../../assets/images/m3allem_premium_logo_1778418407151.png';
+import premiumLogo from '../../assets/images/logo.webp';
 
 export default function PublicLayout({ children, onGetStarted }: { children: React.ReactNode, onGetStarted?: () => void }) {
   const { isDarkMode, toggleTheme } = useTheme();

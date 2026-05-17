@@ -179,9 +179,9 @@ export default function Profile() {
 
         <div className="space-y-4">
           {[
-            { icon: <Settings size={20} />, label: 'Account Settings', desc: 'Personal details, password' },
-            { icon: <CreditCard size={20} />, label: 'Payment Methods', desc: 'Cards, billing history' },
-            { icon: <ShieldCheck size={20} />, label: 'Privacy & Security', desc: '2FA, connected devices' },
+            // { icon: <Settings size={20} />, label: 'Account Settings', desc: 'Personal details, password' },
+            // { icon: <CreditCard size={20} />, label: 'Payment Methods', desc: 'Cards, billing history' },
+            // { icon: <ShieldCheck size={20} />, label: 'Privacy & Security', desc: '2FA, connected devices' },
           ]?.map((item, i) => (
             <button 
               key={i} 

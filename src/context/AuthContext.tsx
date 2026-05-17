@@ -16,7 +16,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   login: (identifier: string, password: string) => Promise<void>;
   verifyOtp: (userId: string, code: string) => Promise<void>;
   register: (data: any) => Promise<void>;
@@ -30,33 +29,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const verifySession = async () => {
       try {
-        const savedUser = localStorage.getItem('m3allem_user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        }
-
-        const savedToken = localStorage.getItem('m3allem_token');
-        if (savedToken) {
-          setToken(savedToken);
-        }
-
         const res = await fetch('/api/auth/users/me', { 
-          credentials: 'include',
-          headers: savedToken ? { 'Authorization': `Bearer ${savedToken}` } : undefined
+          credentials: 'include'
         });
         if (res.ok) {
           const userData = await res.json();
           setUser({ ...userData, avatar_url: userData.avatarUrl || userData.avatar_url, preferred_language: userData.preferredLanguage || userData.preferred_language });
-          localStorage.setItem('m3allem_user', JSON.stringify(userData));
         } else {
           setUser(null);
-          localStorage.removeItem('m3allem_user');
         }
       } catch (err: any) {
         if (err?.name === 'TypeError' && err?.message === 'Failed to fetch') {
@@ -79,8 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ identifier, password })});
       if (!res.ok) {
         const err = await res.json();
-        // If the backend returns that OTP or Verification is required, don't throw. 
-        // Pass the response to the caller so they can switch to the channel selection screen.
         if (err.requiresOtp || err.requiresVerification) {
           return err;
         }
@@ -89,11 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       if (data.user) {
         setUser(data.user);
-        if (data.token) {
-          setToken(data.token);
-          localStorage.setItem('m3allem_token', data.token);
-        }
-        localStorage.setItem('m3allem_user', JSON.stringify(data.user));
       }
       return data;
     } catch (err: any) {
@@ -116,11 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const data = await res.json();
       setUser(data.user);
-      if (data.token) {
-        setToken(data.token);
-        localStorage.setItem('m3allem_token', data.token);
-      }
-      localStorage.setItem('m3allem_user', JSON.stringify(data.user));
     } catch (err: any) {
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
         throw new Error('Unable to connect to the server. Please check your internet connection.');
@@ -160,26 +133,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout failed:", e);
     }
     setUser(null);
-    setToken(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('m3allem_user');
-    localStorage.removeItem('m3allem_token');
   };
 
   const updateLanguage = async (lang: string) => {
-    if (!user || !token) return;
+    if (!user) return;
     const res = await fetch(`/api/auth/users/${user.id}/language`, { 
       credentials: 'include', 
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ language: lang })});
     if (res.ok) {
       const updatedUser = { ...user, preferred_language: lang };
       setUser(updatedUser);
-      localStorage.setItem('m3allem_user', JSON.stringify(updatedUser));
     } else {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update language');
@@ -187,13 +155,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (data: { name?: string; avatarUrl?: string; city?: string; address?: string; phone?: string }) => {
-    if (!user || !token) return;
+    if (!user) return;
     const res = await fetch(`/api/auth/users/${user.id}`, { 
       credentials: 'include', 
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)});
     if (res.ok) {
@@ -206,7 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: data.phone || user.phone
       };
       setUser(updatedUser);
-      localStorage.setItem('m3allem_user', JSON.stringify(updatedUser));
     } else {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update profile');
@@ -214,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, verifyOtp, register, updateLanguage, updateProfile, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, verifyOtp, register, updateLanguage, updateProfile, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

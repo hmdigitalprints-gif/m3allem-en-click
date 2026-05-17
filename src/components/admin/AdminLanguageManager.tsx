@@ -14,15 +14,13 @@ interface Language {
 
 export const AdminLanguageManager: React.FC = () => {
   const { t } = useTranslation();
-  const { token } = useAuth();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newLang, setNewLang] = useState({ code: '', name: '', native_name: '', is_rtl: false });
 
   const fetchLanguages = () => {
     fetch('/api/languages', { 
-      credentials: 'include',
-      headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(setLanguages)
@@ -34,14 +32,12 @@ export const AdminLanguageManager: React.FC = () => {
   }, []);
 
   const handleAddLanguage = async () => {
-    if (!token) return;
     try {
       const res = await fetch('/api/admin/languages', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newLang)});
       if (res.ok) {
@@ -55,14 +51,12 @@ export const AdminLanguageManager: React.FC = () => {
   };
 
   const toggleLanguageStatus = async (code: string, currentStatus: boolean) => {
-    if (!token) return;
     try {
       await fetch(`/api/admin/languages/${code}/toggle`, { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ is_active: !currentStatus })});
       fetchLanguages();

@@ -17,17 +17,14 @@ export default function AuditLogsView({
   hoverClasses, 
   onAction 
 }: AuditLogsViewProps) {
-  const { token } = useAuth();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
-    if (!token) return;
     fetch('/api/admin/audit-logs', { 
-      credentials: 'include',
-      headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {

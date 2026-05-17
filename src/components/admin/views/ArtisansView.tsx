@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [artisans, setArtisans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,14 +13,12 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
 
   useEffect(() => {
     fetchArtisans();
-  }, [token]);
+  }, []);
 
   const fetchArtisans = async () => {
-    if (!token) return;
     try {
       const response = await fetch('/api/admin/artisans', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await response.json();
       setArtisans(Array.isArray(data) ? data : []);
@@ -33,12 +30,10 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
   };
 
   const toggleFeatured = async (id: string) => {
-    if (!token) return;
     try {
       const response = await fetch(`/api/admin/artisans/${id}/toggle-featured`, { 
         credentials: 'include', 
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'POST'
       });
       if (response.ok) {
         setArtisans(prev => prev.map(a => a.id === id ? { ...a, is_featured: a.is_featured ? 0 : 1 } : a));
@@ -49,14 +44,12 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
   };
 
   const handleVerify = async (id: string, currentStatus: boolean) => {
-    if (!token) return;
     try {
       const response = await fetch(`/api/admin/artisans/${id}/verify`, { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ verified: !currentStatus })
       });
@@ -163,7 +156,7 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
                   <td className="px-10 py-8">
                     <div className="flex items-center gap-2 text-[var(--accent)]">
                       <Star size={16} className="fill-current" />
-                      <span className="text-sm tech-value">{artisan.rating.toFixed(1)}</span>
+                      <span className="text-sm tech-value">{Number(artisan.rating || 0).toFixed(1)}</span>
                     </div>
                   </td>
                   <td className="px-10 py-8">
@@ -244,7 +237,7 @@ export default function ArtisansView({ isDarkMode, cardClasses, textMutedClasses
                       <p className="tech-label mb-1 opacity-50">Rating</p>
                       <div className="flex items-center gap-2 text-[var(--accent)]">
                         <Star size={16} className="fill-current" />
-                        <span className="text-sm tech-value">{selectedArtisan.rating.toFixed(1)}</span>
+                        <span className="text-sm tech-value">{Number(selectedArtisan.rating || 0).toFixed(1)}</span>
                       </div>
                     </div>
                   </div>

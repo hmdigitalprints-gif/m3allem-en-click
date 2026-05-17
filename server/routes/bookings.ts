@@ -209,8 +209,14 @@ router.get("/", authenticateToken, async (req: any, res) => {
 
     const approvedStatuses = ['proposal_approved', 'en_route', 'in_progress', 'client_review', 'completed'];
 
-    const formatted = await Promise.all(bookings.map(async (b: any) => {
+    const statusKeys = Array.from(new Set(bookings.map(b => `status_${(b as any).bookingStatus}`))) as string[];
+    const { getTranslations } = await import("../lib/i18n.ts");
+    const translations = await getTranslations(statusKeys, lang);
+
+    const formatted = bookings.map((b: any) => {
       const isApproved = approvedStatuses.includes(b.bookingStatus);
+      const statusKey = `status_${b.bookingStatus}`;
+      
       return {
         ...b,
         status: b.bookingStatus,
@@ -222,9 +228,9 @@ router.get("/", authenticateToken, async (req: any, res) => {
         artisan_avatar: b.artisan?.user?.avatarUrl,
         artisan_phone: isApproved ? b.artisan?.user?.phone : undefined,
         has_review: b.ratings.length > 0,
-        status_label: await t(`status_${b.bookingStatus}`, lang)
+        status_label: translations[statusKey] || b.bookingStatus
       };
-    }));
+    });
 
     res.json(formatted);
   } catch (error) {

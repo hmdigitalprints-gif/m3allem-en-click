@@ -62,6 +62,70 @@ export async function t(key: string, lang: string = 'en'): Promise<string> {
   }
 }
 
+/**
+ * Translates multiple keys into the specified language in a single query.
+ */
+export async function getTranslations(keys: string[], lang: string = 'en'): Promise<Record<string, string>> {
+  if (!isDbReady() || keys.length === 0) {
+    return keys.reduce((acc, key) => { acc[key] = key; return acc; }, {} as Record<string, string>);
+  }
+
+  const results: Record<string, string> = {};
+  const missingKeys: string[] = [];
+
+  keys.forEach(key => {
+    const cacheKey = `trans_${key}_${lang}`;
+    const cached = cache.get<string>(cacheKey);
+    if (cached !== undefined) {
+      results[key] = cached;
+    } else {
+      missingKeys.push(key);
+    }
+  });
+
+  if (missingKeys.length === 0) return results;
+
+  try {
+    const uniqueMissingKeys = Array.from(new Set(missingKeys));
+    const translations = await prisma.translation.findMany({
+      where: {
+        languageCode: lang,
+        key: { in: uniqueMissingKeys }
+      }
+    });
+
+    const resultMap = new Map(translations.map(t => [t.key, t.value]));
+    
+    // Handle fallbacks for missing translations
+    const stillMissing = uniqueMissingKeys.filter(key => !resultMap.has(key));
+    
+    if (stillMissing.length > 0) {
+      const defaultLang = await getDefaultLanguage();
+      if (defaultLang && defaultLang !== lang) {
+        const fallbacks = await prisma.translation.findMany({
+          where: {
+            languageCode: defaultLang,
+            key: { in: stillMissing }
+          }
+        });
+        fallbacks.forEach(f => resultMap.set(f.key, f.value));
+      }
+    }
+
+    // Populate results and cache
+    uniqueMissingKeys.forEach(key => {
+      const value = resultMap.get(key) || key;
+      results[key] = value;
+      cache.set(`trans_${key}_${lang}`, value);
+    });
+
+    return results;
+  } catch (error) {
+    console.error("Batch translation error:", error);
+    return keys.reduce((acc, key) => { acc[key] = results[key] || key; return acc; }, {} as Record<string, string>);
+  }
+}
+
 async function getDefaultLanguage(): Promise<string> {
   const cacheKey = 'default_lang';
   const cached = cache.get<string>(cacheKey);

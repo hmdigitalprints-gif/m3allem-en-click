@@ -5,19 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function DisputesView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [disputes, setDisputes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchDisputes = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/disputes', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setDisputes(Array.isArray(data) ? data : []);
@@ -30,18 +27,16 @@ export default function DisputesView({ isDarkMode, cardClasses, textMutedClasses
 
   useEffect(() => {
     fetchDisputes();
-  }, [token]);
+  }, []);
 
   const handleResolve = async (id: string, resolution: string) => {
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/admin/disputes/${id}/resolve`, { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ resolution })
       });

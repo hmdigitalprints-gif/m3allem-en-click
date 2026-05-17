@@ -67,13 +67,9 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
 
   const handleApproveBookingProposal = async (bookingId: string, materialHandling: string = 'client_provides') => {
     try {
-      const token = localStorage.getItem('m3allem_token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const data = await fetchJson(`/api/bookings/${bookingId}/approve-proposal`, { 
         method: 'PATCH',
@@ -91,11 +87,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
 
   const handleRejectBookingProposal = async (bookingId: string) => {
     try {
-      const token = localStorage.getItem('m3allem_token');
       const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
 
       await fetchJson(`/api/bookings/${bookingId}/reject-proposal`, { 
@@ -193,7 +185,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
         <div className="space-y-6">
           {bookings?.map(booking => (
             <div key={booking.id} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center">
-              <img src={booking.other_party_avatar} className="w-20 h-20 rounded-2xl object-cover" alt="" referrerPolicy="no-referrer" />
+              <img src={booking.other_party_avatar} className="w-20 h-20 rounded-2xl object-cover" alt="" referrerPolicy="no-referrer" loading="lazy" />
               <div className="flex-1 text-center md:text-left">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-2">
                   <h4 className="text-xl font-bold">{booking.service_name}</h4>
@@ -320,13 +312,11 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                   {booking.status === 'pending' && (!booking.payment_status || booking.payment_status === 'failed') && (
                     <button 
                       onClick={async () => {
-                        const token = localStorage.getItem('m3allem_token');
                         if (booking.payment_status === 'failed') {
                           onAction(`Retrying payment...`);
                           try {
                             const data = await fetchJson(`/api/webhooks/retry/${booking.id}`, { 
-                              method: 'POST',
-                              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                              method: 'POST'
                             });
                             if (data.checkoutUrl) {
                                onAction(`Redirecting to ${data.checkoutUrl}`);

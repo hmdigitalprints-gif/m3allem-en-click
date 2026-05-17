@@ -37,7 +37,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
   onAction?: (msg: string) => void
 }) {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
@@ -65,8 +65,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
     const fetchSellerData = async () => {
       try {
         const options = {
-          credentials: 'include' as const,
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include' as const
         };
         const [productsRes, ordersRes] = await Promise.all([
           fetch('/api/sellers/products', options),
@@ -96,10 +95,10 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
       }
     };
 
-    if (token) {
+    if (user) {
       fetchSellerData();
     }
-  }, [token]);
+  }, [user]);
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.stock || !newProduct.category) {
@@ -112,8 +111,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
         credentials: 'include', 
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newProduct)
       });
@@ -147,8 +145,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
         credentials: 'include',
         method: 'PATCH',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -422,7 +419,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
       case 'settings':
         return <AccountSection onAction={(msg) => onAction?.(msg)} />;
       default:
-        return <div className="p-12 text-center text-[var(--text-muted)]">Coming soon</div>;
+        return null;
     }
   };
 
@@ -517,7 +514,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
             >
               {isDarkMode ? <Sun className="text-yellow-400" size={20} /> : <Moon className="text-blue-500" size={20} />}
             </button>
-            {user && <NotificationBell userId={user.id} token={token} />}
+            {user && <NotificationBell userId={user.id} />}
             <div className="w-10 h-10 rounded-full bg-[var(--text)]/10 border border-[var(--border)] overflow-hidden">
               <img src={`https://ui-avatars.com/api/?name=${user?.name || 'Seller'}&background=FFD700&color=000`} alt="Profile" className="w-full h-full object-cover" />
             </div>

@@ -1,225 +1,256 @@
+/**
+ * server/routes/wallet.ts
+ *
+ * Wallet endpoints:
+ *  GET  /api/wallet/balance             — balance + recent transactions
+ *  GET  /api/wallet/stripe-status       — is Stripe available?
+ *  POST /api/wallet/pay-order           — pay a booking (wallet | cash)
+ *  POST /api/wallet/confirm-cash/:id    — artisan confirms cash received
+ *  POST /api/wallet/withdraw            — request a withdrawal
+ *  GET  /api/wallet/withdrawals         — list own withdrawal requests
+ *  POST /api/wallet/topup               — Stripe top-up (only when enabled)
+ *  POST /api/wallet/webhook             — Stripe webhook
+ */
+
 import express from "express";
 import prisma from "../lib/prisma.ts";
 import { authenticateToken } from "./auth.ts";
-import { TransactionType, TransactionStatus } from "@prisma/client";
+import { auditService } from "../services/auditService.ts";
+import {
+  processCashPayment,
+  processWalletPayment,
+  confirmCashReceived,
+  ensureWallet,
+  isStripeEnabled,
+  getStripe,
+  decryptValue,
+} from "../lib/paymentService.ts";
 
 const router = express.Router();
 
-// Get wallet balance and transactions
+// ─── Balance + transaction history ───────────────────────────────────────────
+
 router.get("/balance", authenticateToken, async (req: any, res) => {
   try {
     const userId = req.user.id;
-    
-    let wallet = await prisma.wallet.findUnique({
-      where: { userId },
-      include: {
-        transactions: {
-          orderBy: { createdAt: 'desc' },
-          take: 50
-        }
-      }
+    const wallet = await ensureWallet(userId);
+    const transactions = await prisma.transaction.findMany({
+      where: { walletId: wallet.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
     });
-    
-    if (!wallet) {
-      // Create wallet if it doesn't exist
-      wallet = await prisma.wallet.create({
-        data: { userId, balance: 0 },
-        include: { transactions: true }
-      });
-    }
-
-    res.json(wallet);
+    res.json({ ...wallet, transactions });
   } catch (error) {
     console.error("Fetch wallet error:", error);
     res.status(500).json({ error: "Failed to fetch wallet" });
   }
 });
 
-// Top up wallet (Initiate Payment)
-import Stripe from 'stripe';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', { apiVersion: '2023-10-16' as any });
+// ─── Stripe availability (safe for frontend) ──────────────────────────────────
 
-router.post("/topup", authenticateToken, async (req: any, res) => {
+router.get("/stripe-status", async (_req, res) => {
   try {
-    const { amount, method } = req.body;
-    const userId = req.user.id;
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Invalid amount" });
-    }
-
-    const transaction = await prisma.$transaction(async (tx) => {
-      let wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet) {
-        wallet = await tx.wallet.create({ data: { userId, balance: 0 } });
-      }
-
-      // Create a pending transaction
-      return tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount,
-          type: 'topup',
-          status: 'pending',
-          description: `Top-up via ${method}`
-        }
-      });
-    });
-
-    // Create Stripe PaymentIntent
-    let clientSecret = "mock_client_secret";
-    if (process.env.STRIPE_SECRET_KEY) {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // convert MAD/currency to cents
-        currency: 'mad',
-        metadata: {
-          transactionId: transaction.id,
-          userId: userId
-        }
-      });
-      clientSecret = paymentIntent.client_secret || "";
-    }
-
-    res.json({ success: true, transactionId: transaction.id, clientSecret, status: 'pending' });
-  } catch (error) {
-    console.error("Topup error:", error);
-    res.status(500).json({ error: "Failed to process top-up" });
+    const enabled = await isStripeEnabled();
+    res.json({ stripeEnabled: enabled });
+  } catch {
+    res.json({ stripeEnabled: false });
   }
 });
 
-// Stripe Webhook handler
-router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
+// ─── Pay for a booking ────────────────────────────────────────────────────────
 
+router.post("/pay-order", authenticateToken, async (req: any, res) => {
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body, 
-      sig as string, 
-      process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock'
-    );
+    const { bookingId, method } = req.body;
+    const clientId = req.user.id;
+
+    if (!bookingId) return res.status(400).json({ error: "bookingId is required" });
+    if (!["wallet", "cash"].includes(method)) {
+      return res.status(400).json({ error: "Method must be 'wallet' or 'cash'" });
+    }
+
+    const result =
+      method === "cash"
+        ? await processCashPayment(bookingId, clientId)
+        : await processWalletPayment(bookingId, clientId);
+
+    await auditService.log(clientId, "PAYMENT_PROCESSED", "booking", bookingId, {
+      method,
+      ...result,
+    });
+
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    const msg = error?.message || "Failed to process payment";
+    const clientError = ["Insufficient wallet balance", "Already paid", "Unauthorized"].includes(msg);
+    console.error("Payment error:", error);
+    res.status(clientError ? 400 : 500).json({ error: msg });
+  }
+});
+
+// ─── Artisan confirms cash received ──────────────────────────────────────────
+
+router.post("/confirm-cash/:bookingId", authenticateToken, async (req: any, res) => {
+  try {
+    const { bookingId } = req.params;
+    const result = await confirmCashReceived(bookingId, req.user.id);
+    await auditService.log(req.user.id, "CASH_CONFIRMED", "booking", bookingId, result);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || "Failed to confirm cash" });
+  }
+});
+
+// ─── Withdrawal request ───────────────────────────────────────────────────────
+
+router.post("/withdraw", authenticateToken, async (req: any, res) => {
+  try {
+    const { amount, method, accountDetails } = req.body;
+    const userId = req.user.id;
+
+    if (!amount || Number(amount) <= 0) return res.status(400).json({ error: "Invalid amount" });
+    if (!method) return res.status(400).json({ error: "Withdrawal method required" });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!wallet || Number(wallet.balance) < Number(amount)) throw new Error("Insufficient funds");
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { decrement: Number(amount) } },
+      });
+
+      const txRecord = await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          amount: Number(amount),
+          type: "withdrawal",
+          status: "pending",
+          description: `Withdrawal request via ${method}`,
+        },
+      });
+
+      return (tx as any).withdrawalRequest.create({
+        data: {
+          userId,
+          amount: Number(amount),
+          method,
+          accountDetails: accountDetails ? JSON.stringify(accountDetails) : null,
+          status: "pending",
+          transactionId: txRecord.id,
+        },
+      });
+    });
+
+    await auditService.log(userId, "WITHDRAWAL_REQUESTED", "wallet", null, { amount, method });
+    res.json({ success: true, requestId: result.id, status: "pending" });
+  } catch (error: any) {
+    const msg = error?.message || "Failed to request withdrawal";
+    console.error("Withdrawal error:", error);
+    res.status(msg === "Insufficient funds" ? 400 : 500).json({ error: msg });
+  }
+});
+
+// ─── List own withdrawal requests ────────────────────────────────────────────
+
+router.get("/withdrawals", authenticateToken, async (req: any, res) => {
+  try {
+    const requests = await (prisma as any).withdrawalRequest.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    res.json(requests);
+  } catch (error) {
+    console.error("Fetch withdrawals error:", error);
+    res.status(500).json({ error: "Failed to fetch withdrawal requests" });
+  }
+});
+
+// ─── Top-up via Stripe (disabled when no keys configured) ────────────────────
+
+router.post("/topup", authenticateToken, async (req: any, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user.id;
+
+    if (!amount || Number(amount) <= 0) return res.status(400).json({ error: "Invalid amount" });
+
+    if (!(await isStripeEnabled())) {
+      return res.status(503).json({
+        error: "Stripe disabled by admin",
+        message: "Online top-up is currently unavailable. Please contact support.",
+      });
+    }
+
+    const stripe = await getStripe();
+    if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
+
+    const wallet = await ensureWallet(userId);
+    const txRecord = await prisma.transaction.create({
+      data: {
+        walletId: wallet.id,
+        amount: Number(amount),
+        type: "topup",
+        status: "pending",
+        description: "Top-up via Stripe",
+      },
+    });
+
+    const pi = await stripe.paymentIntents.create({
+      amount: Math.round(Number(amount) * 100),
+      currency: "mad",
+      metadata: { transactionId: txRecord.id, userId },
+    });
+
+    res.json({ success: true, transactionId: txRecord.id, clientSecret: pi.client_secret });
+  } catch (error) {
+    console.error("Top-up error:", error);
+    res.status(500).json({ error: "Failed to initiate top-up" });
+  }
+});
+
+// ─── Stripe webhook ───────────────────────────────────────────────────────────
+
+router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const stripe = await getStripe();
+  if (!stripe) return res.status(503).json({ error: "Stripe disabled" });
+
+  let webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+  if (!webhookSecret) {
+    try {
+      const setting = await prisma.setting.findUnique({ where: { key: "stripe_webhook_secret" } });
+      if (setting?.value) webhookSecret = decryptValue(setting.value);
+    } catch { /* ignore */ }
+  }
+
+  let event: any;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers["stripe-signature"] as string, webhookSecret);
   } catch (err: any) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntent = event.data.object as any;
-    const transactionId = paymentIntent.metadata.transactionId;
-    
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as any;
+    const transactionId = pi.metadata?.transactionId;
     if (transactionId) {
       await prisma.$transaction(async (tx) => {
-        const transaction = await tx.transaction.findUnique({ where: { id: transactionId } });
-        if (transaction && transaction.status === 'pending') {
-          await tx.transaction.update({
-            where: { id: transactionId },
-            data: { status: 'completed' }
-          });
-          await tx.wallet.update({
-            where: { id: transaction.walletId! }, // ensure walletId exists
-            data: { balance: { increment: transaction.amount } }
-          });
+        const txRecord = await tx.transaction.findUnique({ where: { id: transactionId } });
+        if (txRecord?.status === "pending") {
+          await tx.transaction.update({ where: { id: transactionId }, data: { status: "completed" } });
+          if (txRecord.walletId) {
+            await tx.wallet.update({
+              where: { id: txRecord.walletId },
+              data: { balance: { increment: Number(txRecord.amount) } },
+            });
+          }
         }
       });
     }
   }
 
-  res.send();
-});
-
-// Withdraw funds
-router.post("/withdraw", authenticateToken, async (req: any, res) => {
-  try {
-    const { amount, method } = req.body;
-    const userId = req.user.id;
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Invalid amount" });
-    }
-
-    const transaction = await prisma.$transaction(async (tx) => {
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet || wallet.balance < amount) {
-        throw new Error("Insufficient funds");
-      }
-
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: amount } }
-      });
-
-      return tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount,
-          type: 'withdrawal',
-          status: 'pending',
-          description: `Withdrawal via ${method}`
-        }
-      });
-    });
-
-    res.json({ success: true, transactionId: transaction.id });
-  } catch (error) {
-    if (error instanceof Error && error.message === "Insufficient funds") {
-      return res.status(400).json({ error: error.message });
-    }
-    console.error("Withdrawal error:", error);
-    res.status(500).json({ error: "Failed to process withdrawal" });
-  }
-});
-
-// Pay for an order
-router.post("/pay-order", authenticateToken, async (req: any, res) => {
-  try {
-    const { orderId, method } = req.body;
-    const userId = req.user.id;
-
-    if (method !== 'wallet') {
-      return res.status(400).json({ error: "Only wallet payment supported via this endpoint" });
-    }
-
-    const booking = await prisma.booking.findUnique({ where: { id: orderId } });
-    if (!booking) return res.status(404).json({ error: "Booking not found" });
-    if (booking.clientId !== userId) return res.status(403).json({ error: "Unauthorized" });
-
-    const transaction = await prisma.$transaction(async (tx) => {
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet || wallet.balance < (booking.price || 0)) {
-        throw new Error("Insufficient wallet balance");
-      }
-
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: booking.price || 0 } }
-      });
-
-      const t = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount: booking.price || 0,
-          type: 'payment',
-          status: 'completed',
-          description: `Payment for booking #${orderId}`,
-          referenceId: orderId
-        }
-      });
-
-      await tx.booking.update({
-        where: { id: orderId },
-        data: { paymentStatus: 'paid', paymentMethod: 'wallet' }
-      });
-
-      return t;
-    });
-
-    res.json({ success: true, transactionId: transaction.id });
-  } catch (error) {
-    if (error instanceof Error && error.message === "Insufficient wallet balance") {
-      return res.status(400).json({ error: error.message });
-    }
-    console.error("Payment error:", error);
-    res.status(500).json({ error: "Failed to process payment" });
-  }
+  res.json({ received: true });
 });
 
 export default router;

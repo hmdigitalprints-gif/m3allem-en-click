@@ -1,7 +1,7 @@
 import express from "express";
 import prisma from "../lib/prisma.ts";
 import { Role } from "@prisma/client";
-import { authenticateToken } from "./auth.ts";
+import { authenticateToken, authenticateAdmin } from "./auth.ts";
 
 const router = express.Router();
 
@@ -9,28 +9,6 @@ router.use((req, res, next) => {
   console.log(`[Admin Router] Request received: ${req.method} ${req.url}`);
   next();
 });
-
-// Admin middleware
-const authenticateAdmin = (req: any, res: any, next: any) => {
-  console.log(`[Admin Auth] Attempting to access: ${req.method} ${req.originalUrl}`);
-  authenticateToken(req, res, () => {
-    if (!req.user) {
-      console.error("[Admin Auth] No user found in request after authenticateToken");
-      return res.status(401).json({ 
-        error: "Authentication failed", 
-        details: "No user found in request context" 
-      });
-    }
-    if (req.user.role !== 'admin') {
-      console.error(`[Admin Auth] User ${req.user.id} with role ${req.user.role} attempted to access admin route`);
-      return res.status(403).json({ 
-        error: "Forbidden" 
-      });
-    }
-    console.log(`[Admin Auth] Access granted for user: ${req.user.id}`);
-    next();
-  });
-};
 
 // Admin logout
 router.post("/logout", authenticateAdmin, async (req, res) => {
@@ -1038,6 +1016,246 @@ router.get("/escrows", authenticateAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error fetching escrows:", error);
     res.status(500).json({ error: "Failed to fetch escrows" });
+  }
+});
+
+// ─── Payment Settings (super admin only) ─────────────────────────────────────
+import {
+  encryptValue,
+  decryptValue,
+  invalidateStripeCache,
+  getStripe,
+} from "../lib/paymentService.ts";
+import { auditService } from "../services/auditService.ts";
+
+const PAYMENT_SETTING_KEYS = [
+  "stripe_secret_key",
+  "stripe_webhook_secret",
+  "stripe_public_key",
+  "stripe_enabled",
+];
+
+router.get("/payment-settings", authenticateAdmin, async (req: any, res) => {
+  try {
+    const settings = await prisma.setting.findMany({
+      where: { key: { in: PAYMENT_SETTING_KEYS } },
+    });
+
+    // Never return actual secret values to the frontend — return masked versions
+    const safeSettings: Record<string, any> = {};
+    for (const s of settings) {
+      if (s.key === "stripe_enabled") {
+        safeSettings[s.key] = s.value;
+      } else if (s.value) {
+        // Show only last 4 chars so admin knows a value is set
+        try {
+          const plain = decryptValue(s.value);
+          safeSettings[s.key] = plain.length > 4
+            ? `${"*".repeat(plain.length - 4)}${plain.slice(-4)}`
+            : "****";
+          safeSettings[`${s.key}_set`] = true;
+        } catch {
+          safeSettings[s.key] = "****";
+          safeSettings[`${s.key}_set`] = true;
+        }
+      } else {
+        safeSettings[s.key] = null;
+        safeSettings[`${s.key}_set`] = false;
+      }
+    }
+
+    // Ensure all keys are present even if not yet saved
+    for (const key of PAYMENT_SETTING_KEYS) {
+      if (!(key in safeSettings)) {
+        safeSettings[key] = key === "stripe_enabled" ? "false" : null;
+        safeSettings[`${key}_set`] = false;
+      }
+    }
+
+    res.json(safeSettings);
+  } catch (error) {
+    console.error("Fetch payment settings error:", error);
+    res.status(500).json({ error: "Failed to fetch payment settings" });
+  }
+});
+
+router.put("/payment-settings", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { stripe_secret_key, stripe_webhook_secret, stripe_public_key, stripe_enabled } =
+      req.body;
+    const adminId = req.user.id;
+
+    const updates: { key: string; value: string }[] = [];
+
+    // Only update keys that were actually provided (not undefined)
+    if (stripe_secret_key !== undefined && stripe_secret_key !== "") {
+      if (!stripe_secret_key.startsWith("sk_")) {
+        return res.status(400).json({ error: "Invalid Stripe secret key format (must start with sk_)" });
+      }
+      updates.push({ key: "stripe_secret_key", value: encryptValue(stripe_secret_key) });
+    }
+
+    if (stripe_webhook_secret !== undefined && stripe_webhook_secret !== "") {
+      if (!stripe_webhook_secret.startsWith("whsec_")) {
+        return res.status(400).json({ error: "Invalid webhook secret format (must start with whsec_)" });
+      }
+      updates.push({ key: "stripe_webhook_secret", value: encryptValue(stripe_webhook_secret) });
+    }
+
+    if (stripe_public_key !== undefined && stripe_public_key !== "") {
+      if (!stripe_public_key.startsWith("pk_")) {
+        return res.status(400).json({ error: "Invalid Stripe public key format (must start with pk_)" });
+      }
+      // Public key not encrypted (safe to expose to frontend)
+      updates.push({ key: "stripe_public_key", value: stripe_public_key });
+    }
+
+    if (stripe_enabled !== undefined) {
+      updates.push({ key: "stripe_enabled", value: stripe_enabled ? "true" : "false" });
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "No valid fields provided" });
+    }
+
+    await prisma.$transaction(
+      updates.map((u) =>
+        prisma.setting.upsert({
+          where: { key: u.key },
+          update: { value: u.value },
+          create: { key: u.key, value: u.value },
+        })
+      )
+    );
+
+    // Invalidate cached Stripe instance so next request picks up new keys
+    invalidateStripeCache();
+
+    await auditService.log(adminId, "PAYMENT_SETTINGS_UPDATED", "settings", null, {
+      updatedKeys: updates.map((u) => u.key),
+    });
+
+    res.json({ success: true, updatedKeys: updates.map((u) => u.key) });
+  } catch (error) {
+    console.error("Update payment settings error:", error);
+    res.status(500).json({ error: "Failed to update payment settings" });
+  }
+});
+
+// Test Stripe connection with the currently saved keys
+router.post("/payment-settings/test-stripe", authenticateAdmin, async (_req, res) => {
+  try {
+    const stripe = await getStripe();
+    if (!stripe) {
+      return res.status(400).json({
+        success: false,
+        message: "Stripe is not configured. Please add your secret key first.",
+      });
+    }
+
+    // Lightweight test: list 1 payment intent — confirms key works
+    await stripe.paymentIntents.list({ limit: 1 });
+    res.json({ success: true, message: "Stripe connection successful." });
+  } catch (error: any) {
+    const msg = error?.message || "Stripe connection failed";
+    console.error("Stripe test error:", error);
+    res.status(400).json({ success: false, message: msg });
+  }
+});
+
+// Delete a specific payment key (e.g. rotate a key)
+router.delete("/payment-settings/:key", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { key } = req.params;
+    if (!PAYMENT_SETTING_KEYS.includes(key)) {
+      return res.status(400).json({ error: "Invalid setting key" });
+    }
+
+    await prisma.setting.deleteMany({ where: { key } });
+    invalidateStripeCache();
+
+    await auditService.log(req.user.id, "PAYMENT_KEY_DELETED", "settings", null, { key });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete payment key error:", error);
+    res.status(500).json({ error: "Failed to delete key" });
+  }
+});
+
+// Admin: list all withdrawal requests
+router.get("/withdrawals", authenticateAdmin, async (_req, res) => {
+  try {
+    const requests = await (prisma as any).withdrawalRequest.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true, role: true } },
+      },
+    });
+    res.json(requests);
+  } catch (error) {
+    console.error("Admin withdrawals error:", error);
+    res.status(500).json({ error: "Failed to fetch withdrawals" });
+  }
+});
+
+// Admin: approve or reject a withdrawal request
+router.patch("/withdrawals/:id", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // "approved" | "rejected"
+
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+    }
+
+    const wr = await (prisma as any).withdrawalRequest.findUnique({ where: { id } });
+    if (!wr) return res.status(404).json({ error: "Withdrawal request not found" });
+    if (wr.status !== "pending") return res.status(400).json({ error: "Request already processed" });
+
+    if (status === "rejected") {
+      // Refund the reserved amount back to the user's wallet
+      await prisma.$transaction(async (tx) => {
+        await (tx as any).withdrawalRequest.update({ where: { id }, data: { status: "rejected" } });
+        if (wr.transactionId) {
+          await tx.transaction.update({
+            where: { id: wr.transactionId },
+            data: { status: "failed" },
+          });
+        }
+        const wallet = await tx.wallet.findUnique({ where: { userId: wr.userId } });
+        if (wallet) {
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { increment: Number(wr.amount) } },
+          });
+          await tx.transaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: Number(wr.amount),
+              type: "refund",
+              status: "completed",
+              description: `Withdrawal request #${id} rejected — amount refunded`,
+            },
+          });
+        }
+      });
+    } else {
+      await (prisma as any).withdrawalRequest.update({ where: { id }, data: { status: "approved" } });
+      if (wr.transactionId) {
+        await prisma.transaction.update({
+          where: { id: wr.transactionId },
+          data: { status: "completed" },
+        });
+      }
+    }
+
+    await auditService.log(req.user.id, "WITHDRAWAL_PROCESSED", "withdrawalRequest", id, { status });
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error("Process withdrawal error:", error);
+    res.status(500).json({ error: "Failed to process withdrawal" });
   }
 });
 

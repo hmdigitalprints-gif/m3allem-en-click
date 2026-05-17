@@ -206,7 +206,7 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
               <div className={`flex ${i18n.dir() === 'rtl' ? 'space-x-2' : '-space-x-2'}`}>
                 {[1, 2, 3].map(i => (
                   <div key={i} className="w-8 h-8 rounded-full border-2 border-[var(--card-bg)] bg-[var(--bg)] overflow-hidden">
-                    <img src={`https://picsum.photos/seed/demo${i}/50/50`} alt="" referrerPolicy="no-referrer" />
+                    <img src={`https://picsum.photos/seed/demo${i}/50/50`} alt="" referrerPolicy="no-referrer" loading="lazy" />
                   </div>
                 ))}
               </div>

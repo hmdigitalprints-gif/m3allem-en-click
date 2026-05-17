@@ -47,15 +47,10 @@ export interface Booking {
   materialHandling?: string;
 }
 
-const getAuthHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('m3allem_token') : null;
-  const headers: Record<string, string> = {
+const getHeaders = () => {
+  return {
     'Content-Type': 'application/json',
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
 };
 
 export const fetchJson = async (url: string, options: RequestInit = {}) => {
@@ -94,7 +89,7 @@ export const marketplaceService = {
   async getCategories(): Promise<Category[]> {
     try {
       return await fetchJson('/api/marketplace/categories', { 
-        headers: getAuthHeaders()
+        headers: getHeaders()
       });
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -109,7 +104,7 @@ export const marketplaceService = {
     try {
       const params = new URLSearchParams(filters);
       return await fetchJson(`/api/marketplace/artisans?${params.toString()}`, { 
-        headers: getAuthHeaders()
+        headers: getHeaders()
       });
     } catch (err) {
       console.error('Failed to fetch artisans:', err);
@@ -123,7 +118,7 @@ export const marketplaceService = {
   async getArtisanProfile(id: string) {
     try {
       return await fetchJson(`/api/marketplace/artisans/${id}`, { 
-        headers: getAuthHeaders()
+        headers: getHeaders()
       });
     } catch (err) {
       console.error('Failed to fetch profile:', err);
@@ -141,7 +136,7 @@ export const marketplaceService = {
     try {
       return await fetchJson(url, {
         method,
-        headers: getAuthHeaders(),
+        headers: getHeaders(),
         body
       });
     } catch (err) {
@@ -153,7 +148,7 @@ export const marketplaceService = {
   async getMyFavorites(): Promise<Artisan[]> {
     try {
       return await fetchJson('/api/marketplace/my-favorites', { 
-        headers: getAuthHeaders()
+        headers: getHeaders()
       });
     } catch (err) {
       console.error('Failed to fetch favorites:', err);
@@ -164,7 +159,7 @@ export const marketplaceService = {
   async getServicesByCategory(categoryId: string): Promise<any[]> {
     try {
       return await fetchJson(`/api/services/by-category/${categoryId}`, { 
-        headers: getAuthHeaders()
+        headers: getHeaders()
       });
     } catch (err) {
       console.error('Failed to fetch services:', err);
@@ -177,21 +172,21 @@ export const bookingService = {
   async createBooking(data: any) {
     return fetchJson('/api/bookings', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify(data)
     });
   },
 
   async getMyBookings(): Promise<Booking[]> {
     return fetchJson('/api/bookings', {
-      headers: getAuthHeaders()
+      headers: getHeaders()
     });
   },
 
   async updateStatus(id: string, status: string) {
     return fetchJson(`/api/bookings/${id}/status`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ status })
     });
   },
@@ -199,21 +194,21 @@ export const bookingService = {
   async submitReview(id: string, stars: number, review: string) {
     return fetchJson(`/api/bookings/${id}/review`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ stars, review })
     });
   },
 
   async getNearbyBookings(): Promise<any[]> {
     return fetchJson('/api/bookings/nearby', {
-      headers: getAuthHeaders()
+      headers: getHeaders()
     });
   },
 
   async submitProposal(id: string, price: number, comment?: string) {
     return fetchJson(`/api/bookings/${id}/propose`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ price, comment })
     });
   }
@@ -222,20 +217,20 @@ export const bookingService = {
 export const walletService = {
   async getWallet() {
     return fetchJson('/api/wallet/balance', { 
-      headers: getAuthHeaders()
+      headers: getHeaders()
     });
   },
 
   async getBalance() {
     return fetchJson('/api/wallet/balance', { 
-      headers: getAuthHeaders()
+      headers: getHeaders()
     });
   },
 
   async topup(amount: number, method: string) {
     return fetchJson('/api/wallet/topup', { 
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ amount, method })
     });
   },
@@ -243,7 +238,7 @@ export const walletService = {
   async payOrder(orderId: string, method: string) {
     return fetchJson('/api/wallet/pay-order', { 
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ orderId, method })
     });
   },
@@ -251,7 +246,7 @@ export const walletService = {
   async withdraw(amount: number, method: string) {
     return fetchJson('/api/wallet/withdraw', { 
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getHeaders(),
       body: JSON.stringify({ amount, method })
     });
   }

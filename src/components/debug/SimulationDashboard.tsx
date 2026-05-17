@@ -36,7 +36,10 @@ export default function SimulationDashboard() {
     setSeedResult(null);
     setError(null);
     try {
-      const res = await fetch('/api/simulation/seed', { method: 'POST' });
+      const res = await fetch('/api/simulation/seed', { 
+        method: 'POST',
+        credentials: 'include'
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Seed failed');
       setSeedResult(data);
@@ -51,18 +54,12 @@ export default function SimulationDashboard() {
     try {
       const res = await fetch('/api/simulation/login-as', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-      
-      if (data.token) {
-        localStorage.setItem('m3allem_token', data.token);
-        if (data.user) {
-          localStorage.setItem('m3allem_user', JSON.stringify(data.user));
-        }
-      }
       
       window.location.href = '/';
     } catch (err: any) {

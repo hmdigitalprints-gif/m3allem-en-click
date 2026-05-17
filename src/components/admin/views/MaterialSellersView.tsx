@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function MaterialSellersView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,12 +13,10 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
   const [formData, setFormData] = useState({ name: '', category: '', email: '', phone: '' });
 
   const fetchSellers = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/material-sellers', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setSellers(Array.isArray(data) ? data : []);
@@ -32,19 +29,17 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
 
   useEffect(() => {
     fetchSellers();
-  }, [token]);
+  }, []);
 
   const handleAddSeller = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/material-sellers', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(formData)
       });
@@ -74,12 +69,12 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
           <p className="text-sm text-white/40 mt-1">Manage suppliers, inventory categories, and material pricing across the platform.</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          {/* <button 
             onClick={() => onAction?.('Manage Categories functionality coming soon!')}
             className="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-white/10 transition-all active:scale-95"
           >
             Manage Categories
-          </button>
+          </button> */}
           <button 
             onClick={() => setShowModal(true)}
             className="bg-[#FFD700] text-black px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-[#E6C200] transition-all active:scale-95"

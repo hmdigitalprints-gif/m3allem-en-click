@@ -20,7 +20,6 @@ export default function CategoriesView({
   onAction 
 }: CategoriesViewProps) {
   const { t } = useTranslation();
-  const { token } = useAuth();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -29,11 +28,9 @@ export default function CategoriesView({
   const [submitting, setSubmitting] = useState(false);
 
   const fetchCategories = async () => {
-    if (!token) return;
     try {
       const response = await fetch('/api/admin/categories', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
@@ -48,11 +45,10 @@ export default function CategoriesView({
 
   useEffect(() => {
     fetchCategories();
-  }, [token]);
+  }, []);
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const url = editingCategory ? `/api/admin/categories/${editingCategory.id}` : '/api/admin/categories';
@@ -61,8 +57,7 @@ export default function CategoriesView({
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({
           ...formData,
@@ -85,12 +80,11 @@ export default function CategoriesView({
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!token || !confirm('Are you sure you want to delete this category?')) return;
+    if (!confirm('Are you sure you want to delete this category?')) return;
     try {
       const response = await fetch(`/api/admin/categories/${id}`, { 
         credentials: 'include', 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'DELETE'
       });
       if (response.ok) {
         fetchCategories();
@@ -102,12 +96,10 @@ export default function CategoriesView({
   };
 
   const toggleActive = async (id: string) => {
-    if (!token) return;
     try {
       const response = await fetch(`/api/admin/categories/${id}/toggle-active`, { 
         credentials: 'include', 
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'POST'
       });
       if (response.ok) {
         setCategories(prev => prev.map(c => c.id === id ? { ...c, is_active: c.is_active ? 0 : 1 } : c));

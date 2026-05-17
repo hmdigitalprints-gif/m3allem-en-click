@@ -49,10 +49,8 @@ export default function ArtisanProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('m3allem_token');
     fetch(`/api/marketplace/artisans/${id}`, { 
-      credentials: 'include',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch artisan profile');

@@ -52,7 +52,7 @@ export class OtpService {
     return crypto.createHash("sha256").update(otp).digest("hex");
   }
 
-  static async sendOTP(userId: string, channel: OtpChannel): Promise<{ success: boolean; error?: string }> {
+  static async sendOTP(userId: string, channel: OtpChannel): Promise<{ success: boolean; error?: string; isSimulation?: boolean; otp?: string }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { phone: true, email: true }
@@ -79,19 +79,30 @@ export class OtpService {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-    if (channel === "sms" && (!accountSid || !authToken || !phoneNumber)) {
-      isSimulation = true;
-      console.log("[OTP Service] Twilio credentials incomplete. Falling back to SMS simulation.");
-    } else if (channel === "email" && !process.env.SMTP_HOST) {
-      isSimulation = true;
-      console.log("[OTP Service] SMTP credentials incomplete. Falling back to Email simulation.");
+    if (channel === "sms") {
+      if (!user.phone) {
+        console.error(`[OTP Service] User ${userId} has no phone number for SMS delivery.`);
+        return { success: false, error: "Phone number required for SMS verification" };
+      }
+      if (!accountSid || !authToken || !phoneNumber) {
+        isSimulation = true;
+        console.log(`[OTP Service] Twilio credentials incomplete. Falling back to SMS simulation for User: ${userId}`);
+      }
+    } else if (channel === "email") {
+      if (!user.email) {
+        console.error(`[OTP Service] User ${userId} has no email address for email delivery.`);
+        return { success: false, error: "Email address required for email verification" };
+      }
+      if (!process.env.SMTP_HOST) {
+        isSimulation = true;
+        console.log(`[OTP Service] SMTP credentials incomplete. Falling back to Email simulation for User: ${userId}`);
+      }
     }
 
     if (isSimulation) {
-      otp = "123456";
-      console.log(`[OTP Simulation] Generated OTP: ${otp} for userId: ${userId} via ${channel}`);
+      console.log(`[OTP Simulation] Generated OTP: ${otp} for User: ${userId} via ${channel}`);
     } else {
-      console.log(`[OTP Service] Using live ${channel === 'sms' ? 'Twilio' : 'SMTP'} for OTP delivery to userId: ${userId}`);
+      console.log(`[OTP Service] Using live ${channel.toUpperCase()} for OTP delivery to User: ${userId}`);
     }
 
     const otpHash = this.hashOTP(otp);
@@ -109,13 +120,15 @@ export class OtpService {
 
     // Send OTP
     try {
-      if (channel === "sms") {
-        await this.sendSms(user.phone!, otp);
-      } else if (channel === "email") {
-        if (!user.email) return { success: false, error: "User email not found" };
-        await this.sendEmail(user.email, otp);
+      if (!isSimulation) {
+        if (channel === "sms") {
+          await this.sendSms(user.phone!, otp);
+        } else if (channel === "email") {
+          if (!user.email) return { success: false, error: "User email not found" };
+          await this.sendEmail(user.email, otp);
+        }
       }
-      return { success: true };
+      return { success: true, isSimulation, otp: isSimulation ? otp : undefined };
     } catch (error) {
       console.error(`Error sending OTP via ${channel}:`, error);
       return { success: false, error: "Failed to send OTP. Please try again." };
@@ -207,50 +220,73 @@ export class OtpService {
   }
 
   static async verifyOTP(userId: string, otp: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[OTP Verification] Starting for userId: ${userId}, entered OTP: ${otp}`);
-    const latestOtp = await prisma.otp.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    if (!latestOtp) {
-      console.log(`[OTP Verification] No OTP found for userId: ${userId}`);
-      return { success: false, error: "No OTP found" };
-    }
-
-    if (latestOtp.attempts >= MAX_OTP_ATTEMPTS) {
-      console.log(`[OTP Verification] Max attempts reached for userId: ${userId}`);
-      return { success: false, error: "Maximum attempts reached. Please request a new OTP." };
-    }
-
-    if (latestOtp.expiresAt && isAfter(new Date(), latestOtp.expiresAt)) {
-      console.log(`[OTP Verification] OTP expired for userId: ${userId}`);
-      return { success: false, error: "OTP has expired" };
-    }
-
-    const hashedInput = this.hashOTP(otp.trim());
+    console.log(`[OTP Verification] Request for userId: ${userId}, input: "${otp}"`);
     
-    if (hashedInput !== latestOtp.otpHash) {
-      console.log(`[OTP Verification] Invalid OTP for userId: ${userId}`);
-      await prisma.otp.update({
-        where: { id: latestOtp.id },
-        data: { attempts: { increment: 1 } }
-      });
-      return { success: false, error: "Invalid verification code" };
+    if (!otp || otp.length !== 6) {
+      console.log(`[OTP Verification] Invalid OTP length: ${otp?.length}`);
+      return { success: false, error: "Verification code must be 6 digits" };
     }
 
-    console.log(`[OTP Verification] Success for userId: ${userId}`);
-    // Success: Update user and cleanup
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { verified: true, lastVerified: new Date() }
-      }),
-      prisma.otp.deleteMany({
-        where: { userId }
-      })
-    ]);
+    try {
+      const latestOtp = await prisma.otp.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      });
 
-    return { success: true };
+      if (!latestOtp) {
+        console.log(`[OTP Verification] No OTP found record in DB for userId: ${userId}`);
+        return { success: false, error: "No verification code found. Please request a new one." };
+      }
+
+      if (latestOtp.attempts >= MAX_OTP_ATTEMPTS) {
+        console.log(`[OTP Verification] Max attempts reached (${latestOtp.attempts}) for userId: ${userId}`);
+        return { success: false, error: "Maximum attempts reached. Please request a new code." };
+      }
+
+      if (latestOtp.expiresAt && isAfter(new Date(), latestOtp.expiresAt)) {
+        console.log(`[OTP Verification] OTP expired. Expiry: ${latestOtp.expiresAt}, Now: ${new Date()}`);
+        return { success: false, error: "The verification code has expired. Please request a new one." };
+      }
+
+      const hashedInput = this.hashOTP(otp.trim());
+      
+      if (hashedInput !== latestOtp.otpHash) {
+        console.log(`[OTP Verification] Hash mismatch for userId: ${userId}`);
+        await prisma.otp.update({
+          where: { id: latestOtp.id },
+          data: { attempts: { increment: 1 } }
+        });
+        
+        const remaining = MAX_OTP_ATTEMPTS - (latestOtp.attempts + 1);
+        return { 
+          success: false, 
+          error: remaining > 0 
+            ? `Invalid verification code. ${remaining} attempts remaining.` 
+            : "Invalid code. Maximum attempts reached."
+        };
+      }
+
+      console.log(`[OTP Verification] SUCCESS for userId: ${userId}`);
+      
+      // Atomic success operations
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: { 
+            verified: true, 
+            emailVerified: true, // Also verify email if they used email channel
+            lastVerified: new Date() 
+          }
+        }),
+        prisma.otp.deleteMany({
+          where: { userId }
+        })
+      ]);
+
+      return { success: true };
+    } catch (error) {
+      console.error("[OTP Verification] Database error:", error);
+      return { success: false, error: "Internal server error during verification" };
+    }
   }
 }

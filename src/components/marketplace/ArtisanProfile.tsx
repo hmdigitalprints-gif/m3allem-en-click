@@ -58,10 +58,8 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
-    const token = localStorage.getItem('m3allem_token');
     fetch(`/api/marketplace/artisans/${artisanId}`, { 
-      credentials: 'include',
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      credentials: 'include'
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch artisan profile');
@@ -153,6 +151,7 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                   src={artisan.avatar_url} 
                   className="w-full h-full object-cover rounded-[40px]" 
                   alt={artisan.name} 
+                  loading="lazy"
                 />
                 {artisan.is_verified && (
                   <div className="absolute -bottom-2 -right-2 bg-[var(--accent)] text-[var(--accent-foreground)] p-2 rounded-2xl shadow-lg">
@@ -403,6 +402,7 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                               src={item.imageUrl} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                               alt={item.title} 
+                              loading="lazy"
                             />
                           )}
                         </div>
@@ -465,7 +465,7 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-[var(--card-bg)]/10 rounded-full flex items-center justify-center font-bold overflow-hidden text-[var(--text)]">
                                 {review.client_avatar ? (
-                                  <img src={review.client_avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  <img src={review.client_avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
                                 ) : (
                                   review.client_name?.charAt(0)
                                 )}

@@ -5,8 +5,7 @@ const SOCKET_URL = window.location.origin;
 export const socket = io(SOCKET_URL, {
   autoConnect: false});
 
-export const connectSocket = (token: string) => {
-  socket.auth = { token };
+export const connectSocket = () => {
   socket.connect();
 };
 

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function Messages() {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -31,15 +31,14 @@ export default function Messages() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (token) {
-      connectSocket(token);
+    if (user?.id) {
+      connectSocket();
     }
     
     const fetchConversations = async () => {
-      if (!token) return;
       try {
-        const res = await fetch('/api/messages/conversations', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetch('/api/messages/conversations', { 
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -113,16 +112,16 @@ export default function Messages() {
       socket.off('messages_read');
       socket.off('messages_delivered');
     };
-  }, [token, activeConversation, user?.id]);
+  }, [activeConversation, user?.id]);
 
   useEffect(() => {
-    if (!activeConversation || !token) return;
+    if (!activeConversation) return;
 
     const fetchMessages = async () => {
       try {
         const otherUserId = activeConversation.userId;
         const res = await fetch(`/api/messages/${user?.id}/${otherUserId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
@@ -157,7 +156,7 @@ export default function Messages() {
     };
 
     fetchMessages();
-  }, [activeConversation, user?.id, token]);
+  }, [activeConversation, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -183,7 +182,7 @@ export default function Messages() {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeConversation || !token) return;
+    if (!newMessage.trim() || !activeConversation) return;
 
     socket.emit('send_message', {
       receiverId: activeConversation.userId,
@@ -200,7 +199,7 @@ export default function Messages() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeConversation || !token) return;
+    if (!file || !activeConversation) return;
 
     setIsUploading(true);
     const reader = new FileReader();
@@ -210,9 +209,9 @@ export default function Messages() {
       try {
         const res = await fetch('/api/upload', { 
           method: 'POST',
+          credentials: 'include',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ file: base64, type: 'image' })
         });
@@ -267,9 +266,9 @@ export default function Messages() {
           try {
             const res = await fetch('/api/upload', { 
               method: 'POST',
+              credentials: 'include',
               headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({ file: base64Audio, type: 'audio' })
             });

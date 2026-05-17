@@ -61,6 +61,16 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
   });
 };
 
+// Middleware to verify Admin
+export const authenticateAdmin = (req: any, res: any, next: any) => {
+  authenticateToken(req, res, () => {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Forbidden: Admin access required" });
+    }
+    next();
+  });
+};
+
 async function cleanupUnverifiedUser(userId: string) {
   try {
     await prisma.otp.deleteMany({ where: { userId } });
@@ -118,6 +128,10 @@ function parseIdentifier(identifier: string) {
 router.post("/register", async (req, res) => {
   try {
     const { name, email, phone, role, password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ error: "Password is required" });
+    }
     
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
@@ -133,7 +147,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    const passwordHash = await bcrypt.hash(password || "password123", 10);
+    const passwordHash = await bcrypt.hash(password, 10);
     const preferredLanguage = await getPreferredLanguage(req);
 
     const user = await prisma.$transaction(async (tx) => {
@@ -263,13 +277,15 @@ router.post("/register/client", async (req, res) => {
       if (!otpResult.success) {
         return res.status(500).json({ error: otpResult.error });
       }
-    }
 
-    res.status(201).json({
-      message: "Registration successful. Please verify your account.",
-      userId: user.id,
-      user: null,
-    });
+      return res.status(201).json({
+        message: "Registration successful. Please verify your account.",
+        userId: user.id,
+        user: null,
+        isSimulation: otpResult.isSimulation,
+        otp: otpResult.otp
+      });
+    }
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
       const issues = (error as any).issues || (error as any).errors;
@@ -357,6 +373,8 @@ router.post("/register/artisan", async (req, res) => {
       .json({
         message: "Registration successful. Please verify your account.",
         userId: result.id,
+        isSimulation: otpResult.isSimulation,
+        otp: otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -453,6 +471,8 @@ router.post("/register/seller", async (req, res) => {
       .json({
         message: "Registration successful. Please verify your account.",
         userId: result.id,
+        isSimulation: otpResult.isSimulation,
+        otp: otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -549,6 +569,8 @@ router.post("/register/company", async (req, res) => {
       .json({
         message: "Registration successful. Please verify your account.",
         userId: result.id,
+        isSimulation: otpResult.isSimulation,
+        otp: otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -660,6 +682,8 @@ router.post("/login", async (req, res) => {
         message: "OTP sent for re-verification",
         userId: user.id,
         requiresOtp: true,
+        isSimulation: otpResult.isSimulation,
+        otp: otpResult.otp
       });
     }
 
@@ -851,13 +875,19 @@ router.post("/verify-otp", async (req, res) => {
   const { userId, code } = req.body;
 
   if (!userId || !code) {
+    console.warn("[Auth] Verify OTP attempted with missing userId or code");
     return res.status(400).json({ error: "User ID and code required" });
   }
 
+  console.log(`[Auth] Verifying OTP for user: ${userId}`);
   const result = await OtpService.verifyOTP(userId, code);
+  
   if (!result.success) {
+    console.warn(`[Auth] OTP verification failed for user: ${userId}. Error: ${result.error}`);
     return res.status(400).json({ error: result.error });
   }
+
+  console.log(`[Auth] OTP verified successfully for user: ${userId}. Updating user status...`);
 
   try {
     const user = await prisma.user.update({
@@ -876,18 +906,24 @@ router.post("/verify-otp", async (req, res) => {
         address: true,
       },
     });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    if (!user) {
+      console.error(`[Auth] User not found after successful OTP verification: ${userId}`);
+      return res.status(404).json({ error: "User not found" });
+    }
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
       expiresIn: user.role === "admin" ? "2h" : "7d",
     });
     setTokenCookie(res, token);
+    
+    console.log(`[Auth] Login token generated for verified user: ${user.name}`);
 
     if (user.email) {
       try {
         await OtpService.sendWelcomeEmail(user.email, user.name || "User");
       } catch (err) {
-        console.error("Failed to send welcome email:", err);
+        console.error("[Auth] Failed to send welcome email:", err);
       }
     }
 
@@ -901,7 +937,8 @@ router.post("/verify-otp", async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: "Verification failed" });
+    console.error(`[Auth] Verification database error for user ${userId}:`, error);
+    res.status(500).json({ error: "Verification failed due to a server error." });
   }
 });
 
@@ -917,7 +954,11 @@ router.post("/resend-otp", async (req, res) => {
     return res.status(400).json({ error: result.error });
   }
 
-  res.json({ message: "OTP resent successfully" });
+  res.json({ 
+    message: "OTP resent successfully",
+    isSimulation: result.isSimulation,
+    otp: result.otp
+  });
 });
 
 // --- Phone Number Authentication System ---
@@ -934,7 +975,11 @@ router.post("/send-otp", async (req, res) => {
     return res.status(400).json({ error: result.error });
   }
 
-  res.json({ message: "OTP sent successfully" });
+  res.json({ 
+    message: "OTP sent successfully",
+    isSimulation: result.isSimulation,
+    otp: result.otp
+  });
 });
 
 // --- Artisan Verification ---

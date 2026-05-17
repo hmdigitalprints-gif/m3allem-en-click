@@ -5,18 +5,15 @@ import { ViewProps } from '../types';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [escrows, setEscrows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchEscrows = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/escrows', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setEscrows(Array.isArray(data) ? data : []);
@@ -29,7 +26,7 @@ export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, 
 
   useEffect(() => {
     fetchEscrows();
-  }, [token]);
+  }, []);
 
   const filteredEscrows = escrows.filter(e => 
     e.project_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -46,12 +43,12 @@ export default function EscrowView({ isDarkMode, cardClasses, textMutedClasses, 
           <p className="text-sm text-white/40 mt-1">Manage funds held in escrow for active projects and material orders.</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          {/* <button 
             onClick={() => onAction?.('Escrow Policies functionality coming soon!')}
             className="bg-[#FFD700] text-black px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-[#E6C200] transition-all active:scale-95"
           >
             <ShieldCheck size={18} /> Escrow Policies
-          </button>
+          </button> */}
         </div>
       </div>
 

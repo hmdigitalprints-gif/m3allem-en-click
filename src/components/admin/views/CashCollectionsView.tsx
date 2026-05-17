@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function CashCollectionsView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArtisan, setSelectedArtisan] = useState<any>(null);
@@ -14,12 +13,10 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
   const [amount, setAmount] = useState('');
 
   const fetchCollections = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/cash-collections', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setCollections(Array.isArray(data) ? data : []);
@@ -32,19 +29,18 @@ export default function CashCollectionsView({ isDarkMode, cardClasses, textMuted
 
   useEffect(() => {
     fetchCollections();
-  }, [token]);
+  }, []);
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedArtisan || !token) return;
+    if (!selectedArtisan) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/admin/cash-collections/${selectedArtisan.artisan_id}/record-payment`, { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ amount: parseFloat(amount) })
       });

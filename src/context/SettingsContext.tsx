@@ -32,7 +32,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>({
     commission_standard: '0',
     commission_featured: '0',
@@ -51,7 +51,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const fetchSettings = async () => {
     try {
-      if (!token) {
+      if (!user) {
         // Fetch public settings for non-authenticated users
         const pubRes = await fetch('/api/public/settings', { credentials: 'include' });
         if (pubRes.ok) {
@@ -65,8 +65,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Fetch both admin if possible
       const [adminRes, pubRes] = await Promise.all([
         fetch('/api/admin/settings', { 
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         }).catch(() => null),
         fetch('/api/public/settings', { credentials: 'include' })
       ]);
@@ -121,17 +120,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     fetchSettings();
-  }, [token]);
+  }, [user]);
 
   const updateSettings = async (newSettings: Partial<Settings>) => {
-    if (!token) throw new Error('Authentication required');
+    if (!user) throw new Error('Authentication required');
     console.log('Updating settings with:', newSettings);
     try {
       const response = await fetch('/api/admin/settings', { credentials: 'include', 
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newSettings)
       });

@@ -6,7 +6,8 @@ import {
   Search, Menu, X, ChevronRight, ArrowUpRight, ArrowDownRight, 
   MoreVertical, Filter, Download, Plus, Save, Building2, BrainCircuit, 
   Sparkles, Wind, Bug, Lightbulb, Loader2, CheckCircle, AlertCircle, Zap,
-  Clock, FileText, ArrowRight, Info, DollarSign, TrendingUp, ShieldAlert, LogOut, Globe, Languages, ArrowLeft, Home as HomeIcon
+  Clock, FileText, ArrowRight, Info, DollarSign, TrendingUp, ShieldAlert, LogOut, Globe, Languages, ArrowLeft, Home as HomeIcon,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -38,6 +39,8 @@ import EscrowView from './views/EscrowView';
 import FraudMonitoringView from './views/FraudMonitoringView';
 import ArtisansView from './views/ArtisansView';
 import SettingsView from './views/SettingsView';
+import PaymentSettingsView from './views/PaymentSettingsView';
+import WithdrawalsView from './views/WithdrawalsView';
 import AiInsightsView from './views/AiInsightsView';
 import AnalyticsView from './views/AnalyticsView';
 import AdminManagementView from './views/AdminManagementView';
@@ -57,7 +60,7 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
   toggleTheme: () => void
 }) {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -67,12 +70,10 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) return;
       setIsLoading(true);
       try {
         const options = { 
-          credentials: 'include' as const,
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include' as const
         };
         const [statsRes, analyticsRes] = await Promise.all([
           fetch('/api/admin/stats', options),
@@ -104,7 +105,7 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     };
 
     fetchData();
-  }, [token]);
+  }, []);
 
   const navItems = [
     { id: 'home-redirect', label: t('nav_home', 'Home'), icon: <HomeIcon size={18} />, section: 'MAIN', onClick: onSwitchView },
@@ -117,7 +118,9 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     { id: 'orders', label: t('nav_orders', 'Orders'), icon: <ShoppingCart size={18} />, section: 'OPERATIONS' },
     { id: 'payments', label: t('nav_payments', 'Payments'), icon: <CreditCard size={18} />, section: 'FINANCE' },
     { id: 'health-wallet', label: t('nav_wallets', 'Wallets'), icon: <Wallet size={18} />, section: 'FINANCE' },
+    { id: 'withdrawals', label: t('nav_withdrawals', 'Withdrawals'), icon: <ArrowDownRight size={18} />, section: 'FINANCE' },
     { id: 'cash-collections', label: t('nav_cash_collections', 'Cash Collections'), icon: <Banknote size={18} />, section: 'FINANCE' },
+    { id: 'payment-settings', label: t('nav_payment_settings', 'Payment Settings'), icon: <Lock size={18} />, section: 'FINANCE' },
     { id: 'disputes', label: t('nav_disputes', 'Disputes'), icon: <AlertTriangle size={18} />, section: 'OPERATIONS' },
     { id: 'categories', label: t('nav_categories', 'Categories'), icon: <Tags size={18} />, section: 'SYSTEM' },
     { id: 'cities', label: t('nav_cities', 'Cities'), icon: <MapPin size={18} />, section: 'SYSTEM' },
@@ -178,6 +181,10 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
         return <DisputesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'cash-collections':
         return <CashCollectionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'payment-settings':
+        return <PaymentSettingsView onAction={onAction} />;
+      case 'withdrawals':
+        return <WithdrawalsView onAction={onAction} />;
       case 'subscriptions':
         return <SubscriptionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'branding':

@@ -5,16 +5,13 @@ import { ViewProps } from '../types';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function WalletsView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!token) return;
     fetch('/api/admin/transactions', { 
-      credentials: 'include',
-      headers: { 'Authorization': `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(res => res.json())
       .then(data => {

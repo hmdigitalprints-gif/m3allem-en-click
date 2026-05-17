@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -15,12 +14,10 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
   const [submitting, setSubmitting] = useState(false);
 
   const fetchUsers = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/users', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
@@ -43,19 +40,17 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, []);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/auth/register', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(newUser)
       });
@@ -76,14 +71,12 @@ export default function UsersView({ isDarkMode, cardClasses, textMutedClasses, h
   };
 
   const handleVerifyUser = async (userId: string, currentStatus: string) => {
-    if (!token) return;
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { 
         credentials: 'include', 
         method: 'PATCH',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify({ verified: currentStatus !== 'Verified' })
       });

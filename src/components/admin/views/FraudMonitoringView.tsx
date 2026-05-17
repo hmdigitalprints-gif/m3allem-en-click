@@ -5,18 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function FraudMonitoringView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchAlerts = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/fraud-alerts', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setAlerts(Array.isArray(data) ? data : []);
@@ -29,7 +26,7 @@ export default function FraudMonitoringView({ isDarkMode, cardClasses, textMuted
 
   useEffect(() => {
     fetchAlerts();
-  }, [token]);
+  }, []);
 
   const filteredAlerts = alerts.filter(a => 
     a.user_name.toLowerCase().includes(searchTerm.toLowerCase()) || 

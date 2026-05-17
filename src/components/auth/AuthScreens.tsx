@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Lock, User, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle, AlertCircle, Loader2, Sparkles, MessageSquare, Mail } from 'lucide-react';
+import { Phone, Lock, User, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle, AlertCircle, Loader2, Sparkles, MessageSquare, Mail, ChevronDown } from 'lucide-react';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -22,16 +22,47 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
   const [userId, setUserId] = useState<string | null>(null);
   const [otpChannel, setOtpChannel] = useState<'sms' | 'email'>('sms');
   const [pendingAction, setPendingAction] = useState<'login' | 'register' | null>(null);
+  const [simulationOtp, setSimulationOtp] = useState<string | null>(null);
   
   // Role-specific fields
   const [storeName, setStoreName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
+  
+  const [isResending, setIsResending] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  
   const { login, verifyOtp, register } = useAuth();
+
+  React.useEffect(() => {
+    let timer: any;
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendTimer]);
+
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/marketplace/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const validateField = (name: string, value: string) => {
     let error = '';
@@ -82,6 +113,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
       const res: any = await login(identifier, password);
       if (res.requiresOtp || res.requiresVerification) {
         setUserId(res.userId);
+        setSimulationOtp(res.isSimulation ? res.otp : null);
         setPendingAction('login');
         setStep('channel');
       } else if (res.token) {
@@ -102,6 +134,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
 
     if (!userId) return;
     setIsLoading(true);
+    setIsResending(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/send-otp', { credentials: 'include', 
@@ -112,7 +145,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
         const err = await res.json();
         throw new Error(err.error || t('auth_err_otp_failed', 'Failed to send OTP'));
       }
+      const data = await res.json();
+      setSimulationOtp(data.isSimulation ? data.otp : null);
       setOtpChannel(channel);
+      setResendTimer(60); // Start 60s cooldown
       setStep('otp');
     } catch (err: any) {
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
@@ -122,19 +158,23 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
       }
     } finally {
       setIsLoading(false);
+      setIsResending(false);
     }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) return;
+    if (!userId || !otp.trim()) return;
     setIsLoading(true);
     setError(null);
     try {
+      console.log(`[AuthScreens] Attempting to verify OTP for user ${userId}`);
       await verifyOtp(userId, otp.trim());
+      console.log(`[AuthScreens] OTP verified successfully`);
       onSuccess();
     } catch (err: any) {
-      setError(err.message);
+      console.error(`[AuthScreens] OTP verification error:`, err);
+      setError(err.message || t('auth_err_verify_failed', 'Verification failed. Please check the code and try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +225,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
         otpChannel: channel
       });
       setUserId(res.userId);
+      setSimulationOtp(res.isSimulation ? res.otp : null);
       setOtpChannel(channel);
+      setResendTimer(60);
       setStep('otp');
     } catch (err: any) {
       setError(err.message);
@@ -248,9 +290,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
-                    <AlertCircle size={16} />
-                    {error}
+                  <div className="flex items-center gap-3 text-rose-500 bg-rose-500/10 p-5 rounded-[24px] border border-rose-500/20 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-rose-500/20 rounded-xl">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-70 leading-none mb-1">{t('error', 'Error')}</span>
+                      <p className="font-bold text-sm leading-tight">{error}</p>
+                    </div>
                   </div>
                 )}
 
@@ -326,10 +373,36 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                   />
                 </div>
 
+                {simulationOtp && (
+                  <div className="flex flex-col gap-3 p-6 bg-amber-500/10 rounded-[28px] border-2 border-amber-500/30 backdrop-blur-xl animate-pulse ring-4 ring-amber-500/10">
+                    <div className="flex items-center gap-3 text-amber-500">
+                      <div className="p-2 bg-amber-500/20 rounded-xl">
+                        <Sparkles size={20} className="animate-spin-slow" />
+                      </div>
+                      <h4 className="font-black uppercase tracking-tighter text-sm">{t('auth_simulation_active', 'Development Mode active')}</h4>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-widest">{t('auth_simulation_otp_is', 'Your test verification code is:')}</p>
+                      <div className="flex items-center gap-4">
+                        <code className="text-4xl font-black tracking-[0.2em] text-amber-500 font-mono">{simulationOtp}</code>
+                        <div className="px-3 py-1 bg-amber-500 text-black text-[10px] font-black uppercase rounded-full tracking-widest">
+                          {t('auth_test_code', 'Test Code')}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-amber-500/60 font-bold uppercase tracking-tight">{t('auth_simulation_note', 'Real SMS/Email will not be sent in this environment.')}</p>
+                  </div>
+                )}
+
                 {error && (
-                  <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
-                    <AlertCircle size={16} />
-                    {error}
+                  <div className="flex items-center gap-3 text-rose-500 bg-rose-500/10 p-5 rounded-[24px] border border-rose-500/20 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-rose-500/20 rounded-xl">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-70 leading-none mb-1">{t('error', 'Error')}</span>
+                      <p className="font-bold text-sm leading-tight">{error}</p>
+                    </div>
                   </div>
                 )}
 
@@ -344,17 +417,34 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 <div className="flex flex-col gap-2">
                   <button 
                     type="button"
-                    onClick={() => setStep('channel')}
-                    className="w-full text-[var(--accent)] font-bold py-2"
+                    onClick={() => handleSendOtp(otpChannel)}
+                    disabled={isLoading || resendTimer > 0}
+                    className="w-full text-[var(--accent)] font-bold py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {t('auth_otp_resend')}
+                    {isResending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        {t('auth_otp_resend', 'Resend Code')}
+                        {resendTimer > 0 && <span>({resendTimer}s)</span>}
+                      </>
+                    )}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setStep('channel')}
+                    disabled={isLoading}
+                    className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
+                  >
+                    {t('auth_change_channel', 'Change Channel')}
                   </button>
                   <button 
                     type="button"
                     onClick={() => setStep('login')}
+                    disabled={isLoading}
                     className="w-full text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2"
                   >
-                    {t('auth_btn_back_login')}
+                    {t('auth_btn_back_login', 'Back to Login')}
                   </button>
                 </div>
               </form>
@@ -405,9 +495,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
-                  <AlertCircle size={16} />
-                  {error}
+                <div className="flex items-center gap-3 text-rose-500 bg-rose-500/10 p-5 rounded-[24px] border border-rose-500/20 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                  <div className="p-2 bg-rose-500/20 rounded-xl">
+                    <AlertCircle size={20} />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-70 leading-none mb-1">{t('error', 'Error')}</span>
+                    <p className="font-bold text-sm leading-tight">{error}</p>
+                  </div>
                 </div>
               )}
 
@@ -584,28 +679,43 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 )}
 
                 {role === 'artisan' && (
-                  <>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                       <label className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{t('auth_select_category', 'Professional Category')}</label>
+                       {fieldErrors.categoryId && <span className="text-[10px] font-bold text-rose-500 uppercase tracking-tighter">{t('required', 'Required')}</span>}
+                    </div>
                     <div className="relative group">
                       <ShieldCheck className={`absolute start-6 top-1/2 -translate-y-1/2 transition-colors ${fieldErrors.categoryId ? 'text-rose-500' : 'text-[var(--text-muted)] group-focus-within:text-[var(--accent)]'}`} size={20} />
                       <select
+                        id="artisan-category-select"
                         value={categoryId}
                         onChange={(e) => {
                           setCategoryId(e.target.value);
-                          validateField('categoryId', e.target.value);
+                          if (fieldErrors.categoryId) {
+                            const newErrors = { ...fieldErrors };
+                            delete newErrors.categoryId;
+                            setFieldErrors(newErrors);
+                          }
                         }}
-                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-8 text-xl focus:outline-none transition-all appearance-none text-[var(--text-muted)] ${fieldErrors.categoryId ? 'border-rose-500/50 focus:border-rose-500' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50'}`}
+                        className={`w-full bg-[var(--glass-bg)] border rounded-3xl py-6 ps-16 pe-12 text-xl focus:outline-none transition-all appearance-none cursor-pointer text-[var(--text)] font-bold ${fieldErrors.categoryId ? 'border-rose-500/50 focus:border-rose-500 ring-4 ring-rose-500/10' : 'border-[var(--glass-border)] focus:border-[var(--accent)]/50 focus:ring-4 focus:ring-[var(--accent)]/10'}`}
                         required
                       >
-                        <option value="" disabled className="bg-[var(--bg)]">{t('auth_select_category')}</option>
-                        <option value="cat_1" className="bg-[var(--bg)]">{t('cat_plumbing')}</option>
-                        <option value="cat_2" className="bg-[var(--bg)]">{t('cat_electricity')}</option>
-                        <option value="cat_3" className="bg-[var(--bg)]">{t('cat_carpentry')}</option>
-                        <option value="cat_4" className="bg-[var(--bg)]">{t('cat_painting')}</option>
-                        <option value="cat_5" className="bg-[var(--bg)]">{t('cat_cleaning')}</option>
+                        <option value="" disabled className="bg-[var(--bg)]">{t('auth_select_category_placeholder', 'Choose your craft...')}</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id} className="bg-[var(--bg)] text-[var(--text)]">
+                            {cat.name}
+                          </option>
+                        ))}
                       </select>
-                      {fieldErrors.categoryId && <p className="text-rose-500 text-xs mt-2 ms-6 font-bold">{fieldErrors.categoryId}</p>}
+                      <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none group-focus-within:text-[var(--accent)] transition-colors" size={20} />
                     </div>
-                  </>
+                    {fieldErrors.categoryId && (
+                      <p className="text-rose-500 text-xs mt-1 ms-6 font-bold flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                        <AlertCircle size={12} />
+                        {fieldErrors.categoryId}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <div className="relative group">
@@ -629,9 +739,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 text-rose-500 text-sm bg-rose-500/10 p-4 rounded-2xl">
-                    <AlertCircle size={16} />
-                    {error}
+                  <div className="flex items-center gap-3 text-rose-500 bg-rose-500/10 p-5 rounded-[24px] border border-rose-500/20 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 bg-rose-500/20 rounded-xl">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-70 leading-none mb-1">{t('error', 'Error')}</span>
+                      <p className="font-bold text-sm leading-tight">{error}</p>
+                    </div>
                   </div>
                 )}
 

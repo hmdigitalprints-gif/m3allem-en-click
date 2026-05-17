@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function CompaniesView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
-  const { token } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,12 +14,10 @@ export default function CompaniesView({ isDarkMode, cardClasses, textMutedClasse
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
 
   const fetchCompanies = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/companies', { 
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       setCompanies(Array.isArray(data) ? data : []);
@@ -33,19 +30,17 @@ export default function CompaniesView({ isDarkMode, cardClasses, textMutedClasse
 
   useEffect(() => {
     fetchCompanies();
-  }, [token]);
+  }, []);
 
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/companies', { 
         credentials: 'include', 
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
           },
         body: JSON.stringify(formData)
       });

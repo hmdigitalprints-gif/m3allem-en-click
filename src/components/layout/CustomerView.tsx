@@ -67,7 +67,7 @@ export default function CustomerView({
             />
           </motion.div>
         )}
-        {activeTab === 'documents' && (
+        {/* {activeTab === 'documents' && (
           <motion.div
             key="documents"
             initial={{ opacity: 0, x: -20 }}
@@ -77,7 +77,7 @@ export default function CustomerView({
           >
             <FactureDevisManager onAction={onAction} />
           </motion.div>
-        )}
+        )} */}
         {activeTab === 'find' && (
           <motion.div
             key="find"

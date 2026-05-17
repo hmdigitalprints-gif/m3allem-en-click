@@ -20,7 +20,7 @@ export default function FactureDevisManager({ onAction }: FactureDevisManagerPro
           <p className="text-sm text-gray-500 dark:text-gray-400 font-sans mt-1">{t('documents_desc', 'Manage your professional invoices, quotations, and clients.')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          {/* <button 
             onClick={() => onAction('Opening new Devis creator...')}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2 active:scale-95 transition-all"
           >
@@ -33,7 +33,7 @@ export default function FactureDevisManager({ onAction }: FactureDevisManagerPro
           >
             <Plus size={16} />
             {t('btn_new_facture', 'New Facture')}
-          </button>
+          </button> */}
         </div>
       </div>
 

@@ -4,9 +4,21 @@ import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.ts";
 import { Role } from "@prisma/client";
 import { v4 as uuidv4 } from "uuid";
+import { authenticateAdmin } from "./auth.ts";
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
+
+// Block simulation routes in production for security
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ error: "Simulation engine disabled in production" });
+  }
+  next();
+});
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is missing.");
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Realistic Data Constants
 const CATEGORIES = [
@@ -40,7 +52,7 @@ const PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1562259949-e8e7689d7828"
 ];
 
-router.post("/seed", async (req, res) => {
+router.post("/seed", authenticateAdmin, async (req, res) => {
   try {
     console.log("[Simulation] Starting hyper-realistic database seed...");
 
@@ -323,7 +335,7 @@ router.post("/seed", async (req, res) => {
   }
 });
 
-router.post("/login-as", async (req, res) => {
+router.post("/login-as", authenticateAdmin, async (req, res) => {
   const { email } = req.body;
   try {
     const user = await prisma.user.findUnique({ where: { email } });
