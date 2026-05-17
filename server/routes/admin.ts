@@ -18,22 +18,25 @@ router.post("/logout", authenticateAdmin, async (req, res) => {
 // Get admin dashboard stats
 router.get("/stats", authenticateAdmin, async (req, res) => {
   try {
-    const [totalUsers, totalArtisans, totalBookings, totalRevenue, activeArtisans] = await Promise.all([
+    const [totalUsers, totalArtisans, totalBookings, totalRevenueResult, activeArtisans] = await Promise.all([
       prisma.user.count(),
       prisma.artisan.count(),
       prisma.booking.count(),
       prisma.booking.aggregate({
-        _sum: { adminAmount: true },
+        _sum: { price: true },
         where: { bookingStatus: 'completed' }
       }),
       prisma.artisan.count({ where: { isOnline: true } })
     ]);
     
+    const COMMISSION_RATE = 0.15; // 15% fallback commission
+    const estimatedAdminRevenue = Number(totalRevenueResult._sum.price || 0) * COMMISSION_RATE;
+    
     res.json({
       totalUsers,
       totalArtisans,
       totalBookings,
-      totalRevenue: totalRevenue._sum.adminAmount || 0,
+      totalRevenue: estimatedAdminRevenue,
       activeArtisans
     });
   } catch (error) {
@@ -53,19 +56,23 @@ router.get("/analytics", authenticateAdmin, async (req, res) => {
     
     // Efficiently group by month using database grouping if possible, 
     // or at least optimize the query
-    const revenueDataRaw = await prisma.booking.groupBy({
-      by: ['createdAt', 'adminAmount' as any], // Prisma groupBy on dates is limited in some versions, but we can filter better
+    const revenueDataRaw = await prisma.booking.findMany({
       where: {
         bookingStatus: 'completed',
         createdAt: { gte: sevenMonthsAgo }
       },
-      _sum: { adminAmount: true }
+      select: {
+        createdAt: true,
+        price: true
+      }
     });
 
     // Since Prisma groupBy doesn't directly support month grouping in all versions, 
     // we'll keep the logic but optimize it to use the aggregated data
     const revenueTrends = [];
     const now = new Date();
+    const COMMISSION_RATE = 0.15; // 15% fallback commission
+
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthName = d.toLocaleString('default', { month: 'short' });
@@ -77,7 +84,7 @@ router.get("/analytics", authenticateAdmin, async (req, res) => {
           const date = new Date(b.createdAt);
           return date.getFullYear() === monthYear && date.getMonth() === monthIndex;
         })
-        .reduce((sum, b) => sum + Number(b._sum.adminAmount || 0), 0);
+        .reduce((sum, b) => sum + Number(b.price || 0) * COMMISSION_RATE, 0);
       
       revenueTrends.push({
         name: monthName,
@@ -633,8 +640,7 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
         artisanId: { not: null }
       },
       _sum: {
-        price: true,
-        adminAmount: true
+        price: true
       }
     });
 
@@ -649,6 +655,7 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
       return acc;
     }, {} as Record<string, any>);
 
+    const COMMISSION_RATE = 0.15;
     const formatted = collections.map(c => {
       const artisan = artisanMap[c.artisanId!];
       return {
@@ -656,7 +663,7 @@ router.get("/cash-collections", authenticateAdmin, async (req, res) => {
         artisan_name: artisan?.user.name,
         avatar_url: artisan?.user.avatarUrl,
         total_cash_handled: c._sum.price || 0,
-        commission_owed: c._sum.adminAmount || 0
+        commission_owed: Number(c._sum.price || 0) * COMMISSION_RATE
       };
     });
 
@@ -733,9 +740,7 @@ router.patch("/bookings/:id/admin_override", authenticateAdmin, async (req, res)
       data: {
         bookingStatus: booking_status ?? undefined,
         paymentStatus: payment_status ?? undefined,
-        price: price !== undefined ? Number(price) : undefined,
-        adminAmount: admin_amount !== undefined ? Number(admin_amount) : undefined,
-        artisanAmount: artisan_amount !== undefined ? Number(artisan_amount) : undefined
+        price: price !== undefined ? Number(price) : undefined
       }
     });
     

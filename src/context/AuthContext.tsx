@@ -10,6 +10,7 @@ interface User {
   avatar_url?: string;
   preferred_language?: string;
   points?: number;
+  wallet_balance?: number;
   city?: string;
   address?: string;
 }
@@ -71,7 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const data = await res.json();
       if (data.user) {
+        localStorage.clear();
+        sessionStorage.clear();
         setUser(data.user);
+        window.location.reload();
       }
       return data;
     } catch (err: any) {
@@ -133,7 +137,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout failed:", e);
     }
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/';
   };
 
   const updateLanguage = async (lang: string) => {

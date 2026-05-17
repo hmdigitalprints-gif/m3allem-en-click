@@ -35,6 +35,9 @@ const setTokenCookie = (res: any, token: string) => {
 
 // Middleware to verify JWT
 export const authenticateToken = async (req: any, res: any, next: any) => {
+  const requestId = Math.random().toString(36).substring(7);
+  req.requestId = requestId;
+
   const token =
     req.cookies?.token ||
     (req.headers["authorization"] &&
@@ -43,19 +46,33 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
   if (!token) return res.status(401).json({ error: "Access denied" });
 
   jwt.verify(token, JWT_SECRET, async (err: any, decoded: any) => {
-    if (err) return res.status(403).json({ error: "Invalid token" });
+    if (err) {
+      if (process.env.NODE_ENV !== 'production') console.log(`[Auth][${requestId}] Invalid token: ${err.message}`);
+      return res.status(403).json({ error: "Invalid token" });
+    }
 
     try {
+      // Identity isolation: Fetch MUST be fresh and scoped to decoded ID
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        select: { id: true, role: true, preferredLanguage: true, name: true, avatarUrl: true },
+        select: { id: true, role: true, preferredLanguage: true, name: true, avatarUrl: true, verified: true },
       });
-      if (!user) return res.status(404).json({ error: "User not found" });
+      
+      if (!user) {
+        console.warn(`[Auth][${requestId}] Authenticated user not found in DB: ${decoded.id}`);
+        return res.status(404).json({ error: "User not found" });
+      }
 
+      // Per-request user attachment
       req.user = user;
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Auth][${requestId}] User identified: ${user.id} (${user.role})`);
+      }
+      
       next();
     } catch (error) {
-      console.error("Auth middleware error:", error);
+      console.error(`[Auth][${requestId}] Middleware error:`, error);
       res.status(500).json({ error: "Authentication failed" });
     }
   });

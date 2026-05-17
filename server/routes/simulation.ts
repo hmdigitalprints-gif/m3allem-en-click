@@ -271,8 +271,7 @@ router.post("/seed", authenticateAdmin, async (req, res) => {
                 price: 150 + Math.random() * 1000,
                 city: artisan.city,
                 scheduledAt: new Date(Date.now() + (Math.random() * 10 - 5) * 86400000),
-                paymentStatus: status === 'completed' ? 'paid' : 'pending',
-                adminAmount: status === 'completed' ? 50 : 0
+                paymentStatus: status === 'completed' ? 'paid' : 'pending'
             }
         });
 
@@ -280,7 +279,7 @@ router.post("/seed", authenticateAdmin, async (req, res) => {
         if (status === 'completed') {
             await prisma.rating.create({
                 data: {
-                    bookingId: booking.id,
+                    orderId: booking.id,
                     clientId: client.id,
                     artisanId: artisan.id,
                     stars: Math.floor(Math.random() * 2) + 4, // 4-5 stars

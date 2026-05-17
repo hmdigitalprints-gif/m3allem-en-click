@@ -205,11 +205,11 @@ export const bookingService = {
     });
   },
 
-  async submitProposal(id: string, price: number, comment?: string) {
-    return fetchJson(`/api/bookings/${id}/propose`, {
-      method: 'POST',
+  async submitProposal(id: string, proposedPrice: number, comments?: string, materialCost: number = 0, requiredMaterials: any[] = []) {
+    return fetchJson(`/api/bookings/${id}/proposal`, {
+      method: 'PATCH',
       headers: getHeaders(),
-      body: JSON.stringify({ price, comment })
+      body: JSON.stringify({ proposedPrice, comments, materialCost, requiredMaterials })
     });
   }
 };

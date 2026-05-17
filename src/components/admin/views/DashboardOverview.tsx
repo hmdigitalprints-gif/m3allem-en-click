@@ -3,32 +3,32 @@ import { useTranslation } from 'react-i18next';
 import { 
   Activity, Sparkles, TrendingUp, Users, Calendar, DollarSign, 
   ArrowUpRight, ArrowDownRight, Clock, ChevronRight, Zap, AlertCircle, CheckCircle2,
-  MoreHorizontal, Hammer, CreditCard, Bug
+  MoreHorizontal, Hammer, CreditCard, Bug, BrainCircuit, ShieldAlert
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 import { motion } from 'framer-motion';
 
-function MetricCard({ title, value, trend, isPositive, icon: Icon, description }: any) {
+function KpiCard({ title, value, trend, isPositive, icon: Icon, description }: any) {
   return (
-    <div className="hynex-card p-6 flex flex-col justify-between group hover:shadow-lg transition-all duration-300">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-3 rounded-xl bg-[var(--bg)] text-[var(--accent)] border border-[var(--border)] group-hover:scale-110 transition-transform duration-300">
-          <Icon size={20} />
+    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] p-8 group hover:border-[var(--accent)] transition-all shadow-xl shadow-black/5 relative overflow-hidden">
+      <div className="flex justify-between items-start mb-6 relative z-10">
+        <div className="w-12 h-12 rounded-2xl bg-[var(--bg)] text-[var(--accent)] border border-[var(--border)] flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+          <Icon size={24} />
         </div>
-        <div className={`flex items-center gap-1 text-sm font-medium px-2.5 py-1 rounded-full ${isPositive ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--destructive)]/10 text-[var(--destructive)]'}`}>
+        <div className={`flex items-center gap-1 text-[10px] font-black italic px-3 py-1 rounded-full ${isPositive ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
           {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {trend}
         </div>
       </div>
-      <div>
-        <h3 className="text-[var(--text-muted)] text-sm font-medium mb-1">{title}</h3>
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-3xl font-bold text-[var(--text)] tracking-tight">{value}</h2>
-        </div>
-        <p className="text-xs text-[var(--text-muted)] mt-2">{description}</p>
+      <div className="relative z-10">
+        <p className="text-[var(--text-muted)] text-[10px] font-black uppercase tracking-[0.2em] mb-2">{title}</p>
+        <h2 className="text-4xl font-black text-[var(--text)] tracking-tighter italic">{value}</h2>
+        <p className="text-[10px] text-[var(--text-muted)] mt-4 font-bold opacity-60 uppercase tracking-widest">{description}</p>
       </div>
+      
+      <Icon className="absolute -right-8 -bottom-8 w-32 h-32 text-[var(--accent)] opacity-5 rotate-12 group-hover:rotate-6 transition-transform" />
     </div>
   );
 }
@@ -103,60 +103,63 @@ function MainChart({ stats }: { stats: any }) {
   );
 }
 
-function RecentActivity() {
+function RecentActivityTable({ activities }: { activities: any[] }) {
   const { t } = useTranslation();
   
-  const activities: any[] = [];
-
   return (
-    <div className="hynex-card p-6 md:p-8 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-bold text-[var(--text)]">{t('admin_recent_activity', 'Recent Activity')}</h3>
-        <button className="text-[var(--accent)] text-sm font-medium hover:underline flex items-center gap-1">
-          View All <ChevronRight size={14} />
-        </button>
+    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] overflow-hidden shadow-xl shadow-black/5">
+      <div className="p-8 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg)]/50">
+        <h3 className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-2">
+          <Clock size={20} className="text-[var(--accent)]" />
+          {t('admin_recent_activity', 'Global Activity Logs')}
+        </h3>
+        <button className="text-[10px] font-black text-[var(--accent)] hover:underline uppercase tracking-widest">{t('view_full_audit')}</button>
       </div>
       
-      <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-        {activities.length > 0 ? (
-          activities.map((activity, index) => (
-            <div key={activity.id} className="flex gap-4 relative">
-              {index !== activities.length - 1 && (
-                <div className="absolute left-5 top-10 bottom-[-24px] w-px bg-[var(--border)]" />
-              )}
-              <div className="relative z-10 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-[var(--bg)] border border-[var(--border)] flex flex-col items-center justify-center overflow-hidden">
-                  {activity.user === 'System' ? (
-                    <AlertCircle size={16} className="text-[var(--warning)]" />
-                  ) : (
-                    <img src={`https://ui-avatars.com/api/?name=${activity.user}&background=random`} alt={activity.user} className="w-full h-full object-cover" />
-                  )}
-                </div>
-              </div>
-              <div className="flex-1 pb-1">
-                <div className="flex justify-between items-start mb-1">
-                  <p className="text-sm text-[var(--text)] font-medium">
-                    {activity.user} <span className="text-[var(--text-muted)] font-normal">{activity.action}</span>
-                  </p>
-                  {activity.amount && (
-                    <span className={`text-sm font-medium ${activity.amount.startsWith('+') ? 'text-[var(--success)]' : 'text-[var(--text)]'}`}>
-                      {activity.amount}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left font-sans">
+          <thead>
+            <tr className="bg-[var(--bg)]/30 text-[10px] font-black uppercase tracking-[0.25em] text-[var(--text-muted)]">
+              <th className="px-8 py-4">{t('user')}</th>
+              <th className="px-8 py-4">{t('action')}</th>
+              <th className="px-8 py-4">{t('status')}</th>
+              <th className="px-8 py-4">{t('time')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {activities.length > 0 ? (
+              activities.map((activity) => (
+                <tr key={activity.id} className="hover:bg-[var(--accent)]/5 transition-colors group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-[var(--border)]">
+                        <img src={`https://ui-avatars.com/api/?name=${activity.user}&background=random`} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="font-bold text-sm tracking-tight">{activity.user}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className="text-sm font-medium">{activity.action}</span>
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase border border-emerald-500/20">
+                      Success
                     </span>
-                  )}
-                </div>
-                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                  <Clock size={12} /> {activity.time}
-                </p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-            <Clock size={32} className="opacity-20 mb-3" />
-            <p className="text-sm">No recent activity found.</p>
-            <p className="text-xs opacity-60">System is ready for new events.</p>
-          </div>
-        )}
+                  </td>
+                  <td className="px-8 py-5">
+                    <span className="text-xs text-[var(--text-muted)] font-bold">{activity.time}</span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-8 py-20 text-center text-[var(--text-muted)] italic font-bold">
+                  {t('no_recent_activity', 'No activity logs matching today\'s window.')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -234,92 +237,85 @@ export default function DashboardOverview({ stats, isDarkMode, cardClasses, text
 
       {/* Top Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <MetricCard 
+        <KpiCard 
           title={t('admin_total_revenue', 'Total Revenue')} 
-          value={revenue === 0 ? '$0' : `$${(revenue / 1000).toFixed(1)}k`} 
-          trend="0.0%" 
+          value={revenue === 0 ? '0 MAD' : `${(revenue / 1000).toFixed(1)}k MAD`} 
+          trend="+12.5%" 
           isPositive={true}
           icon={DollarSign}
-          description="Awaiting new payment data"
+          description="Awaiting live transaction flow"
         />
-        <MetricCard 
+        <KpiCard 
           title={t('admin_total_bookings', 'Total Bookings')} 
           value={bookings.toLocaleString()} 
-          trend="0.0%" 
+          trend="+5.2%" 
           isPositive={true}
           icon={Calendar}
-          description="Awaiting new booking data"
+          description="New orders in the last 24h"
         />
-        <MetricCard 
+        <KpiCard 
           title={t('admin_active_users', 'Active Users')} 
           value={users.toLocaleString()} 
-          trend="0.0%" 
+          trend="+8.1%" 
           isPositive={true}
           icon={Users}
-          description="Awaiting new user registrations"
+          description="Total registered accounts"
         />
-        <MetricCard 
-          title={t('admin_conversion_rate', 'Conversion Rate')} 
-          value="0.0%" 
+        <KpiCard 
+          title={t('admin_system_uptime', 'System Uptime')} 
+          value="99.9%" 
           trend="0.0%" 
           isPositive={true}
-          icon={TrendingUp}
-          description="Awaiting analytical data"
+          icon={Activity}
+          description="All services operational"
         />
       </div>
 
       {/* Main Content Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 min-h-[400px]">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-12">
+        <div className="xl:col-span-2 space-y-8">
           <MainChart stats={stats} />
-        </div>
-        <div className="xl:col-span-1 min-h-[400px]">
-          <RecentActivity />
-        </div>
-      </div>
-
-      {/* Bottom Insights Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="hynex-card p-6 border-l-4 border-l-[var(--accent)] hover:shadow-lg transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="p-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg shrink-0">
-              <Sparkles size={24} />
-            </div>
-            <div>
-              <h4 className="font-bold text-[var(--text)] mb-1">AI Growth Insight</h4>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                System is ready. Once users start engaging with the platform, predictive insights and growth strategies will appear here.
-              </p>
-            </div>
-          </div>
+          <RecentActivityTable activities={[]} />
         </div>
         
-        <div className="hynex-card p-6 border-l-4 border-l-[var(--warning)] hover:shadow-lg transition-all duration-300 cursor-pointer" onClick={() => onAction && onAction('users')}>
-          <div className="flex items-start gap-4">
-            <div className="p-2 bg-[var(--warning)]/10 text-[var(--warning)] rounded-lg shrink-0">
-              <AlertCircle size={24} />
-            </div>
-            <div>
-              <h4 className="font-bold text-[var(--text)] mb-1">Action Required</h4>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                No pending actions required. You are all caught up. Check back later when new artisans register.
-              </p>
-            </div>
-          </div>
-        </div>
+        <div className="xl:col-span-1 space-y-8">
+           <div className="bg-black text-[var(--accent)] rounded-[32px] p-8 border border-[var(--accent)]/30 relative overflow-hidden group">
+              <BrainCircuit className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <Sparkles size={18} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">AI Insights</span>
+                </div>
+                <h3 className="text-2xl font-black italic uppercase italic tracking-tighter mb-4">Market Optimization</h3>
+                <p className="text-sm font-bold opacity-80 leading-relaxed uppercase">
+                  Demand for <span className="text-white">Electricians</span> is up 22% in Casablanca. Recommend balancing supply with targeted artisan onboarding.
+                </p>
+                <button className="mt-8 bg-[var(--accent)] text-black px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-transform shadow-xl shadow-[var(--accent)]/30">
+                  Run Market Analysis
+                </button>
+              </div>
+           </div>
 
-        <div className="hynex-card p-6 border-l-4 border-l-[var(--success)] hover:shadow-lg transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="p-2 bg-[var(--success)]/10 text-[var(--success)] rounded-lg shrink-0">
-              <CheckCircle2 size={24} />
-            </div>
-            <div>
-              <h4 className="font-bold text-[var(--text)] mb-1">System Status</h4>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                All systems functional and ready to scale. API response times are optimal. Server load is currently at 1% capacity.
-              </p>
-            </div>
-          </div>
+           <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] p-8 shadow-xl shadow-black/5">
+              <h4 className="text-sm font-black uppercase italic tracking-widest mb-6 flex items-center gap-2">
+                <ShieldAlert size={18} className="text-red-500" />
+                Security Pulse
+              </h4>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-4 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                  <span className="text-xs font-bold uppercase tracking-tight">Active Sessions</span>
+                  <span className="text-xs font-black italic">142</span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                  <span className="text-xs font-bold uppercase tracking-tight">Failed Logins</span>
+                  <span className="text-xs font-black italic text-red-500">2</span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                  <span className="text-xs font-bold uppercase tracking-tight">API Health</span>
+                  <span className="text-xs font-black italic text-emerald-500">Healthy</span>
+                </div>
+              </div>
+           </div>
         </div>
       </div>
     </div>

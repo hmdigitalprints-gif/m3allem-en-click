@@ -81,6 +81,7 @@ import { socket, connectSocket } from './services/socket';
 import NavButton from './components/common/NavButton';
 import MobileNav from './components/common/MobileNav';
 import PromoBanner from './components/common/PromoBanner';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Lazy loaded Dashboards
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
@@ -94,7 +95,8 @@ import ProfileCompletionBanner from './components/profile/ProfileCompletionBanne
 
 import { LanguageSwitcher } from './components/layout/LanguageSwitcher';
 
-import { ErrorBoundary } from './components/common/ErrorBoundary';
+import AppLayout from './components/layout/AppLayout';
+import AdminLayout from './components/layout/AdminLayout';
 
 export default function App() {
   const { t } = useTranslation();
@@ -194,240 +196,55 @@ export default function App() {
     );
   }
 
+  const customerContent = (
+    <CustomerView 
+      activeTab={customerTab} 
+      onAction={showToast} 
+      onSelectArtisan={setSelectedArtisanId} 
+      onBookArtisan={(artisan, isQuick) => {
+        setBookingArtisan(artisan);
+        if (isQuick) setIsQuickBook(true);
+      }}
+      categories={realCategories}
+      featuredArtisans={featuredArtisans}
+      recommendedArtisans={recommendedArtisans}
+      onNavigate={setCustomerTab}
+      onTrackArtisan={setTrackingBooking}
+    />
+  );
+
   const mainContent = !user ? (
     showLogin ? <AuthScreens onSuccess={() => setShowLogin(false)} onBack={() => setShowLogin(false)} /> : <LandingPage onGetStarted={() => setShowLogin(true)} onAction={(msg) => showToast(msg, 'info')} isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user} />
   ) : (
-    <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--text)] font-sans overflow-hidden flex flex-col pt-0">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans">
       <PromoBanner />
-      <div className="flex-1 overflow-hidden">
-        {view === 'admin' ? (
-          <ErrorBoundary>
-            <AdminDashboard 
-              onSwitchView={() => setView('customer')} 
-              onLogout={logout} 
-              onAction={showToast}
-              isDarkMode={isDarkMode} 
-              toggleTheme={toggleTheme} 
-            />
-          </ErrorBoundary>
-        ) : view === 'artisan' ? (
-          <ErrorBoundary><ArtisanDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-        ) : view === 'seller' ? (
-          <ErrorBoundary><SellerDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-        ) : view === 'company' ? (
-          <ErrorBoundary><CompanyDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
-        ) : (
-          <div className="flex-1 flex flex-col overflow-hidden relative h-full">
-            <header className="h-16 md:h-20 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 sticky top-0 z-[60] shrink-0">
-            <div className="flex items-center gap-2 md:gap-4">
-              <button 
-                onClick={() => setCustomerTab('dashboard')}
-                className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-muted)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 transform hover:rotate-12 transition-transform duration-300"
-              >
-                <Hammer size={16} className="text-black" />
-              </button>
-              <div className="cursor-pointer" onClick={() => setCustomerTab('dashboard')}>
-                <h1 className="text-base md:text-xl font-black tracking-tight uppercase italic flex items-center gap-1">
-                  M3allem <span className="text-[var(--accent)] hidden sm:inline">{t('nav_brand_accent')}</span>
-                </h1>
-                <p className="hidden md:block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">{t('crafting_excellence')}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-1.5 md:gap-4">
-              <NavButton 
-                active={customerTab === 'home'} 
-                onClick={() => setCustomerTab('home')}
-                icon={<HomeIcon size={18} />}
-                label={t('nav_home')}
-              />
-              <LanguageSwitcher />
-              <button 
-                onClick={toggleTheme}
-                className="p-1.5 md:p-3 rounded-full glass hover:scale-110 transition-all active:scale-95 shadow-md flex items-center justify-center border border-[var(--border)]"
-              >
-                {isDarkMode ? <Sun className="text-yellow-400" size={16} /> : <Moon className="text-blue-500" size={16} />}
-              </button>
-              <NotificationBell userId={user.id} />
-              {user.role === 'admin' && (
-                <button 
-                  onClick={() => setView('admin')}
-                  className="p-1.5 md:p-3 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95 shadow-sm flex items-center gap-2 font-bold border border-[var(--accent)]/20"
-                >
-                  <ShieldCheck size={16} />
-                  <span className="hidden lg:inline">{t('nav_dashboard')}</span>
-                </button>
-              )}
-              <div className="flex items-center gap-1 md:gap-3 ms-1 md:ms-0">
-                <div className="w-7 h-7 md:w-10 md:h-10 rounded-full bg-[var(--text)]/10 border border-[var(--border)] overflow-hidden">
-                  <img src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || '')}&background=FFD700&color=000`} alt={t('profile_settings')} className="w-full h-full object-cover" />
-                </div>
-                <button 
-                  onClick={logout}
-                  className="p-1.5 md:p-2.5 rounded-xl bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white transition-all active:scale-95 border border-[var(--danger)]/20"
-                  title={t('profile_btn_logout')}
-                >
-                  <LogOut size={14} className="md:w-4 md:h-4" />
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {/* Profile Completion Reminder */}
-          {user.role !== 'admin' && <ProfileCompletionBanner onComplete={() => navigate('/profile')} />}
-
-          <CustomerView 
-            activeTab={customerTab} 
-            onAction={showToast} 
-            onSelectArtisan={setSelectedArtisanId} 
-            onBookArtisan={(artisan, isQuick) => {
-              setBookingArtisan(artisan);
-              if (isQuick) setIsQuickBook(true);
-            }}
-            categories={realCategories}
-            featuredArtisans={featuredArtisans}
-            recommendedArtisans={recommendedArtisans}
-            onNavigate={setCustomerTab}
-            onTrackArtisan={setTrackingBooking}
-          />
-          
-          {/* Customer Bottom Nav */}
-          <MobileNav 
-            activeTab={customerTab}
-            onTabChange={(id) => setCustomerTab(id as any)}
-            hiddenClassName=""
-            navItems={[
-              { id: 'dashboard', label: t('nav_overview'), icon: <LayoutDashboard size={18} /> },
-              { id: 'home', label: t('nav_home'), icon: <HomeIcon size={18} /> },
-              { id: 'find', label: t('nav_find'), icon: <SearchIcon size={18} /> },
-              // { id: 'documents', label: t('nav_projects'), icon: <FileText size={18} /> },
-              { id: 'store', label: t('nav_store_short'), icon: <ShoppingBag size={18} /> },
-              { id: 'bookings', label: t('nav_bookings'), icon: <Clock size={18} /> },
-              { id: 'messages', label: t('nav_messages'), icon: <MessageSquare size={18} /> },
-              { id: 'account', label: t('nav_profile'), icon: <Users size={18} /> }
-            ]}
-          />
-        </div>
-      )}
-      </div>
-
-      {/* Modals */}
-      <AnimatePresence>
-        {trackingBooking && (
-          <MapTracking 
-            artisanId={trackingBooking.artisan_id}
-            artisanName={trackingBooking.other_party_name}
-            clientLocation={[trackingBooking.location_lat || 33.5731, trackingBooking.location_lng || -7.5898]}
-            onClose={() => setTrackingBooking(null)}
-          />
-        )}
-        {activeCall && (
-          <LiveDiagnostic 
-            userId={user.id}
-            userName={user.name}
-            targetUserId={activeCall.artisanUserId}
-            targetUserName={activeCall.artisanName}
-            isArtisan={activeCall.isArtisan}
-            initialSignal={activeCall.signal}
-            onClose={() => setActiveCall(null)}
-          />
-        )}
-
-        {incomingCall && (
-          <motion.div 
-            initial={{ opacity: 0, y: -50, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -50, x: '-50%' }}
-            className="fixed top-10 left-1/2 z-[300] bg-[var(--card-bg)] border border-[var(--accent)]/20 p-6 rounded-[32px] shadow-2xl flex flex-col items-center gap-4 min-w-[300px]"
-          >
-            <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-full flex items-center justify-center text-[var(--accent)] animate-pulse">
-              <Video size={32} />
-            </div>
-            <div className="text-center">
-              <h3 className="font-bold text-lg">{t('incoming_diagnostic', 'Incoming Live Diagnostic')}</h3>
-              <p className="text-[var(--text-muted)] text-sm">{t('from', 'from')} {incomingCall?.fromName}</p>
-            </div>
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={() => {
-                  if (!incomingCall) return;
-                  setActiveCall({ 
-                    artisanId: '', 
-                    artisanName: incomingCall.fromName,
-                    artisanUserId: incomingCall.from,
-                    isArtisan: user?.role === 'artisan',
-                    signal: incomingCall.signal
-                  });
-                  setIncomingCall(null);
-                }}
-                className="flex-1 bg-[#FFD700] text-black py-3 rounded-xl font-bold hover:bg-[#E6C200] transition-all"
-              >
-                {t('accept', 'Accept')}
-              </button>
-              <button 
-                onClick={() => setIncomingCall(null)}
-                className="flex-1 bg-rose-500/10 text-rose-500 py-3 rounded-xl font-bold hover:bg-rose-500/20 transition-all"
-              >
-                {t('reject', 'Reject')}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {selectedArtisanId && (
-          <ArtisanProfileModal 
-            artisanId={selectedArtisanId} 
-            onClose={() => setSelectedArtisanId(null)}
-            onBook={(artisan) => {
-              setSelectedArtisanId(null);
-              setBookingArtisan(artisan);
-            }}
-            onChat={(artisan) => {
-              setSelectedArtisanId(null);
-              setChatArtisan(artisan);
-            }}
-          />
-        )}
-        {bookingArtisan && (
-          <BookingModal 
-            artisan={bookingArtisan} 
-            isQuickBook={isQuickBook}
-            onClose={() => {
-              setBookingArtisan(null);
-              setIsQuickBook(false);
-            }}
+      
+      {view === 'admin' ? (
+        <ErrorBoundary>
+          <AdminDashboard 
+            onSwitchView={() => setView('customer')} 
+            onLogout={logout} 
             onAction={showToast}
-            onSuccess={() => {
-              setBookingArtisan(null);
-              setIsQuickBook(false);
-              setCustomerTab('bookings');
-              showToast(t('booking_success_msg', 'Booking requested successfully!'));
-            }}
+            isDarkMode={isDarkMode} 
+            toggleTheme={toggleTheme} 
           />
-        )}
-        {chatArtisan && (
-          <ChatModal
-            artisan={chatArtisan}
-            currentUser={user}
-            onClose={() => setChatArtisan(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className="fixed bottom-32 left-1/2 z-[100] bg-[var(--card-bg)] text-[var(--text)] px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-[var(--border)]"
-          >
-            <CheckCircle size={20} className="text-emerald-500" />
-            {toast.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </ErrorBoundary>
+      ) : view === 'artisan' ? (
+        <ErrorBoundary><ArtisanDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+      ) : view === 'seller' ? (
+        <ErrorBoundary><SellerDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+      ) : view === 'company' ? (
+        <ErrorBoundary><CompanyDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+      ) : (
+        <AppLayout 
+          activeTab={customerTab} 
+          onTabChange={(tab: any) => setCustomerTab(tab)}
+          onSwitchView={setView}
+        >
+          {user.role !== 'admin' && <ProfileCompletionBanner onComplete={() => setCustomerTab('account')} />}
+          {customerContent}
+        </AppLayout>
+      )}
     </div>
   );
 
@@ -436,58 +253,179 @@ export default function App() {
       <Helmet>
         <html lang={language} dir={dir} />
         <title>{t('meta_title', 'M3allem - Multilingual Home Services')}</title>
-        <meta name="description" content={t('meta_description', 'Morocco\'s premier marketplace for verified artisans.')} />
+        <meta name="description" content={t('meta_description', "Morocco's premier marketplace for verified artisans.")} />
       </Helmet>
+      
       <ErrorBoundary>
-      <Routes>
-        <Route path="/" element={mainContent} />
-        <Route path="/store" element={<Store />} />
-        <Route path="/profile" element={<AuthRouteGuard><Profile /></AuthRouteGuard>} />
-        <Route path="/artisan/:id" element={<ArtisanProfile />} />
-        <Route path="/booking" element={<AuthRouteGuard><BookingPage /></AuthRouteGuard>} />
-        <Route path="/devis" element={<AuthRouteGuard><Devis /></AuthRouteGuard>} />
-        <Route path="/auto-devis" element={<AuthRouteGuard><AutoDevis /></AuthRouteGuard>} />
-        <Route path="/facture" element={<AuthRouteGuard><Facture /></AuthRouteGuard>} />
-        <Route path="/find-pro" element={<FindM3allem />} />
-        <Route path="/messages" element={<AuthRouteGuard><Messages /></AuthRouteGuard>} />
-        <Route path="/marketplace-extras" element={<MarketplaceExtras />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/become-artisan" element={<BecomeArtisan />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/blog" element={<Blog />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/cookies" element={<Cookies />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/careers" element={<Careers />} />
-        <Route path="/phone-auth" element={<Auth />} />
-        <Route path="/phone-dashboard" element={<AuthRouteGuard><PhoneDashboard /></AuthRouteGuard>} />
-        {!import.meta.env.PROD && (
-          <Route path="/debug" element={<AuthRouteGuard role="admin"><SimulationDashboard /></AuthRouteGuard>} />
-        )}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <AnimatePresence>
-        {location.pathname !== '/' && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            onClick={() => navigate('/')}
-            className="fixed bottom-6 start-6 z-[60] py-3 px-6 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-2xl shadow-[var(--accent)]/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border border-[var(--accent-foreground)]/20"
-            title={t('back_to_home')}
-            id="back-to-home-btn"
-          >
-            <HomeIcon size={20} />
-            <span className="font-bold text-sm">
-              {t('back_to_home', 'Back to Home')}
-            </span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </ErrorBoundary>
+        <Routes>
+          <Route path="/" element={mainContent} />
+          <Route path="/store" element={<Store />} />
+          <Route path="/profile" element={<AuthRouteGuard><Profile /></AuthRouteGuard>} />
+          <Route path="/artisan/:id" element={<ArtisanProfile />} />
+          <Route path="/booking" element={<AuthRouteGuard><BookingPage /></AuthRouteGuard>} />
+          <Route path="/devis" element={<AuthRouteGuard><Devis /></AuthRouteGuard>} />
+          <Route path="/auto-devis" element={<AuthRouteGuard><AutoDevis /></AuthRouteGuard>} />
+          <Route path="/facture" element={<AuthRouteGuard><Facture /></AuthRouteGuard>} />
+          <Route path="/find-pro" element={<FindM3allem />} />
+          <Route path="/messages" element={<AuthRouteGuard><Messages /></AuthRouteGuard>} />
+          <Route path="/marketplace-extras" element={<MarketplaceExtras />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/become-artisan" element={<BecomeArtisan />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/phone-auth" element={<Auth />} />
+          <Route path="/phone-dashboard" element={<AuthRouteGuard><PhoneDashboard /></AuthRouteGuard>} />
+          {!import.meta.env.PROD && (
+            <Route path="/debug" element={<AuthRouteGuard role="admin"><SimulationDashboard /></AuthRouteGuard>} />
+          )}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+
+        {/* Global Modals & UI */}
+        <AnimatePresence>
+          {trackingBooking && (
+            <MapTracking 
+              artisanId={trackingBooking.artisan_id}
+              artisanName={trackingBooking.other_party_name}
+              clientLocation={[trackingBooking.location_lat || 33.5731, trackingBooking.location_lng || -7.5898]}
+              onClose={() => setTrackingBooking(null)}
+            />
+          )}
+          {activeCall && user && (
+            <LiveDiagnostic 
+              userId={user.id}
+              userName={user.name}
+              targetUserId={activeCall.artisanUserId}
+              targetUserName={activeCall.artisanName}
+              isArtisan={activeCall.isArtisan}
+              initialSignal={activeCall.signal}
+              onClose={() => setActiveCall(null)}
+            />
+          )}
+
+          {incomingCall && user && (
+            <motion.div 
+              initial={{ opacity: 0, y: -50, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -50, x: '-50%' }}
+              className="fixed top-10 left-1/2 z-[300] bg-[var(--card-bg)] border border-[var(--accent)]/20 p-6 rounded-[32px] shadow-2xl flex flex-col items-center gap-4 min-w-[300px]"
+            >
+              <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-full flex items-center justify-center text-[var(--accent)] animate-pulse">
+                <Video size={32} />
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-lg">{t('incoming_diagnostic', 'Incoming Live Diagnostic')}</h3>
+                <p className="text-[var(--text-muted)] text-sm">{t('from', 'from')} {incomingCall?.fromName}</p>
+              </div>
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => {
+                    if (!incomingCall) return;
+                    setActiveCall({ 
+                      artisanId: '', 
+                      artisanName: incomingCall.fromName,
+                      artisanUserId: incomingCall.from,
+                      isArtisan: user?.role === 'artisan',
+                      signal: incomingCall.signal
+                    });
+                    setIncomingCall(null);
+                  }}
+                  className="flex-1 bg-[#FFD700] text-black py-3 rounded-xl font-bold hover:bg-[#E6C200] transition-all"
+                >
+                  {t('accept', 'Accept')}
+                </button>
+                <button 
+                  onClick={() => setIncomingCall(null)}
+                  className="flex-1 bg-rose-500/10 text-rose-500 py-3 rounded-xl font-bold hover:bg-rose-500/20 transition-all"
+                >
+                  {t('reject', 'Reject')}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {selectedArtisanId && (
+            <ArtisanProfileModal 
+              artisanId={selectedArtisanId} 
+              onClose={() => setSelectedArtisanId(null)}
+              onBook={(artisan) => {
+                setSelectedArtisanId(null);
+                setBookingArtisan(artisan);
+              }}
+              onChat={(artisan) => {
+                setSelectedArtisanId(null);
+                setChatArtisan(artisan);
+              }}
+            />
+          )}
+          {bookingArtisan && (
+            <BookingModal 
+              artisan={bookingArtisan} 
+              isQuickBook={isQuickBook}
+              onClose={() => {
+                setBookingArtisan(null);
+                setIsQuickBook(false);
+              }}
+              onAction={showToast}
+              onSuccess={() => {
+                setBookingArtisan(null);
+                setIsQuickBook(false);
+                setCustomerTab('bookings');
+                showToast(t('booking_success_msg', 'Booking requested successfully!'));
+              }}
+            />
+          )}
+          {chatArtisan && (
+            <ChatModal
+              artisan={chatArtisan}
+              currentUser={user}
+              onClose={() => setChatArtisan(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: 50, x: '-50%' }}
+              className="fixed bottom-32 left-1/2 z-[100] bg-[var(--card-bg)] text-[var(--text)] px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-[var(--border)]"
+            >
+              <CheckCircle size={20} className="text-emerald-500" />
+              {toast.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Back to Home Button */}
+        <AnimatePresence>
+          {location.pathname !== '/' && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={() => navigate('/')}
+              className="fixed bottom-6 start-6 z-[60] py-3 px-6 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] shadow-2xl shadow-[var(--accent)]/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border border-[var(--accent-foreground)]/20"
+              title={t('back_to_home')}
+              id="back-to-home-btn"
+            >
+              <HomeIcon size={20} />
+              <span className="font-bold text-sm">
+                {t('back_to_home', 'Back to Home')}
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </ErrorBoundary>
     </>
   );
 }

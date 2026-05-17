@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search as SearchIcon, 
   Zap, 
@@ -34,6 +35,7 @@ export default function HomeSection({
   recommendedArtisans 
 }: HomeSectionProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [matching, setMatching] = useState(false);
@@ -92,97 +94,72 @@ export default function HomeSection({
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative min-h-[60vh] md:h-[70vh] flex items-center px-6 md:px-12 overflow-hidden py-20 md:py-0">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg)] via-[var(--bg)]/80 to-transparent z-10" />
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="w-full h-full object-cover opacity-40"
-            poster="https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=1920"
-          >
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-carpenter-working-with-a-drill-4667-large.mp4" type="video/mp4" />
-          </video>
-        </div>
-        
-        <div className="relative z-20 max-w-2xl">
+      {/* 1. Simplified Search Hero */}
+      <section className="relative py-12 md:py-24 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-xs font-bold uppercase tracking-widest mb-6"
+            className="text-center mb-12"
           >
-            <ShieldCheck size={14} />
-            {t('verified_pros_only')}
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter mb-6 md:mb-8 text-[var(--text)] leading-[1.1] md:leading-[0.9]"
-          >
-            {t('home_care_title_1')} <br />
-            <span className="text-[var(--accent)]">{t('home_care_title_2')}</span>
-          </motion.h1>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="relative group max-w-lg"
-          >
-            <SearchIcon className="absolute start-4 md:start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder={t('search_placeholder')} 
-              className="w-full bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--border)] rounded-2xl md:rounded-3xl py-3.5 md:py-6 ps-12 md:ps-16 pe-6 text-base md:text-xl focus:outline-none focus:border-[var(--accent)]/50 transition-all shadow-xl md:shadow-2xl text-[var(--text)]"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  onAction('Searching for: ' + searchQuery);
-                }
-              }}
-            />
-            {searchSuggestions.length > 0 && (
-              <div className="absolute top-full inset-x-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl z-50">
-                {searchSuggestions?.map((s, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => { 
-                      setSearchQuery(s); 
-                      setSearchSuggestions([]); 
-                      onAction('Selected suggestion: ' + s); 
-                    }}
-                    className="w-full text-start px-6 py-3 hover:bg-[var(--accent)]/5 transition-colors text-sm border-b border-[var(--border)] last:border-0 text-[var(--text)] flex items-center gap-2"
-                  >
-                    <Search size={14} className="text-[var(--accent)]" />
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-[10px] font-black uppercase tracking-[0.2em] mb-8">
+              <ShieldCheck size={14} />
+              {t('verified_pros_only', 'Elite Professionals Only')}
+            </div>
+            <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.85] italic uppercase italic">
+              {t('home_care_title_1', 'Find the best')} <br />
+              <span className="text-[var(--accent)]">{t('home_care_title_2', 'M3allem')}</span>
+            </h1>
+            <p className="text-[var(--text-muted)] text-lg md:text-xl max-w-2xl mx-auto mb-10 font-bold opacity-80 uppercase tracking-tight">
+              {t('hero_subtitle', 'Verified experts for all your home projects and repairs.')}
+            </p>
+
+            <div className="relative group max-w-2xl mx-auto">
+              <SearchIcon className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" size={20} />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder={t('search_placeholder')} 
+                className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-6 text-xl focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/10 transition-all shadow-2xl text-[var(--text)] italic font-black"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onAction('Searching for: ' + searchQuery);
+                }}
+              />
+              {searchSuggestions.length > 0 && (
+                <div className="absolute top-full inset-x-0 mt-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-[24px] overflow-hidden shadow-2xl z-50 text-start">
+                  {searchSuggestions.map((s, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => { setSearchQuery(s); setSearchSuggestions([]); }}
+                      className="w-full px-6 py-4 hover:bg-[var(--accent)]/5 transition-colors text-sm font-bold border-b border-[var(--border)] last:border-0 text-[var(--text)] flex items-center gap-3"
+                    >
+                      <Search size={16} className="text-[var(--accent)]" />
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 flex flex-wrap gap-4"
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap justify-center gap-4"
           >
             <button 
               onClick={handleSmartMatch}
               disabled={matching}
-              className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-full font-bold text-sm hover:scale-105 transition-all shadow-lg shadow-[var(--accent)]/20 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-3 px-8 py-4 bg-[var(--accent)] text-black rounded-[20px] font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[var(--accent)]/30 active:scale-95 disabled:opacity-50"
             >
               <Zap size={18} className={matching ? "animate-pulse" : ""} />
               {matching ? t('smart_match_loading') : t('smart_match_btn')}
             </button>
             <button 
               onClick={() => onAction('Opening AI Problem Solver...')}
-              className="flex items-center gap-2 px-6 py-3 bg-[var(--card-bg)] text-[var(--text)] border border-[var(--border)] rounded-full font-bold text-sm hover:bg-[var(--accent)]/5 transition-all active:scale-95"
+              className="flex items-center gap-3 px-8 py-4 bg-black text-[var(--accent)] border border-[var(--accent)]/30 rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95"
             >
               <BrainCircuit size={18} />
               {t('ai_problem_solver_btn')}
@@ -191,118 +168,27 @@ export default function HomeSection({
         </div>
       </section>
 
-      {/* AI Problem Solver Modal/Section */}
-      <section className="px-6 md:px-12 py-10 bg-[var(--accent)]/5 border-y border-[var(--border)]">
-        <div className="max-w-4xl mx-auto bg-[var(--card-bg)] border border-[var(--accent)]/30 rounded-[40px] p-8 md:p-12 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 end-0 p-8 opacity-10 pointer-events-none">
-            <BrainCircuit size={120} className="text-[var(--accent)]" />
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 text-[var(--accent)] font-bold text-xs uppercase tracking-widest mb-6">
-              <Sparkles size={20} />
-              {t('ai_problem_solver_label', 'AI Problem Solver')}
-            </div>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tighter mb-4 text-[var(--text)]">{t('ai_solver_title')}</h2>
-            <p className="text-[var(--text-muted)] mb-8 max-w-xl text-lg">{t('ai_solver_desc')}</p>
-            
-            <div className="space-y-4">
-              <textarea 
-                value={problemDescription}
-                onChange={(e) => setProblemDescription(e.target.value)}
-                placeholder={t('ai_solver_placeholder')}
-                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-3xl py-6 px-8 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-lg h-32 resize-none text-[var(--text)]"
-              />
-              <div className="flex justify-end items-center gap-4">
-                <button 
-                  onClick={() => setIsDeepThinking(!isDeepThinking)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${isDeepThinking ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--bg)]/10 text-[var(--text-muted)] hover:bg-[var(--bg)]/20'}`}
-                >
-                  <BrainCircuit size={14} /> {isDeepThinking ? "Deep Reasoning ON" : "Deep Reasoning OFF"}
-                </button>
-                <button 
-                  onClick={handleSuggestService}
-                  disabled={suggesting || !problemDescription}
-                  className="px-8 py-4 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 rtl:flex-row-reverse"
-                >
-                  {suggesting ? (isDeepThinking ? t('ai_solver_analyzing') : t('ai_solver_analyzing')) : t('ai_solver_analyze_btn')}
-                  <ChevronRight size={20} className="rtl:rotate-180" />
-                </button>
-              </div>
-            </div>
-
-            {deepThinkResult && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-8 p-8 bg-[var(--accent)]/5 border border-[var(--accent)]/10 rounded-3xl text-start"
-              >
-                <div className="flex items-center gap-3 mb-4 text-[var(--accent)]">
-                  <BrainCircuit size={20} />
-                  <span className="font-bold uppercase tracking-widest text-xs">{t('ai_recommendation', 'AI Deep Reasoning Analysis')}</span>
-                </div>
-                <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[var(--text-muted)]">
-                  {deepThinkResult.split('\n').map((line, i) => (
-                    <p key={i} className="mb-2">{line}</p>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {aiSuggestion && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-8 p-8 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-3xl"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div>
-                    <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-2">{t('ai_recommendation', 'AI Recommendation')}</p>
-                    <h3 className="text-2xl font-bold text-[var(--text)]">{t('suggested_category', 'You need a')} <span className="text-[var(--accent)]">{aiSuggestion.categoryName}</span></h3>
-                    <p className="text-[var(--text-muted)] mt-1">{t('recommended_service', 'Suggested Service:')} <span className="font-bold text-[var(--text)]">{aiSuggestion.suggestedServiceName}</span></p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => onAction(`Finding ${aiSuggestion.categoryName} experts...`)}
-                      className="px-6 py-4 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-xl font-bold text-sm active:scale-95"
-                    >
-                      {t('ai_book_best_pro')}
-                    </button>
-                    <button 
-                      onClick={() => setAiSuggestion(null)}
-                      className="px-6 py-4 bg-[var(--card-bg)]/50 text-[var(--text)] rounded-xl font-bold text-sm hover:bg-[var(--card-bg)]/80 transition-all"
-                    >
-                      {t('close')}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Recommended for You (AI) */}
+      {/* 2. Personalized Experience (AI) */}
       {recommendedArtisans.length > 0 && (
-        <section className="px-6 md:px-12 py-20 md:py-32 bg-[var(--accent)]/5 border-b border-[var(--accent)]/10">
-          <div className="mb-12">
-            <p className="micro-label mb-4">{t('personalized_selection', 'Personalized Selection')}</p>
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-[var(--text)]">
-              {t('recommended_for_you_title')} <span className="gold-text italic-serif">{t('recommended_for_you_accent')}</span>
-            </h2>
-            <p className="text-[var(--text-muted)] mt-3 text-base md:text-xl">{t('recommended_desc', 'AI-powered suggestions based on your preferences.')}</p>
+        <section className="px-6 md:px-12 py-16 bg-[var(--bg)]">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-2">
+                <Sparkles size={20} className="text-[var(--accent)]" />
+                {t('recommended_for_you_title', 'Recommended for You')}
+              </h2>
+              <p className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest mt-1 opacity-60">
+                {t('ai_curated', 'AI-Curated based on your history')}
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
-            {recommendedArtisans?.map(artisan => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recommendedArtisans.slice(0, 4).map(artisan => (
               <ArtisanCard 
                 key={artisan.id}
-                name={artisan.name} 
-                category={t(artisan.category_name, artisan.category_name)} 
-                rating={artisan.rating} 
-                reviews={artisan.review_count} 
+                {...artisan}
+                category={t(artisan.category_name, artisan.category_name)}
                 price={`${t('starting_from')} ${Number(artisan.starting_price || 100).toFixed(2)} MAD`}
-                image={artisan.avatar_url}
-                isOnline={!!artisan.is_online}
                 onAction={(type: string) => type === 'view' ? onSelectArtisan(artisan.id) : onBookArtisan(artisan, type === 'quick-book')}
               />
             ))}
@@ -310,36 +196,61 @@ export default function HomeSection({
         </section>
       )}
 
-      {/* Categories Grid */}
-      <section className="px-6 md:px-12 py-20 md:py-32" id="categories">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 md:mb-16 gap-6">
-          <div>
-            <p className="micro-label mb-4">{t('specialized_expertise', 'Specialized Expertise')}</p>
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-[var(--text)]">
-              {t('expert_categories_title')} <span className="gold-text italic-serif">{t('expert_categories_accent')}</span>
-            </h2>
-            <p className="text-[var(--text-muted)] mt-3 text-base md:text-lg">{t('categories_desc', 'Select a service to see available professionals near you.')}</p>
-          </div>
+      {/* 3. Category Bento Grid */}
+      <section className="px-6 md:px-12 py-16">
+        <div className="flex items-center justify-between mb-10">
+          <h2 className="text-2xl font-black uppercase italic tracking-tighter">
+            {t('explore_services', 'What do you need?') }
+          </h2>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-8">
-          {categories?.map((cat, idx) => (
-            <motion.div 
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {categories.map((cat, idx) => (
+            <motion.button 
               key={cat.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.05 }}
-              whileHover={{ y: -10, backgroundColor: 'var(--accent-muted)', borderColor: 'var(--accent)' }}
-              onClick={() => onAction('Selected category: ' + cat.name)}
-              className="card-luxury p-4 md:p-10 flex flex-col items-center justify-center gap-3 md:gap-6 cursor-pointer transition-all group active:scale-95"
+              whileHover={{ y: -8 }}
+              onClick={() => navigate(`/find-pro?category=${encodeURIComponent(cat.name)}`)}
+              className="bg-[var(--card-bg)] border border-[var(--border)] p-8 rounded-[32px] flex flex-col items-center gap-4 transition-all hover:border-[var(--accent)] group shadow-xl shadow-black/5"
             >
-              <div className={`p-3 md:p-6 rounded-[20px] md:rounded-[32px] bg-[var(--bg)] group-hover:bg-[var(--accent)]/10 transition-colors text-[var(--accent)]`}>
-                <CategoryIcon name={cat.name} className="w-6 h-6 md:w-8 md:h-8" />
+              <div className="w-16 h-16 rounded-2xl bg-[var(--bg)] flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform shadow-inner">
+                <CategoryIcon name={cat.name} className="w-8 h-8" />
               </div>
-              <span className="font-bold text-sm md:text-lg tracking-tight text-[var(--text)]">{t(cat.id || cat.name, cat.name)}</span>
-            </motion.div>
+              <span className="font-black text-[10px] uppercase tracking-widest text-center">{t(cat.id || cat.name, cat.name)}</span>
+            </motion.button>
           ))}
+        </div>
+      </section>
+
+      {/* 4. AI Problem Solver (Bento Box) */}
+      <section className="px-6 md:px-12 py-16">
+        <div className="bg-black text-[var(--accent)] rounded-[48px] p-10 md:p-16 relative overflow-hidden flex flex-col md:flex-row gap-12 items-center border border-[var(--accent)]/30">
+          <div className="relative z-10 flex-1">
+             <div className="flex items-center gap-2 mb-6">
+                <BrainCircuit size={24} />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">{t('ai_diagnostic', 'AI DIAGNOSTIC SYSTEM')}</span>
+             </div>
+             <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none mb-8">
+               {t('solve_anything', 'Describe your problem, we find the solution.')}
+             </h2>
+             <p className="text-[var(--accent)]/60 text-lg md:text-xl font-bold uppercase mb-10 max-w-xl">
+               {t('ai_solver_desc', 'Not sure what you need? Our AI analyzes your situation and recommends the perfect expert.')}
+             </p>
+             <button 
+               onClick={handleSuggestService}
+               className="bg-[var(--accent)] text-black px-10 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-[var(--accent)]/50"
+             >
+               {t('launch_diagnostic', 'Launch Diagnostic')}
+             </button>
+          </div>
+          <div className="flex-1 w-full max-w-md bg-[var(--accent)]/5 backdrop-blur-3xl border border-[var(--accent)]/20 rounded-[32px] p-2">
+            <textarea 
+               value={problemDescription}
+               onChange={(e) => setProblemDescription(e.target.value)}
+               placeholder={t('ai_solver_placeholder')}
+               className="w-full bg-transparent border-none rounded-[28px] p-6 text-xl italic font-black text-[var(--accent)] focus:ring-0 h-48 resize-none placeholder:text-[var(--accent)]/30"
+            />
+          </div>
+          
+          <Sparkles className="absolute -right-20 -bottom-20 w-96 h-96 text-[var(--accent)] opacity-5 rotate-12" />
         </div>
       </section>
 

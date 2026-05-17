@@ -335,6 +335,8 @@ model Booking {
   locationLat             Decimal?          @map("location_lat")
   locationLng             Decimal?          @map("location_lng")
   city                    String?
+  address                 String?
+  description             String?           @db.Text
   proofBeforeClient       String?           @map("proof_before_client")
   materialHandling        MaterialHandling? @default(client_provides) @map("material_handling")
   materialCost            Decimal?          @default(0) @map("material_cost")
@@ -345,12 +347,12 @@ model Booking {
   proofDuringService      String?           @map("proof_during_service")
   proofAfterService       String?           @map("proof_after_service")
   price                   Decimal?
-  paymentMethod           String?           @default("cash") @map("payment_method")
-  paymentStatus           PaymentStatus?    @default(pending) @map("payment_status")
-  bookingStatus           BookingStatus?    @default(pending) @map("booking_status")
   adminAmount             Decimal?          @map("admin_amount")
   artisanAmount           Decimal?          @map("artisan_amount")
   commissionAmount        Decimal?          @map("commission_amount")
+  paymentMethod           String?           @default("cash") @map("payment_method")
+  paymentStatus           PaymentStatus?    @default(pending) @map("payment_status")
+  bookingStatus           BookingStatus?    @default(pending) @map("booking_status")
   scheduledAt             DateTime?         @map("scheduled_at")
   isUrgent                Boolean           @default(false) @map("is_urgent")
   attachments             Json?
@@ -488,6 +490,7 @@ model Payment {
 model Rating {
   id        String   @id @default(uuid())
   orderId   String?  @map("order_id")
+  bookingId String?  @map("booking_id")
   clientId  String?  @map("client_id")
   artisanId String?  @map("artisan_id")
   stars     Int?
@@ -497,8 +500,6 @@ model Rating {
   artisan   Artisan? @relation(fields: [artisanId], references: [id])
   order     Order?   @relation(fields: [orderId], references: [id])
   booking   Booking? @relation(fields: [bookingId], references: [id])
-  bookingId String?  @map("booking_id")
-
   @@map("ratings")
 }
 

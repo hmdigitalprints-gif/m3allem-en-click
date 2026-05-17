@@ -1,47 +1,27 @@
-# Stage 1: Build
-FROM node:22-slim AS builder
-
+# Frontend Stage
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Install system dependencies for Prisma and build tools
-RUN apt-get update && apt-get install -y openssl python3 build-essential && rm -rf /var/lib/apt/lists/*
-
-# Copy configuration files
 COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install all dependencies including devDependencies
-RUN npm ci
-
-# Copy the rest of the application
+RUN npm install
 COPY . .
-
-# Generate Prisma client and build the application
 RUN npm run build
 
-# Remove development dependencies
-RUN npm prune --production
-
-# Stage 2: Runtime
-FROM node:22-slim AS runner
-
+# Production Stage
+FROM node:18-alpine
 WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/server.ts ./server.ts
 
-# Install openssl for Prisma
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Generate Prisma Client
+RUN npx prisma generate
 
 ENV NODE_ENV=production
-ENV PORT=3000
-
-# Copy necessary files from the builder stage
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/public ./public
-
-# Expose the application port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "run", "start"]
+# Start command (using the bundled server.cjs if following the build script guidelines)
+# But for typical express+vite setup we use tsx or node server.cjs
+CMD ["npm", "start"]

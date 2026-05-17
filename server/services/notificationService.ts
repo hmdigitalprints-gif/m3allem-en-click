@@ -18,12 +18,16 @@ export const initNotificationService = (socketIo: Server) => {
  * @param params Optional parameters for string replacement
  */
 export const sendNotification = async (userId: string, titleKey: string, messageKey: string, type: 'push' | 'email' | 'reminder', link?: string, params: any = {}) => {
+  if (!userId) {
+    console.error("sendNotification called without userId");
+    return;
+  }
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { preferredLanguage: true }
     });
-    const lang = user ? user.preferredLanguage : 'fr';
+    const lang = (user && user.preferredLanguage) ? user.preferredLanguage : 'fr';
 
     let title = await t(titleKey, lang);
     let message = await t(messageKey, lang);

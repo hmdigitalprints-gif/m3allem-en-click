@@ -2,45 +2,27 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/m3allem
-      - JWT_SECRET=${JWT_SECRET:-default_secret}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - PAYMENT_ENCRYPTION_KEY=${PAYMENT_ENCRYPTION_KEY}
+      - DATABASE_URL=postgresql://m3allem:m3allem_pass@db:5432/m3allem?schema=public
+      - JWT_SECRET=change_this_to_a_secure_random_string
+      - NODE_ENV=production
     depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - m3allem-network
+      - db
 
   db:
     image: postgres:15-alpine
+    restart: always
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=m3allem
+      - POSTGRES_PASSWORD=m3allem_pass
       - POSTGRES_DB=m3allem
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d m3allem"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - m3allem-network
-
-networks:
-  m3allem-network:
-    driver: bridge
 
 volumes:
   postgres_data:

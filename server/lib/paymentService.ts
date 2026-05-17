@@ -173,7 +173,6 @@ export async function processCashPayment(bookingId: string, clientId: string) {
     data: {
       paymentMethod: "cash",
       paymentStatus: "pending", // artisan will confirm receipt
-      commissionAmount,
     },
   });
 
@@ -246,7 +245,6 @@ export async function processWalletPayment(bookingId: string, clientId: string) 
       data: {
         paymentMethod: "wallet",
         paymentStatus: "paid",
-        commissionAmount,
       },
     });
 
@@ -291,7 +289,7 @@ export async function confirmCashReceived(bookingId: string, artisanUserId: stri
 
     await tx.booking.update({
       where: { id: bookingId },
-      data: { paymentStatus: "paid", commissionAmount },
+      data: { paymentStatus: "paid" },
     });
 
     return { confirmed: true, artisanAmount, commissionAmount };

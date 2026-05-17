@@ -23,6 +23,8 @@ router.post("/", authenticateToken, async (req: any, res) => {
       locationLat, 
       locationLng, 
       city, 
+      address,
+      description,
       attachments,
       paymentMethod
     } = req.body;
@@ -47,7 +49,9 @@ router.post("/", authenticateToken, async (req: any, res) => {
         locationLat: locationLat || null,
         locationLng: locationLng || null,
         city: city || null,
-        attachments: attachments ? JSON.stringify(attachments) : null,
+        address: address || null,
+        description: description || null,
+        attachments: attachments || null,
         paymentMethod: (paymentMethod as PaymentMethod) || 'cash'
       }
     });
@@ -177,7 +181,18 @@ router.get("/", authenticateToken, async (req: any, res) => {
       
       bookings = await prisma.booking.findMany({
         where: { artisanId: artisan.id },
-        include: {
+        select: {
+          id: true,
+          clientId: true,
+          artisanId: true,
+          serviceId: true,
+          bookingStatus: true,
+          scheduledAt: true,
+          isUrgent: true,
+          price: true,
+          createdAt: true,
+          city: true,
+          address: true,
           service: { select: { title: true } },
           client: { select: { name: true, avatarUrl: true, phone: true } },
           ratings: { select: { id: true } }
@@ -189,7 +204,19 @@ router.get("/", authenticateToken, async (req: any, res) => {
     } else {
       bookings = await prisma.booking.findMany({
         where: { clientId: userId },
-        include: {
+        select: {
+          id: true,
+          clientId: true,
+          artisanId: true,
+          serviceId: true,
+          bookingStatus: true,
+          scheduledAt: true,
+          isUrgent: true,
+          price: true,
+          createdAt: true,
+          description: true,
+          city: true,
+          address: true,
           service: { select: { title: true } },
           artisan: {
             include: {
@@ -217,25 +244,41 @@ router.get("/", authenticateToken, async (req: any, res) => {
       const isApproved = approvedStatuses.includes(b.bookingStatus);
       const statusKey = `status_${b.bookingStatus}`;
       
+      const isArtisan = role === 'artisan';
+      
       return {
         ...b,
         status: b.bookingStatus,
         service_title: b.service?.title,
+        service_name: b.service?.title, // Added for frontend compatibility
         client_name: b.client?.name,
         client_avatar: b.client?.avatarUrl,
         client_phone: isApproved ? b.client?.phone : undefined,
         artisan_name: b.artisan?.user?.name,
         artisan_avatar: b.artisan?.user?.avatarUrl,
         artisan_phone: isApproved ? b.artisan?.user?.phone : undefined,
+        other_party_name: isArtisan ? b.client?.name : b.artisan?.user?.name,
+        other_party_avatar: isArtisan ? b.client?.avatarUrl : b.artisan?.user?.avatarUrl,
         has_review: b.ratings.length > 0,
         status_label: translations[statusKey] || b.bookingStatus
       };
     });
 
     res.json(formatted);
-  } catch (error) {
-    console.error("Fetch bookings error:", error);
-    res.status(500).json({ error: "Failed to fetch bookings" });
+  } catch (error: any) {
+    const errorDetails = {
+      message: error.message,
+      code: error.code,
+      clientVersion: error.clientVersion,
+      meta: error.meta,
+      stack: error.stack
+    };
+    console.error("Fetch bookings detailed error:", JSON.stringify(errorDetails, null, 2));
+    res.status(500).json({ 
+      error: "Failed to fetch bookings", 
+      details: error.message,
+      code: error.code 
+    });
   }
 });
 
@@ -321,15 +364,23 @@ router.get("/nearby", authenticateToken, async (req: any, res) => {
     }).map((b: any) => ({
       ...b,
       service_title: b.service?.title,
+      service_name: b.service?.title,
       client_name: b.client?.name,
       client_avatar: b.client?.avatarUrl,
+      other_party_name: b.client?.name,
+      other_party_avatar: b.client?.avatarUrl,
       category_id: b.service?.categoryId
     }));
 
     res.json(nearbyBookings);
-  } catch (error) {
-    console.error("Fetch nearby jobs error:", error);
-    res.status(500).json({ error: "Failed to fetch nearby jobs" });
+  } catch (error: any) {
+    console.error("Fetch nearby jobs error:", {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    });
+    res.status(500).json({ error: "Failed to fetch nearby jobs", details: error.message });
   }
 });
 
@@ -379,7 +430,7 @@ router.patch("/:id/proposal", authenticateToken, async (req: any, res) => {
       data: {
         artisanProposedPrice: proposedPrice,
         materialCost: materialCost || 0,
-        requiredMaterials: JSON.stringify(requiredMaterials),
+        requiredMaterials: requiredMaterials || null,
         artisanProposalComments: comments,
         bookingStatus: 'proposal_submitted'
       }
@@ -452,9 +503,7 @@ router.patch("/:id/approve-proposal", authenticateToken, async (req: any, res) =
         clientApprovedProposal: true,
         materialHandling: handling,
         bookingStatus: 'proposal_approved',
-        price: totalPrice,
-        adminAmount,
-        artisanAmount
+        price: totalPrice
       }
     });
 
@@ -574,7 +623,7 @@ router.patch("/:id/status", authenticateToken, async (req: any, res) => {
       where: { id },
       data: {
         bookingStatus: finalStatus as BookingStatus,
-        attachments: attachments ? JSON.stringify(attachments) : booking.attachments
+        attachments: attachments || booking.attachments
       }
     });
 
@@ -802,13 +851,13 @@ router.post("/:id/review", authenticateToken, async (req: any, res) => {
 
     // Check if review already exists
     const existingReview = await prisma.rating.findFirst({
-      where: { orderId: id }
+      where: { bookingId: id }
     });
     if (existingReview) return res.status(400).json({ error: "Review already exists for this booking" });
 
     await prisma.rating.create({
       data: {
-        orderId: id,
+        bookingId: id,
         clientId,
         artisanId: booking.artisanId!,
         stars,

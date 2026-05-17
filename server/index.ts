@@ -22,6 +22,7 @@ import {
   sendNotification,
 } from "./services/notificationService.ts";
 import { authenticateToken } from "./routes/auth.ts";
+import { BookingStatus } from "@prisma/client";
 import { sanitizeObject } from "./lib/sanitizer.ts";
 import helmet from "helmet";
 import cors from "cors";
@@ -584,26 +585,33 @@ async function startServer() {
 
         const upcomingBookings = await prisma.booking.findMany({
           where: {
-            bookingStatus: "proposal_approved",
+            bookingStatus: BookingStatus.proposal_approved,
             scheduledAt: {
               gte: oneHourFromNow,
               lte: oneHourAndOneMinFromNow,
             },
           },
-          include: {
-            client: { select: { name: true } },
+          select: {
+            id: true,
+            clientId: true,
+            artisanId: true,
+            scheduledAt: true,
+            bookingStatus: true,
+            client: { select: { id: true, name: true } },
             artisan: {
-              include: { user: { select: { name: true, id: true } } },
+              select: {
+                user: { select: { id: true, name: true } }
+              }
             },
           },
         });
 
         upcomingBookings.forEach((booking) => {
-          if (booking.clientId) {
+          if (booking.clientId && (booking.client as any)?.id) {
             sendNotification(
               booking.clientId,
               "Appointment Reminder",
-              `Your appointment with ${booking.artisan?.user?.name} is in 1 hour.`,
+              `Your appointment with ${booking.artisan?.user?.name || 'an artisan'} is in 1 hour.`,
               "reminder",
               "/bookings",
             );
@@ -612,7 +620,7 @@ async function startServer() {
             sendNotification(
               booking.artisan.user.id,
               "Appointment Reminder",
-              `Your appointment with ${booking.client?.name} is in 1 hour.`,
+              `Your appointment with ${booking.client?.name || 'a client'} is in 1 hour.`,
               "reminder",
               "/bookings",
             );
@@ -625,16 +633,25 @@ async function startServer() {
 
         const urgentRequests = await prisma.booking.findMany({
           where: {
-            bookingStatus: "pending",
+            bookingStatus: BookingStatus.pending,
             isUrgent: true,
             createdAt: {
               gte: sixteenMinsAgo,
               lte: fifteenMinsAgo,
             },
           },
-          include: {
-            client: { select: { name: true } },
-            artisan: { include: { user: { select: { id: true } } } },
+          select: {
+            id: true,
+            clientId: true,
+            artisanId: true,
+            isUrgent: true,
+            createdAt: true,
+            client: { select: { id: true, name: true } },
+            artisan: {
+              select: {
+                user: { select: { id: true } }
+              }
+            },
           },
         });
 
@@ -643,7 +660,7 @@ async function startServer() {
             sendNotification(
               request.artisan.user.id,
               "Urgent Request Reminder",
-              `You have an urgent request from ${request.client?.name} waiting for your response.`,
+              `You have an urgent request from ${request.client?.name || 'a client'} waiting for your response.`,
               "reminder",
               "/bookings",
             );
@@ -654,7 +671,13 @@ async function startServer() {
           !error?.message?.includes("PrismaClientInitializationError") &&
           !String(error).includes("PrismaClientInitializationError")
         ) {
-          console.error("Error in reminder job:", error);
+          console.error("Error in reminder job details:", {
+            message: error.message,
+            code: error.code,
+            clientVersion: error.clientVersion,
+            meta: error.meta,
+            stack: error.stack
+          });
         }
       }
     }, 60000); // Run every minute
