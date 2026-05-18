@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, CheckCircle, AlertTriangle, DollarSign, Search, MoreVertical, Loader2, Clock, Package } from 'lucide-react';
-import KpiCard from '../components/KpiCard';
+import { ShoppingBag, CheckCircle, AlertTriangle, DollarSign, Search, MoreVertical, Loader2, Clock, Package, ArrowUpRight } from 'lucide-react';
 import { ViewProps } from '../types';
-import { useAuth } from '../../../context/AuthContext';
 
-export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
+function StatCard({ title, value, color, icon: Icon }: any) {
+  return (
+    <div className="bg-[var(--card-bg)] rounded-xl p-6 flex flex-col justify-between overflow-hidden relative border border-[var(--border)] hover:border-[var(--border)] transition-colors h-[140px] shadow-sm group">
+      <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-[40px] opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity" style={{ backgroundColor: color }} />
+      <div className="flex justify-between items-start z-10 relative">
+        <div className="flex gap-4 items-center">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center border border-[var(--border)] shadow-inner group-hover:scale-105 transition-transform" style={{ backgroundColor: color + '15', color: color }}>
+            <Icon size={22} strokeWidth={2.5} />
+          </div>
+          <div>
+            <div className="text-[var(--text-muted)] text-xs font-black flex items-center gap-2 mb-1 tracking-wider uppercase">
+              {title}
+            </div>
+            <div className="text-3xl font-black text-[var(--text)] tracking-tight">{value}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function OrdersView({ onAction }: ViewProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,111 +49,114 @@ export default function OrdersView({ isDarkMode, cardClasses, textMutedClasses, 
 
   const filteredOrders = orders.filter(o => 
     o.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.artisan_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (o.client_name && o.client_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (o.artisan_name && o.artisan_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const totalVolume = orders.reduce((acc, o) => acc + (o.total_price || 0), 0);
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+    <div className="space-y-8 pt-4 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter italic uppercase">Orders & Projects</h1>
-          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-2">Track active service orders, material purchases, and project milestones.</p>
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Orders & Bookings</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">Track active services and milestones</p>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={() => onAction?.('Exporting orders report...')}
-            className="bg-white/5 border border-white/10 text-white px-8 py-4 rounded-[20px] text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95"
-          >
-            Export Report
-          </button>
+          
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <KpiCard title="Active Orders" value={orders.filter(o => o.status === 'pending' || o.status === 'in_progress').length.toString()} icon={<ShoppingBag size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
-        <KpiCard title="Completed" value={orders.filter(o => o.status === 'completed').length.toString()} icon={<CheckCircle size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
-        <KpiCard title="Disputed" value={orders.filter(o => o.status === 'disputed').length.toString()} icon={<AlertTriangle size={20} />} trend="0%" isPositive={false} isDarkMode={isDarkMode} />
-        <KpiCard title="Total Volume" value={`MAD ${Number(totalVolume).toFixed(2)}`} icon={<DollarSign size={20} />} trend="0%" isPositive={true} isDarkMode={isDarkMode} />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard title="Active Orders" value={orders.filter(o => o.status === 'pending' || o.status === 'in_progress').length.toString()} color="#3B82F6" icon={ShoppingBag} />
+        <StatCard title="Completed" value={orders.filter(o => o.status === 'completed').length.toString()} color="#10B981" icon={CheckCircle} />
+        <StatCard title="Disputed" value={orders.filter(o => o.status === 'disputed').length.toString()} color="#EF4444" icon={AlertTriangle} />
+        <StatCard title="Total Volume" value={`MAD ${(Number(totalVolume) || 0).toFixed(0)}`} color="#FFD700" icon={DollarSign} />
       </div>
 
-      <div className="hynex-card p-8 flex flex-wrap gap-6 items-center justify-between">
-        <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-          <div className="flex items-center px-6 py-4 rounded-[20px] bg-[var(--bg)] border border-[var(--border)] flex-1 focus-within:border-[#FFD400]/30 transition-all">
-            <Search size={18} className="text-[var(--text-muted)]" />
-            <input 
-              type="text" 
-              placeholder="Search orders by ID or name..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none outline-none w-full ml-4 text-xs font-bold uppercase tracking-widest placeholder:text-[var(--text-muted)]/50 text-[var(--text)]" 
-            />
-          </div>
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)] shadow-sm">
+        <div className="flex items-center px-5 py-3 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] flex-1 w-full max-w-md focus-within:border-[#FFD700]/50 transition-colors shadow-inner">
+          <Search size={18} className="text-[var(--text-muted)]" strokeWidth={2.5} />
+          <input 
+            type="text" 
+            placeholder="Search orders by ID or customer..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-transparent border-none outline-none w-full ml-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--text-muted)]" 
+          />
         </div>
       </div>
 
-      <div className="hynex-card overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border)] overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-white/[0.01]">
+          <h3 className="text-sm font-black uppercase tracking-wider text-[var(--text)]">All Orders</h3>
+        </div>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-start whitespace-nowrap">
             <thead>
-              <tr className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] border-b border-[var(--border)]">
-                <th className="px-10 py-8 font-black">Order ID</th>
-                <th className="px-10 py-8 font-black">Parties</th>
-                <th className="px-10 py-8 font-black">Amount</th>
-                <th className="px-10 py-8 font-black">Status</th>
-                <th className="px-10 py-8 font-black text-right">Actions</th>
+              <tr className="border-b border-[var(--border)]">
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Order ID</th>
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Parties</th>
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider text-end">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)]">
+            <tbody className="divide-y divide-white/5">
               {loading ? (
-                <tr><td colSpan={5} className="px-10 py-20 text-center text-[var(--text-muted)]">Loading orders...</td></tr>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <Loader2 size={32} className="animate-spin text-[#FFD700]" />
+                      <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">Loading orders...</p>
+                    </div>
+                  </td>
+                </tr>
               ) : filteredOrders.length === 0 ? (
-                <tr><td colSpan={5} className="px-10 py-20 text-center text-[var(--text-muted)]">No orders found.</td></tr>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
+                    No orders found matching your criteria.
+                  </td>
+                </tr>
               ) : filteredOrders.map((order) => (
-                <tr key={order.id} className="group hover:bg-[var(--card-bg)]/50 transition-all">
-                  <td className="px-10 py-8">
+                <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-[var(--border)]">
-                        <Package size={18} className="text-[#FFD400]" />
+                      <div className="w-12 h-12 rounded-xl bg-[var(--card-surface)] flex items-center justify-center border border-[var(--border)] group-hover:border-[#FFD700]/30 transition-colors text-[var(--text-muted)] group-hover:text-[#FFD700]">
+                        <Package size={20} strokeWidth={2} />
                       </div>
-                      <span className="text-xs font-mono font-bold text-[var(--text)] uppercase tracking-widest">
+                      <span className="text-sm font-bold text-[var(--text)] font-mono uppercase tracking-widest group-hover:text-[#FFD700] transition-colors">
                         #{order.id.substring(0, 8)}
                       </span>
                     </div>
                   </td>
-                  <td className="px-10 py-8">
-                    <div className="text-xs">
-                      <p className="font-bold text-[var(--text)]">{order.client_name}</p>
-                      <p className="text-[var(--text-muted)] mt-1">with {order.artisan_name}</p>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-[var(--text)] mb-0.5">{order.client_name || 'Unknown Client'}</span>
+                      <span className="text-xs font-medium text-[var(--text-muted)]">with <span className="font-bold text-[var(--text-muted)]">{order.artisan_name || 'Unknown Artisan'}</span></span>
                     </div>
                   </td>
-                  <td className="px-10 py-8">
-                    <span className="text-sm font-black italic tracking-tighter text-[var(--text)]">
-                      MAD {Number(order.total_price).toFixed(2)}
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-black text-[#FFD700] tracking-tight">
+                      <span className="text-xs mr-1">MAD</span>
+                      {(Number(order.total_price) || 0).toFixed(2)}
                     </span>
                   </td>
-                  <td className="px-10 py-8">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit ${
-                      order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' :
-                      order.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
-                      order.status === 'disputed' ? 'bg-rose-500/10 text-rose-500' :
-                      'bg-blue-500/10 text-blue-500'
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border items-center justify-center gap-1.5 w-fit shadow-sm ${
+                      order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                      order.status === 'pending' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                      order.status === 'disputed' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                      'bg-blue-500/10 text-blue-500 border-blue-500/20'
                     }`}>
-                      {order.status === 'completed' && <CheckCircle size={14} />}
-                      {order.status === 'pending' && <Clock size={14} />}
-                      {order.status === 'disputed' && <AlertTriangle size={14} />}
+                      {order.status === 'completed' && <CheckCircle size={14} strokeWidth={2.5} />}
+                      {order.status === 'pending' && <Clock size={14} strokeWidth={2.5} />}
+                      {order.status === 'disputed' && <AlertTriangle size={14} strokeWidth={2.5} />}
                       {(order.status || 'pending').replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-10 py-8 text-right">
-                    <button 
-                      onClick={() => onAction?.(`Viewing details for order ${order.id}...`)}
-                      className="w-10 h-10 rounded-xl bg-[var(--card-bg)] flex items-center justify-center hover:bg-[var(--card-bg)]/80 transition-all text-[var(--text)]"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
+                  <td className="px-6 py-4 text-end">
+                    
                   </td>
                 </tr>
               ))}

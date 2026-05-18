@@ -138,7 +138,7 @@ export default function PaymentModal({ booking, onClose, onSuccess, onAction }: 
                 <div className="pt-4 border-t border-[var(--border)] flex justify-between items-center">
                   <span className="font-bold">{t('payment.total', 'Total')}</span>
                   <span className="text-2xl font-bold text-[var(--accent)]">
-                    {bookingPrice.toFixed(2)} MAD
+                    {(Number(bookingPrice) || 0).toFixed(2)} MAD
                   </span>
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default function PaymentModal({ booking, onClose, onSuccess, onAction }: 
                       {loadingBalance
                         ? t('payment.loadingBalance', 'Loading balance…')
                         : walletBalance !== null
-                        ? `${t('payment.available', 'Available')}: ${walletBalance.toFixed(2)} MAD`
+                        ? `${t('payment.available', 'Available')}: ${(Number(walletBalance) || 0).toFixed(2)} MAD`
                         : t('payment.walletSub', 'Pay instantly from your account balance')}
                     </p>
                   </div>

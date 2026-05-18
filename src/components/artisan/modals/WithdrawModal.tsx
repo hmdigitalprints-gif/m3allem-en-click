@@ -38,7 +38,7 @@ export function WithdrawModal({
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">{t('withdrawal_amount', 'Amount to Withdraw')}</label>
-                  <span className="text-[10px] font-bold text-[var(--accent)]">{t('max_withdrawal', 'Max: ')} {Number(earnings).toFixed(2)} MAD</span>
+                  <span className="text-[10px] font-bold text-[var(--accent)]">{t('max_withdrawal', 'Max: ')} {(Number(earnings) || 0).toFixed(2)} MAD</span>
                 </div>
                 <div className="relative">
                   <input required value={withdrawAmount} onChange={e => {

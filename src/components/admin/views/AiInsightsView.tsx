@@ -4,7 +4,7 @@ import { BrainCircuit, Loader2, Sparkles, AlertCircle, BarChart3, Bug, MapPin, H
 import { ViewProps } from '../types';
 import { aiService } from '../../../services/aiService';
 
-export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
+export default function AiInsightsView({ onAction }: ViewProps) {
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,6 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
   const runAudit = async () => {
     setLoading(true);
     setError(null);
-    // Enhanced system data for context-aware analysis
     const systemData = {
       apiLatency: "240ms",
       errorRate: "0.5%",
@@ -40,7 +39,6 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
 
     try {
       const result = await aiService.getAdminInsights(systemData, history);
-      // We removed the hard error throw. If there is an issue, we show mock data.
       setInsights(result);
     } catch (err: any) {
       console.error(err);
@@ -53,31 +51,34 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
   const applyFix = (suggestion: any) => {
     setHistory(prev => [...prev, { suggestion, timestamp: new Date().toISOString(), status: 'fixed' }]);
     onAction?.(`Applied fix: ${suggestion.title}`);
-    // In a real app, this would trigger a backend update
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'Critical': return 'text-[var(--destructive)] bg-[var(--destructive)]/10 border-[var(--destructive)]/20';
+      case 'Critical': return 'text-red-500 bg-red-500/10 border-red-500/20';
       case 'High': return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
-      case 'Medium': return 'text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/20';
-      default: return 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/20';
+      case 'Medium': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+      default: return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
     }
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8 pb-20 pt-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-2xl tech-header text-[var(--text)] flex items-center gap-2">
-            <BrainCircuit className="text-[var(--accent)]" /> AI System Insights 2.0
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight flex items-center gap-3">
+            <div className="p-2.5 bg-[#FFD700]/10 rounded-xl border border-[#FFD700]/20">
+              <BrainCircuit className="text-[#FFD700]" size={24} strokeWidth={2.5} /> 
+            </div>
+            AI System Insights 2.0
           </h1>
-          <p className={`text-sm ${textMutedClasses} mt-1`}>Predictive analysis, business intelligence, and automated decision support.</p>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-2 uppercase tracking-wider">Predictive analysis, business intelligence, and automated decision support.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => setDevMode(!devMode)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${devMode ? 'bg-[var(--success)]/10 border-[var(--success)]/50 text-[var(--success)]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--text-muted)]'}`}
+            className={`px-5 py-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors border ${devMode ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-lg shadow-emerald-500/10' : 'bg-[var(--card-surface)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] shadow-sm'}`}
           >
             Developer Mode: {devMode ? 'ON' : 'OFF'}
           </button>
@@ -87,10 +88,10 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
               onAction?.('Running AI system audit...');
             }}
             disabled={loading}
-            className="bg-[var(--accent)] text-[var(--accent-foreground)] px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-[var(--accent)]/20"
+            className="bg-[#FFD700] text-black px-6 py-3 rounded-lg text-sm font-black uppercase tracking-wider flex items-center gap-2 hover:bg-[#E6C200] transition-colors active:scale-95 disabled:opacity-50 shadow-lg shadow-[#FFD700]/10"
           >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-            {loading ? 'Analyzing System...' : 'Run AI System Audit'}
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} strokeWidth={2.5} />}
+            {loading ? 'Analyzing...' : 'Run AI Audit'}
           </button>
         </div>
       </div>
@@ -99,26 +100,29 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-6 rounded-2xl bg-[var(--destructive)]/10 border border-[var(--destructive)]/20 text-[var(--destructive)] flex items-start gap-4"
+          className="p-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-start gap-4 shadow-sm"
         >
-          <AlertCircle className="shrink-0 mt-1" />
+          <AlertCircle className="shrink-0" size={24} strokeWidth={2.5} />
           <div>
-            <h3 className="font-bold">AI Insights Error</h3>
-            <p className="text-sm opacity-90 mt-1">{error}</p>
-            <p className="text-xs mt-3 opacity-70">
-              Tip: Ensure your Gemini API Key is correctly set in the Secrets panel of your AI Studio settings.
-            </p>
+            <h3 className="font-black text-base uppercase tracking-wider">AI Insights Error</h3>
+            <p className="text-sm font-medium mt-1 text-red-400 leading-relaxed">{error}</p>
+            <div className="mt-4 p-4 rounded-lg bg-red-950/50 border border-red-900/30">
+              <p className="text-xs font-bold text-red-300">
+                Tip: Ensure your Gemini API Key is correctly set in the Secrets panel of your AI Studio settings.
+              </p>
+            </div>
           </div>
         </motion.div>
       )}
 
       {!insights && !loading && !error && (
-        <div className={`p-12 text-center rounded-2xl border border-dashed border-[var(--border)] text-[var(--text-muted)]`}>
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
-            <BrainCircuit size={40} />
+        <div className="py-24 px-6 text-center rounded-xl border border-[var(--border)] text-[var(--text-muted)] bg-[var(--card-bg)] shadow-sm flex flex-col items-center justify-center min-h-[400px]">
+          <div className="w-24 h-24 mb-6 rounded-xl bg-[#FFD700]/10 flex items-center justify-center text-[#FFD700] relative">
+            <div className="absolute inset-0 bg-[#FFD700] blur-[40px] opacity-20 rounded-full" />
+            <BrainCircuit size={40} strokeWidth={2.5} className="relative z-10" />
           </div>
-          <h2 className="text-xl tech-header mb-2 text-[var(--text)]">Ready for Audit</h2>
-          <p className="max-w-md mx-auto tech-label opacity-70">Click the button above to have Gemini AI analyze your platform's logs, performance metrics, and user feedback.</p>
+          <h2 className="text-2xl font-black text-[var(--text)] mb-3 tracking-tight">Ready for System Audit</h2>
+          <p className="max-w-md mx-auto text-sm font-medium leading-relaxed text-[var(--text-muted)]">Click the button above to have Gemini AI analyze your platform's logs, performance metrics, and user feedback to uncover hidden issues.</p>
         </div>
       )}
 
@@ -129,45 +133,51 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
           className="space-y-8"
         >
           {/* Top Layer: Health & Business */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Health Score */}
-            <div className={`p-8 rounded-3xl flex flex-col items-center justify-center text-center ${cardClasses}`}>
-              <h3 className="tech-label mb-6 opacity-50">System Health</h3>
-              <div className="relative w-32 h-32 flex items-center justify-center">
+            <div className="p-8 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">System Health</h3>
+              <div className="relative w-40 h-40 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90">
-                  <circle cx="64" cy="64" r="58" fill="none" stroke="currentColor" strokeWidth="10" className="text-[var(--text)]/5" />
+                  <circle cx="80" cy="80" r="70" fill="none" stroke="currentColor" strokeWidth="12" className="text-[var(--text)]/5" />
                   <circle
-                    cx="64" cy="64" r="58" fill="none" stroke="currentColor" strokeWidth="10"
-                    strokeDasharray={364}
-                    strokeDashoffset={364 - (364 * (insights?.healthScore || 0)) / 100}
+                    cx="80" cy="80" r="70" fill="none" stroke="currentColor" strokeWidth="12"
+                    strokeDasharray={440}
+                    strokeDashoffset={440 - (440 * (insights?.healthScore || 0)) / 100}
                     strokeLinecap="round"
-                    className={(insights?.healthScore || 0) > 80 ? 'text-[var(--success)]' : (insights?.healthScore || 0) > 50 ? 'text-[var(--warning)]' : 'text-[var(--destructive)]'}
+                    className={(insights?.healthScore || 0) > 80 ? 'text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : (insights?.healthScore || 0) > 50 ? 'text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]' : 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]'}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl tech-value text-[var(--text)]">{insights?.healthScore || 0}%</span>
+                  <span className="text-5xl font-black tracking-tighter text-[var(--text)]">{insights?.healthScore || 0}<span className="text-2xl text-[var(--text-muted)] mb-2">%</span></span>
                 </div>
               </div>
             </div>
 
             {/* Business Insights */}
-            <div className={`lg:col-span-3 p-8 rounded-3xl ${cardClasses}`}>
-              <div className="flex items-center gap-2 mb-6 text-[var(--accent)]">
-                <BarChart3 size={20} />
-                <h3 className="text-lg tech-header text-[var(--text)]">Business Intelligence Layer</h3>
+            <div className="md:col-span-3 p-8 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-sm">
+              <div className="flex items-center gap-3 mb-8 text-[#FFD700]">
+                <BarChart3 size={24} strokeWidth={2.5} />
+                <h3 className="text-lg font-black text-[var(--text)] tracking-tight">Business Intelligence Layer</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-[var(--destructive)]/5 border border-[var(--destructive)]/10">
-                  <p className="text-[10px] font-black uppercase text-[var(--destructive)] mb-1">Revenue Loss Risk</p>
-                  <p className="text-sm text-[var(--text)] opacity-80">{insights?.businessInsights?.revenueLoss}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="p-6 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-red-500 mb-3 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex shrink-0" /> Revenue Loss Risk
+                  </p>
+                  <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">{insights?.businessInsights?.revenueLoss}</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[var(--warning)]/5 border border-[var(--warning)]/10">
-                  <p className="text-[10px] font-black uppercase text-[var(--warning)] mb-1">User Drop-offs</p>
-                  <p className="text-sm text-[var(--text)] opacity-80">{insights?.businessInsights?.userDropOffs}</p>
+                <div className="p-6 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-[#FFD700] mb-3 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FFD700] flex shrink-0" /> User Drop-offs
+                  </p>
+                  <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">{insights?.businessInsights?.userDropOffs}</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[var(--success)]/5 border border-[var(--success)]/10">
-                  <p className="text-[10px] font-black uppercase text-[var(--success)] mb-1">Behavior Issues</p>
-                  <p className="text-sm text-[var(--text)] opacity-80">{insights?.businessInsights?.behaviorIssues}</p>
+                <div className="p-6 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500 mb-3 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex shrink-0" /> Behavior Issues
+                  </p>
+                  <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">{insights?.businessInsights?.behaviorIssues}</p>
                 </div>
               </div>
             </div>
@@ -176,31 +186,31 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
           {/* Middle Layer: Issues & Alerts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Severity-Ranked Issues */}
-            <div className={`p-8 rounded-3xl ${cardClasses}`}>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2 text-[var(--destructive)]">
-                  <Bug size={20} />
-                  <h3 className="text-lg tech-header text-[var(--text)]">Smart Prioritization</h3>
+            <div className="p-8 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-sm flex flex-col h-[500px]">
+              <div className="flex items-center justify-between mb-8 shrink-0">
+                <div className="flex items-center gap-3 text-red-500">
+                  <Bug size={24} strokeWidth={2.5} />
+                  <h3 className="text-lg font-black text-[var(--text)] tracking-tight">Smart Prioritization</h3>
                 </div>
-                <span className="tech-label opacity-50">{insights?.issues?.length} Issues Detected</span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-[var(--border)] px-3 py-1.5 rounded-lg text-[var(--text-muted)] border border-[var(--border)]">{insights?.issues?.length} Issues Detected</span>
               </div>
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+              <div className="space-y-4 overflow-y-auto pr-2 flex-1 scrollbar-hide">
                 {insights?.issues?.sort((a: any, b: any) => {
                   const order = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
                   return (order[a.severity as keyof typeof order] || 0) - (order[b.severity as keyof typeof order] || 0);
                 }).map((issue: any, i: number) => (
-                  <div key={i} className={`p-4 rounded-2xl border ${getSeverityColor(issue.severity)}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-[var(--text)]">{issue.title}</h4>
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-current">
+                  <div key={i} className={`p-6 rounded-lg border ${getSeverityColor(issue.severity)}`}>
+                    <div className="flex justify-between items-start mb-3 gap-4">
+                      <h4 className="font-black text-[var(--text)] text-sm leading-tight max-w-[80%]">{issue.title}</h4>
+                      <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-md bg-[var(--border)] shrink-0">
                         {issue.severity}
                       </span>
                     </div>
-                    <p className="text-sm opacity-80 mb-3 text-[var(--text)]">{issue.description}</p>
+                    <p className="text-sm font-medium opacity-90 mb-5 leading-relaxed">{issue.description}</p>
                     <div className="flex flex-wrap gap-2">
-                      {issue.context?.city && <span className="text-[10px] bg-[var(--text)]/5 px-2 py-0.5 rounded-md flex items-center gap-1 text-[var(--text-muted)]"><MapPin size={10} /> {issue.context.city}</span>}
-                      {issue.context?.serviceType && <span className="text-[10px] bg-[var(--text)]/5 px-2 py-0.5 rounded-md flex items-center gap-1 text-[var(--text-muted)]"><Hammer size={10} /> {issue.context.serviceType}</span>}
-                      {issue.context?.userType && <span className="text-[10px] bg-[var(--text)]/5 px-2 py-0.5 rounded-md flex items-center gap-1 text-[var(--text-muted)]"><Users size={10} /> {issue.context.userType}</span>}
+                      {issue.context?.city && <span className="text-[10px] bg-black/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-bold"><MapPin size={12} /> {issue.context.city}</span>}
+                      {issue.context?.serviceType && <span className="text-[10px] bg-black/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-bold"><Hammer size={12} /> {issue.context.serviceType}</span>}
+                      {issue.context?.userType && <span className="text-[10px] bg-black/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-bold"><Users size={12} /> {issue.context.userType}</span>}
                     </div>
                   </div>
                 ))}
@@ -208,26 +218,26 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
             </div>
 
             {/* Predictive Alerts */}
-            <div className={`p-8 rounded-3xl ${cardClasses}`}>
-              <div className="flex items-center gap-2 mb-6 text-[var(--warning)]">
-                <Activity size={20} />
-                <h3 className="text-lg tech-header text-[var(--text)]">Predictive Alerts</h3>
+            <div className="p-8 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-sm flex flex-col h-[500px]">
+              <div className="flex items-center gap-3 mb-8 shrink-0 text-[#FFD700]">
+                <Activity size={24} strokeWidth={2.5} />
+                <h3 className="text-lg font-black text-[var(--text)] tracking-tight">Predictive Alerts</h3>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto flex-1 scrollbar-hide pr-2">
                 {insights?.predictiveAlerts?.map((alert: any, i: number) => (
-                  <div key={i} className="p-5 rounded-2xl bg-[var(--bg)] border border-[var(--border)] relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-[var(--warning)]" />
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-[var(--text)]">{alert.alert}</h4>
-                      <span className="text-[10px] font-black text-[var(--warning)] uppercase">{alert.timeframe}</span>
+                  <div key={i} className="p-6 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] relative overflow-hidden group shadow-inner">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#FFD700]" />
+                    <div className="flex items-start justify-between mb-3 gap-4">
+                      <h4 className="font-black text-[var(--text)] text-sm leading-tight max-w-[80%]">{alert.alert}</h4>
+                      <span className="text-[10px] font-black text-[#FFD700] uppercase bg-[#FFD700]/10 px-2.5 py-1 rounded-md shrink-0 border border-[#FFD700]/20">{alert.timeframe}</span>
                     </div>
-                    <p className="text-sm text-[var(--text-muted)]">{alert.forecast}</p>
+                    <p className="text-sm font-medium text-[var(--text-muted)] leading-relaxed">{alert.forecast}</p>
                   </div>
                 ))}
                 {insights?.predictiveAlerts?.length === 0 && (
-                  <div className="text-center py-12 opacity-30">
-                    <Sparkles size={40} className="mx-auto mb-4 text-[var(--text-muted)]" />
-                    <p className="tech-label">No immediate threats forecasted.</p>
+                  <div className="text-center py-20 opacity-50 flex flex-col items-center">
+                    <Sparkles size={48} strokeWidth={1.5} className="mb-4 text-[var(--text-muted)]" />
+                    <p className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">No immediate threats forecasted.</p>
                   </div>
                 )}
               </div>
@@ -235,59 +245,59 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
           </div>
 
           {/* Bottom Layer: Suggestions & Simulation */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[var(--success)]">
-                <Sparkles size={20} />
-                <h3 className="text-lg tech-header text-[var(--text)]">AI Decision Support & Simulation</h3>
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3 text-emerald-500">
+                <Sparkles size={24} strokeWidth={2.5} />
+                <h3 className="text-2xl font-black text-[var(--text)] tracking-tight">AI Decision Support</h3>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {insights?.suggestions?.map((suggestion: any, i: number) => (
-                <div key={i} className={`p-8 rounded-3xl border transition-all ${cardClasses} ${suggestion.riskLevel === 'Advanced' ? 'border-[var(--warning)]/20' : 'border-[var(--success)]/20'}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${suggestion.riskLevel === 'Advanced' ? 'bg-[var(--warning)]/10 text-[var(--warning)]' : 'bg-[var(--success)]/10 text-[var(--success)]'}`}>
-                        {suggestion.riskLevel === 'Advanced' ? <Zap size={20} /> : <ShieldCheck size={20} />}
+                <div key={i} className={`p-8 rounded-xl bg-[var(--card-bg)] border shadow-sm transition-all ${suggestion.riskLevel === 'Advanced' ? 'border-[#FFD700]/30' : 'border-emerald-500/30'}`}>
+                  <div className="flex items-start justify-between mb-8">
+                    <div className="flex items-center gap-5">
+                      <div className={`w-14 h-14 shrink-0 rounded-lg flex items-center justify-center ${suggestion.riskLevel === 'Advanced' ? 'bg-[#FFD700]/10 text-[#FFD700]' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        {suggestion.riskLevel === 'Advanced' ? <Zap size={28} strokeWidth={2.5} /> : <ShieldCheck size={28} strokeWidth={2.5} />}
                       </div>
                       <div>
-                        <h4 className="font-bold text-[var(--text)]">{suggestion.title}</h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-[10px] font-black uppercase ${suggestion.riskLevel === 'Advanced' ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}>
+                        <h4 className="font-black text-[var(--text)] text-lg tracking-tight leading-tight mb-2" style={{ wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{suggestion.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${suggestion.riskLevel === 'Advanced' ? 'text-[#FFD700]' : 'text-emerald-500'}`}>
                             {suggestion.riskLevel} Fix
                           </span>
-                          <span className="text-[10px] text-[var(--text-muted)] opacity-30">•</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-bold">{suggestion.confidence}% Confidence</span>
+                          <span className="w-1 h-1 rounded-full bg-gray-500" />
+                          <span className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-wider">{suggestion.confidence}% Confidence</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-sm text-[var(--text)] opacity-70 mb-6 leading-relaxed">{suggestion.description}</p>
+                  <p className="text-sm font-medium text-[var(--text-muted)] mb-8 leading-relaxed bg-[var(--card-surface)] p-6 rounded-lg border border-[var(--border)] shadow-inner">{suggestion.description}</p>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
-                      <p className="tech-label opacity-50 mb-1">Impact</p>
-                      <p className="text-xs font-bold text-[var(--success)]">{suggestion.impact?.performance}</p>
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] mb-2">Impact on Performance</p>
+                      <p className="text-sm font-bold text-emerald-500">{suggestion.impact?.performance}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
-                      <p className="tech-label opacity-50 mb-1">Revenue</p>
-                      <p className="text-xs font-bold text-[var(--accent)]">{suggestion.impact?.revenue}</p>
+                    <div className="p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] mb-2">Impact on Revenue</p>
+                      <p className="text-sm font-bold text-[#FFD700]">{suggestion.impact?.revenue}</p>
                     </div>
                   </div>
 
                   {/* Simulation Engine */}
-                  <div className="p-4 rounded-2xl bg-[var(--bg)] border border-dashed border-[var(--border)] mb-6">
-                    <div className="flex items-center gap-2 mb-2 tech-label opacity-50">
-                      <Activity size={12} /> Simulation Result
+                  <div className="p-6 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] mb-8 shadow-inner">
+                    <div className="flex items-center gap-2 mb-4 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                      <Activity size={16} strokeWidth={2.5} /> Simulation Result
                     </div>
-                    <p className="text-xs text-[var(--text)] italic mb-2 opacity-80">"{suggestion.simulation?.expectedImprovement}"</p>
-                    <div className="flex items-center gap-4 mt-3">
-                      <div className="flex-1 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--success)]" style={{ width: `${suggestion.confidence}%` }} />
+                    <p className="text-sm text-[var(--text-muted)] italic mb-5 font-bold">"{suggestion.simulation?.expectedImprovement}"</p>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-2 bg-black rounded-full overflow-hidden border border-[var(--border)]">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${suggestion.confidence}%` }} />
                       </div>
-                      <span className="text-[10px] font-bold text-[var(--success)]">Expected: +{suggestion.confidence/2}%</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500 shrink-0">Expected: +{suggestion.confidence/2}%</span>
                     </div>
                   </div>
 
@@ -296,18 +306,18 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-6 p-4 rounded-2xl bg-black/40 border border-[var(--border)] font-mono text-[10px] overflow-x-auto no-scrollbar"
+                      className="mb-8 p-6 rounded-lg bg-black border border-[var(--border)] font-mono text-xs overflow-x-auto scrollbar-hide shadow-inner"
                     >
-                      <p className="text-[var(--success)] mb-2">// Technical Solution</p>
-                      {suggestion.technicalSolution.code && <pre className="text-[var(--text)] opacity-80">{suggestion.technicalSolution.code}</pre>}
-                      {suggestion.technicalSolution.query && <pre className="text-blue-400">{suggestion.technicalSolution.query}</pre>}
-                      {suggestion.technicalSolution.optimization && <pre className="text-[var(--warning)]">{suggestion.technicalSolution.optimization}</pre>}
+                      <p className="text-emerald-500 mb-4 font-bold">// Technical Solution</p>
+                      {suggestion.technicalSolution.code && <pre className="text-[var(--text-muted)] mb-4 bg-[var(--border)] p-4 rounded-xl">{suggestion.technicalSolution.code}</pre>}
+                      {suggestion.technicalSolution.query && <pre className="text-blue-400 mb-4 bg-[var(--border)] p-4 rounded-xl">{suggestion.technicalSolution.query}</pre>}
+                      {suggestion.technicalSolution.optimization && <pre className="text-[#FFD700] bg-[var(--border)] p-4 rounded-xl">{suggestion.technicalSolution.optimization}</pre>}
                     </motion.div>
                   )}
 
                   <button 
                     onClick={() => applyFix(suggestion)}
-                    className={`w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 ${suggestion.riskLevel === 'Advanced' ? 'bg-[var(--warning)] text-black hover:opacity-90' : 'bg-[var(--success)] text-white hover:opacity-90'}`}
+                    className={`w-full py-5 rounded-lg font-black uppercase tracking-wider text-sm transition-colors active:scale-95 shadow-sm ${suggestion.riskLevel === 'Advanced' ? 'bg-[#FFD700] text-black hover:bg-[#E6C200]' : 'bg-emerald-500 text-black hover:bg-emerald-400'}`}
                   >
                     Approve & Apply Fix
                   </button>
@@ -318,19 +328,19 @@ export default function AiInsightsView({ isDarkMode, cardClasses, textMutedClass
 
           {/* Learning System History */}
           {history.length > 0 && (
-            <div className={`p-8 rounded-3xl ${cardClasses}`}>
-              <div className="flex items-center gap-2 mb-6 opacity-50">
-                <CheckCircle size={20} className="text-[var(--success)]" />
-                <h3 className="text-lg tech-header text-[var(--text)]">Learning System: Recent Fixes</h3>
+            <div className="p-8 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-sm mt-8">
+              <div className="flex items-center gap-3 mb-8 text-[var(--text-muted)]">
+                <CheckCircle size={28} strokeWidth={2.5} className="text-emerald-500" />
+                <h3 className="text-xl font-black text-[var(--text)] tracking-tight">Learning System: Recent Fixes</h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {history.slice(-3).reverse().map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[var(--success)]"><CheckCircle size={14} /></span>
-                      <span className="font-bold text-[var(--text)]">{item.suggestion.title}</span>
+                  <div key={i} className="flex items-center justify-between p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+                    <div className="flex items-center gap-4">
+                      <span className="text-emerald-500 bg-emerald-500/10 p-2.5 rounded-xl shrink-0"><CheckCircle size={18} strokeWidth={3} /></span>
+                      <span className="font-bold text-[var(--text)] text-sm">{item.suggestion.title}</span>
                     </div>
-                    <span className="tech-label opacity-40">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                    <span className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest bg-black/50 px-3 py-1.5 rounded-lg shrink-0 border border-[var(--border)]">{new Date(item.timestamp).toLocaleTimeString()}</span>
                   </div>
                 ))}
               </div>

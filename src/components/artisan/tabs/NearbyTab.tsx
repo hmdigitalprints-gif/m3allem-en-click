@@ -50,7 +50,7 @@ export function NearbyTab({
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <span className="font-bold text-[var(--accent)] block">{Number(job.price).toFixed(2)} MAD</span>
+                  <span className="font-bold text-[var(--accent)] block">{(Number(job.price) || 0).toFixed(2)} MAD</span>
                   <span className="text-[10px] text-[var(--text-muted)]">{new Date(job.created_at).toLocaleTimeString()}</span>
                 </div>
                 <button 

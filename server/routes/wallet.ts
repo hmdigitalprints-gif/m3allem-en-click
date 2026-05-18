@@ -24,7 +24,9 @@ import {
   isStripeEnabled,
   getStripe,
   decryptValue,
-} from "../lib/paymentService.ts";
+} from "../modules/payment/payment.service.ts";
+
+import { WithdrawalService } from "../modules/wallet/withdrawal.service.ts";
 
 const router = express.Router();
 
@@ -111,43 +113,13 @@ router.post("/withdraw", authenticateToken, async (req: any, res) => {
     if (!amount || Number(amount) <= 0) return res.status(400).json({ error: "Invalid amount" });
     if (!method) return res.status(400).json({ error: "Withdrawal method required" });
 
-    const result = await prisma.$transaction(async (tx) => {
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet || Number(wallet.balance) < Number(amount)) throw new Error("Insufficient funds");
+    const result = await WithdrawalService.requestWithdrawal(userId, Number(amount), method, accountDetails);
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: Number(amount) } },
-      });
-
-      const txRecord = await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          amount: Number(amount),
-          type: "withdrawal",
-          status: "pending",
-          description: `Withdrawal request via ${method}`,
-        },
-      });
-
-      return (tx as any).withdrawalRequest.create({
-        data: {
-          userId,
-          amount: Number(amount),
-          method,
-          accountDetails: accountDetails ? JSON.stringify(accountDetails) : null,
-          status: "pending",
-          transactionId: txRecord.id,
-        },
-      });
-    });
-
-    await auditService.log(userId, "WITHDRAWAL_REQUESTED", "wallet", null, { amount, method });
     res.json({ success: true, requestId: result.id, status: "pending" });
   } catch (error: any) {
     const msg = error?.message || "Failed to request withdrawal";
     console.error("Withdrawal error:", error);
-    res.status(msg === "Insufficient funds" ? 400 : 500).json({ error: msg });
+    res.status(msg === "Insufficient funds to lock" ? 400 : 500).json({ error: msg });
   }
 });
 

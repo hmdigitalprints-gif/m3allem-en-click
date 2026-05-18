@@ -82,7 +82,7 @@ export function ServicesTab({
                   <div className="flex justify-between items-center pt-6 border-t border-[var(--border)]">
                     <div className="flex flex-col">
                       <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">{t('starting_price', 'Starting Price')}</span>
-                      <span className="text-2xl font-black text-[var(--accent)] tracking-tighter">{Number(service.price).toFixed(2)} <span className="text-xs font-bold">MAD</span></span>
+                      <span className="text-2xl font-black text-[var(--accent)] tracking-tighter">{(Number(service.price) || 0).toFixed(2)} <span className="text-xs font-bold">MAD</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 

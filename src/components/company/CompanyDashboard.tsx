@@ -203,7 +203,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
               <StatCard title="Active Projects" value={stats.activeProjects} icon={<Briefcase className="text-[var(--accent)]" />} />
               <StatCard title="Team Size" value={stats.totalEmployees} icon={<Users className="text-[var(--accent)]" />} />
               <StatCard title="Completed" value={stats.completedProjects} icon={<CheckCircle className="text-[var(--success)]" />} />
-              <StatCard title="Total Revenue" value={`${Number(stats.totalRevenue).toFixed(2)} MAD`} icon={<Building2 className="text-[var(--accent)]" />} />
+              <StatCard title="Total Revenue" value={`${(Number(stats.totalRevenue) || 0).toFixed(2)} MAD`} icon={<Building2 className="text-[var(--accent)]" />} />
             </div>
 
             {/* Quick Actions */}
@@ -272,7 +272,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
                     <div className="flex items-center gap-8">
                       <div className="text-right">
                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Budget</p>
-                        <p className="font-bold text-[var(--accent)]">{Number(project.budget).toFixed(2)} MAD</p>
+                        <p className="font-bold text-[var(--accent)]">{(Number(project.budget) || 0).toFixed(2)} MAD</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Deadline</p>
@@ -334,7 +334,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
                      </div>
                      <div className="text-right">
                        <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mb-1">Budget</p>
-                       <p className="text-2xl font-black text-[var(--accent)]">{Number(project.budget).toFixed(0)} <span className="text-xs">MAD</span></p>
+                       <p className="text-2xl font-black text-[var(--accent)]">{(Number(project.budget) || 0).toFixed(0)} <span className="text-xs">MAD</span></p>
                      </div>
                    </div>
                    <p className="text-sm text-[var(--text-muted)] mb-8 line-clamp-2">{project.description}</p>

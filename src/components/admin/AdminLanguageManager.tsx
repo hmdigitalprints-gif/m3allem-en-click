@@ -77,7 +77,7 @@ export const AdminLanguageManager: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 bg-[var(--accent)] text-[var(--accent-foreground)] px-6 py-3 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20"
+          className="flex items-center gap-2 bg-[var(--accent)] text-[var(--accent-foreground)] px-6 py-3 rounded-lg font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20"
         >
           <Plus className="w-5 h-5" />
           Add Language
@@ -97,7 +97,7 @@ export const AdminLanguageManager: React.FC = () => {
                 type="text"
                 value={newLang.code}
                 onChange={e => setNewLang({ ...newLang, code: e.target.value })}
-                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
               />
             </div>
             <div>
@@ -106,7 +106,7 @@ export const AdminLanguageManager: React.FC = () => {
                 type="text"
                 value={newLang.name}
                 onChange={e => setNewLang({ ...newLang, name: e.target.value })}
-                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
               />
             </div>
             <div>
@@ -115,7 +115,7 @@ export const AdminLanguageManager: React.FC = () => {
                 type="text"
                 value={newLang.native_name}
                 onChange={e => setNewLang({ ...newLang, native_name: e.target.value })}
-                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+                className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
               />
             </div>
             <div className="flex items-center gap-3 pt-8">
@@ -132,13 +132,13 @@ export const AdminLanguageManager: React.FC = () => {
           <div className="flex justify-end gap-4">
             <button
               onClick={() => setIsAdding(false)}
-              className="px-6 py-3 text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text)] rounded-2xl transition-all"
+              className="px-6 py-3 text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text)] rounded-lg transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleAddLanguage}
-              className="px-8 py-3 text-sm font-bold bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl hover:opacity-90 transition-all active:scale-95"
+              className="px-8 py-3 text-sm font-bold bg-[var(--accent)] text-[var(--accent-foreground)] rounded-lg hover:opacity-90 transition-all active:scale-95"
             >
               Save Language
             </button>

@@ -85,7 +85,7 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-black/60 text-xs font-black uppercase tracking-widest mb-1">{t('wallet_balance')}</p>
-                <h2 className="text-4xl md:text-5xl font-black text-black">{(user?.wallet_balance || 0).toFixed(2)} <span className="text-2xl opacity-70">MAD</span></h2>
+                <h2 className="text-4xl md:text-5xl font-black text-black">{(Number(user?.wallet_balance) || 0).toFixed(2)} <span className="text-2xl opacity-70">MAD</span></h2>
               </div>
               <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
                 <CreditCard size={24} className="text-black" />
@@ -184,7 +184,7 @@ export default function CustomerDashboard({ onNavigate, onAction }: CustomerDash
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-sm">{Number(booking.price || 0).toFixed(2)} MAD</p>
+                      <p className="font-black text-sm">{(Number(booking.price) || 0).toFixed(2)} MAD</p>
                       <p className="text-[10px] font-black text-emerald-500 uppercase">{t('status_completed')}</p>
                     </div>
                   </div>
@@ -277,7 +277,7 @@ function BookingCard({ booking, onNavigate }: { booking: any, onNavigate: (tab: 
         </button>
         <div className="text-right">
           <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">{t('estimated_price', 'Est. Price')}</p>
-          <p className="font-black text-sm">{(booking.price || 0).toFixed(2)} MAD</p>
+          <p className="font-black text-sm">{(Number(booking.price) || 0).toFixed(2)} MAD</p>
         </div>
       </div>
       

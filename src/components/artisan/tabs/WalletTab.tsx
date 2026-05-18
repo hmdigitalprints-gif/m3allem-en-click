@@ -32,7 +32,7 @@ export function WalletTab({
         </div>
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-2 opacity-60">{t('total_available_balance', 'Total Available Balance')}</p>
         <div className="text-7xl font-black text-[var(--text)] mb-8 tracking-tighter flex items-baseline gap-3">
-          {Number(stats.earnings).toFixed(2)} 
+          {(Number(stats.earnings) || 0).toFixed(2)} 
           <span className="text-2xl font-bold text-[var(--accent)] uppercase tracking-widest">MAD</span>
         </div>
         
@@ -90,7 +90,7 @@ export function WalletTab({
                 </div>
                 <div className="text-right">
                   <p className={`text-2xl font-black tracking-tight ${tx.type === 'withdrawal' ? 'text-red-500' : 'text-[var(--success)]'}`}>
-                    {tx.type === 'withdrawal' ? '-' : '+'}{Number(tx.amount).toFixed(2)} <span className="text-xs font-bold ml-1">MAD</span>
+                    {tx.type === 'withdrawal' ? '-' : '+'}{(Number(tx.amount) || 0).toFixed(2)} <span className="text-xs font-bold ml-1">MAD</span>
                   </p>
                   <span className={`inline-block px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest mt-2 ${tx.status === 'completed' ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-yellow-500/10 text-yellow-600'}`}>
                     {tx.status}

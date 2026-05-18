@@ -118,7 +118,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
     setEstimating(true);
     try {
       const estimate = await aiService.getAutoEstimate(
-        selectedService.name, 
+        selectedService.title || selectedService.name, 
         formData.description,
         formData.city || artisan.city || 'Casablanca',
         formData.isUrgent ? 'Urgent' : 'Normal',
@@ -287,14 +287,15 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                   {services?.map(s => (
                     <button 
                       key={s.id}
+                      type="button"
                       onClick={() => {
                         setFormData({...formData, serviceId: s.id});
                         validateBookingField('serviceId', s.id);
                       }}
                       className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${formData.serviceId === s.id ? 'bg-[var(--accent)]/10 border-[var(--accent)] text-[var(--accent)]' : fieldErrors.serviceId ? 'border-rose-500/50 bg-rose-500/5' : 'bg-[var(--card-bg)]/5 border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/20'}`}
                     >
-                      <span className="font-bold">{s.name}</span>
-                      <span className="font-bold">{Number(s.base_price).toFixed(2)} MAD</span>
+                      <span className="font-bold">{s.title || s.name}</span>
+                      <span className="font-bold">{(Number(s.price || s.base_price) || 0).toFixed(2)} MAD</span>
                     </button>
                   ))}
                 </div>
@@ -399,12 +400,12 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold mr-2">Suggested:</span>
-                        <span className="text-sm font-bold text-[var(--accent)]">{Number(aiEstimate.suggested).toFixed(2)} MAD</span>
+                        <span className="text-sm font-bold text-[var(--accent)]">{(Number(aiEstimate.suggested) || 0).toFixed(2)} MAD</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center border-b border-[var(--accent)]/10 pb-2">
-                      <p className="text-xs font-bold text-[var(--text)]">{Number(aiEstimate.minPrice).toFixed(2)} - {Number(aiEstimate.maxPrice).toFixed(2)} MAD</p>
+                      <p className="text-xs font-bold text-[var(--text)]">{(Number(aiEstimate.minPrice) || 0).toFixed(2)} - {(Number(aiEstimate.maxPrice) || 0).toFixed(2)} MAD</p>
                       <p className="text-[9px] text-[var(--text-muted)] italic">Based on demand & history</p>
                     </div>
 
@@ -522,8 +523,8 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
               <div className="bg-[var(--card-bg)]/5 border border-[var(--border)] rounded-3xl p-6 space-y-4">
                 <h3 className="font-bold text-lg border-b border-[var(--border)] pb-4 text-[var(--text)]">Order Summary</h3>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-[var(--text-muted)]">Service: {selectedService?.name}</span>
-                  <span className="font-bold text-[var(--text)]">{Number(selectedService?.base_price || 0).toFixed(2)} MAD</span>
+                  <span className="text-[var(--text-muted)]">Service: {selectedService?.title || selectedService?.name}</span>
+                  <span className="font-bold text-[var(--text)]">{Number(selectedService?.price || selectedService?.base_price || 0).toFixed(2)} MAD</span>
                 </div>
                 
                 {userPoints > 0 && (
@@ -551,7 +552,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                       Loyalty Discount
                     </span>
                     <span className="font-bold">
-                      -{Math.min(userPoints / 10, (selectedService?.base_price || 0) * 0.5).toFixed(2)} MAD
+                      -{Math.min(userPoints / 10, (selectedService?.price || selectedService?.base_price || 0) * 0.5).toFixed(2)} MAD
                     </span>
                   </div>
                 )}
@@ -559,7 +560,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[var(--text-muted)] line-through">Platform Fee (5%)</span>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="font-bold text-[var(--text-muted)] line-through">{selectedService ? (selectedService.base_price * 0.05).toFixed(2) : '0.00'} MAD</span>
+                    <span className="font-bold text-[var(--text-muted)] line-through">{selectedService ? ((selectedService.price || selectedService.base_price) * 0.05).toFixed(2) : '0.00'} MAD</span>
                     <span className="font-bold text-yellow-500 text-xs bg-yellow-500/10 px-2 py-0.5 rounded uppercase tracking-wider">0.00 MAD (Promo)</span>
                   </div>
                 </div>
@@ -567,7 +568,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                   <span className="font-bold text-lg text-[var(--text)]">Total</span>
                   <span className="font-bold text-xl text-[var(--accent)]">
                     {selectedService ? (
-                      selectedService.base_price - (formData.usePoints ? Math.min(userPoints / 10, selectedService.base_price * 0.5) : 0)
+                      (selectedService.price || selectedService.base_price) - (formData.usePoints ? Math.min(userPoints / 10, (selectedService.price || selectedService.base_price) * 0.5) : 0)
                     ).toFixed(2) : '0.00'} MAD
                   </span>
                 </div>
@@ -650,7 +651,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 </div>
                 <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">Need Materials?</h3>
                 <p className="text-[var(--text-muted)] text-sm">
-                  We recommend these materials for your {selectedService?.name}. Order now and have them delivered before the artisan arrives.
+                  We recommend these materials for your {selectedService?.title || selectedService?.name}. Order now and have them delivered before the artisan arrives.
                 </p>
               </div>
 
@@ -660,7 +661,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                     <img src={material.image} alt={material.name} className="w-16 h-16 rounded-xl object-cover" loading="lazy" />
                     <div className="flex-1">
                       <h4 className="font-bold text-sm text-[var(--text)]">{material.name}</h4>
-                      <p className="text-[var(--accent)] font-bold text-sm">{Number(material.price).toFixed(2)} MAD</p>
+                      <p className="text-[var(--accent)] font-bold text-sm">{(Number(material.price) || 0).toFixed(2)} MAD</p>
                     </div>
                     <button 
                       onClick={() => toggleMaterial(material.id)}
@@ -827,7 +828,7 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-[var(--text-muted)] block text-xs mb-1">Service</span>
-                    <span className="font-medium text-[var(--text)]">{selectedService?.name || artisan.category_name}</span>
+                    <span className="font-medium text-[var(--text)]">{selectedService?.title || selectedService?.name || artisan.category_name}</span>
                   </div>
                   <div>
                     <span className="text-[var(--text-muted)] block text-xs mb-1">Date & Time</span>

@@ -16,7 +16,7 @@ interface MobileNavProps {
 
 export default function MobileNav({ activeTab, onTabChange, navItems, hiddenClassName = "" }: MobileNavProps) {
   return (
-    <div className={`${hiddenClassName} fixed bottom-4 left-1/2 -translate-x-1/2 w-[95vw] md:w-auto z-[60] bg-[var(--card-bg)]/80 backdrop-blur-2xl border border-[var(--border)] p-2 rounded-[28px] md:rounded-full flex justify-between md:justify-center gap-1 md:gap-2 shadow-[0_10px_40px_rgba(0,0,0,0.3)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.7)] overflow-x-auto no-scrollbar`}>
+    <div className={`${hiddenClassName} fixed bottom-0 left-0 w-full z-[60] bg-[var(--card-bg)]/90 backdrop-blur-3xl border-t border-[var(--border)] pt-2 pb-safe px-2 sm:px-4 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)]`}>
       {navItems.map((item) => (
         <NavButton 
           key={item.id}

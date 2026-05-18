@@ -48,6 +48,7 @@ import AuditLogsView from './views/AuditLogsView';
 import CommissionRulesView from './views/CommissionRulesView';
 import CategoriesView from './views/CategoriesView';
 import BrandingView from './views/BrandingView';
+import ParametersView from './views/ParametersView';
 import SimulationDashboard from '../debug/SimulationDashboard';
 import { AdminLanguageManager } from './AdminLanguageManager';
 import { AdminTranslationManager } from './AdminTranslationManager';
@@ -99,7 +100,7 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     fetchData();
   }, []);
 
-  const cardClasses = "bg-[var(--card-bg)] border border-[var(--border)] shadow-sm rounded-3xl p-6";
+  const cardClasses = "bg-[var(--card-bg)] border border-[var(--border)] shadow-sm rounded-xl p-6";
   const textMutedClasses = "text-[var(--text-muted)]";
   const hoverClasses = "hover:bg-[var(--glass-bg)]";
 
@@ -136,33 +137,16 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
         return <WithdrawalsView onAction={onAction} />;
       case 'settings':
         return (
-          <div className="space-y-12">
-            <SettingsView settings={settings} updateSettings={updateSettings} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <BrandingView settings={settings} updateSettings={updateSettings} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-              <PaymentSettingsView onAction={onAction} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <CategoriesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-              <CitiesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            </div>
-            <div className="pt-8 border-t border-[var(--border)]">
-              <h3 className="text-xl font-black mb-6 uppercase italic">Advanced Tools</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <AdminLanguageManager />
-                <AdminTranslationManager />
-              </div>
-              <div className="mt-8">
-                <AnalyticsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} analyticsData={analyticsData} onAction={onAction} />
-              </div>
-              <div className="mt-8">
-                <AiInsightsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-              </div>
-              <div className="mt-8">
-                <SimulationDashboard />
-              </div>
-            </div>
-          </div>
+          <ParametersView 
+            settings={settings} 
+            updateSettings={updateSettings} 
+            isDarkMode={isDarkMode} 
+            cardClasses={cardClasses} 
+            textMutedClasses={textMutedClasses} 
+            hoverClasses={hoverClasses} 
+            onAction={onAction}
+            analyticsData={analyticsData}
+          />
         );
       default:
         return <DashboardOverview stats={stats} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;

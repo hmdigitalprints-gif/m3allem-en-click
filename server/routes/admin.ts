@@ -2,6 +2,7 @@ import express from "express";
 import prisma from "../lib/prisma.ts";
 import { Role } from "@prisma/client";
 import { authenticateToken, authenticateAdmin } from "./auth.ts";
+import { WithdrawalService } from "../modules/wallet/withdrawal.service.ts";
 
 const router = express.Router();
 
@@ -15,28 +16,19 @@ router.post("/logout", authenticateAdmin, async (req, res) => {
   res.json({ message: "Logged out successfully" });
 });
 
+import { AnalyticsService } from "../modules/analytics/analytics.service.ts";
+
 // Get admin dashboard stats
 router.get("/stats", authenticateAdmin, async (req, res) => {
   try {
-    const [totalUsers, totalArtisans, totalBookings, totalRevenueResult, activeArtisans] = await Promise.all([
-      prisma.user.count(),
-      prisma.artisan.count(),
-      prisma.booking.count(),
-      prisma.booking.aggregate({
-        _sum: { price: true },
-        where: { bookingStatus: 'completed' }
-      }),
-      prisma.artisan.count({ where: { isOnline: true } })
-    ]);
-    
-    const COMMISSION_RATE = 0.15; // 15% fallback commission
-    const estimatedAdminRevenue = Number(totalRevenueResult._sum.price || 0) * COMMISSION_RATE;
+    const stats = await AnalyticsService.getPlatformStats();
+    const activeArtisans = await prisma.artisan.count({ where: { isOnline: true } });
     
     res.json({
-      totalUsers,
-      totalArtisans,
-      totalBookings,
-      totalRevenue: estimatedAdminRevenue,
+      totalUsers: stats.totalUsers,
+      totalArtisans: stats.totalArtisans,
+      totalBookings: stats.totalBookings,
+      totalRevenue: stats.totalCommission > 0 ? stats.totalCommission : (stats.totalRevenue * 0.15), // Fallback
       activeArtisans
     });
   } catch (error) {
@@ -1030,7 +1022,7 @@ import {
   decryptValue,
   invalidateStripeCache,
   getStripe,
-} from "../lib/paymentService.ts";
+} from "../modules/payment/payment.service.ts";
 import { auditService } from "../services/auditService.ts";
 
 const PAYMENT_SETTING_KEYS = [
@@ -1209,58 +1201,23 @@ router.get("/withdrawals", authenticateAdmin, async (_req, res) => {
 router.patch("/withdrawals/:id", authenticateAdmin, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // "approved" | "rejected"
+    const { status, note } = req.body; // "approved" | "rejected"
+    const adminId = req.user.id;
 
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
     }
 
-    const wr = await (prisma as any).withdrawalRequest.findUnique({ where: { id } });
-    if (!wr) return res.status(404).json({ error: "Withdrawal request not found" });
-    if (wr.status !== "pending") return res.status(400).json({ error: "Request already processed" });
-
-    if (status === "rejected") {
-      // Refund the reserved amount back to the user's wallet
-      await prisma.$transaction(async (tx) => {
-        await (tx as any).withdrawalRequest.update({ where: { id }, data: { status: "rejected" } });
-        if (wr.transactionId) {
-          await tx.transaction.update({
-            where: { id: wr.transactionId },
-            data: { status: "failed" },
-          });
-        }
-        const wallet = await tx.wallet.findUnique({ where: { userId: wr.userId } });
-        if (wallet) {
-          await tx.wallet.update({
-            where: { id: wallet.id },
-            data: { balance: { increment: Number(wr.amount) } },
-          });
-          await tx.transaction.create({
-            data: {
-              walletId: wallet.id,
-              amount: Number(wr.amount),
-              type: "refund",
-              status: "completed",
-              description: `Withdrawal request #${id} rejected — amount refunded`,
-            },
-          });
-        }
-      });
+    if (status === "approved") {
+      await WithdrawalService.approveWithdrawal(id, adminId, note);
     } else {
-      await (prisma as any).withdrawalRequest.update({ where: { id }, data: { status: "approved" } });
-      if (wr.transactionId) {
-        await prisma.transaction.update({
-          where: { id: wr.transactionId },
-          data: { status: "completed" },
-        });
-      }
+      await WithdrawalService.rejectWithdrawal(id, adminId, note || "Rejected by admin");
     }
 
-    await auditService.log(req.user.id, "WITHDRAWAL_PROCESSED", "withdrawalRequest", id, { status });
     res.json({ success: true, status });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Process withdrawal error:", error);
-    res.status(500).json({ error: "Failed to process withdrawal" });
+    res.status(500).json({ error: error?.message || "Failed to process withdrawal" });
   }
 });
 

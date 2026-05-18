@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
+import { useSettings } from '../../context/SettingsContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import NotificationBell from './NotificationBell';
+import premiumLogo from '../../assets/images/logo.webp';
 
 interface AppNavbarProps {
   onSwitchView?: (view: 'admin' | 'customer' | 'artisan' | 'seller' | 'company') => void;
@@ -40,8 +42,8 @@ export default function AppNavbar({ onSwitchView, currentView, activeTab, onTabC
       <div className="w-full flex items-center justify-between gap-4 max-w-[1600px] mx-auto">
         {/* Left: Logo */}
         <button onClick={() => onTabChange?.('dashboard')} className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-[var(--accent)] text-black rounded-xl flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 transform hover:rotate-6 transition-transform">
-            <span className="font-black italic">M</span>
+          <div className="h-8 md:h-10 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105">
+            <img src={isDarkMode ? premiumLogo : premiumLogo} alt="M3allem Symbol" className="h-full w-auto object-contain" />
           </div>
           <span className="font-black text-lg md:text-xl tracking-tighter uppercase italic hidden sm:block">
             M3allem <span className="text-[var(--accent)]">Pro</span>

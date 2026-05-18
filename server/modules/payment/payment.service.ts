@@ -7,7 +7,7 @@
  * - Stripe is fully optional: if keys are absent the service runs without it.
  */
 
-import prisma from "./prisma.ts";
+import prisma from "../../lib/prisma.ts";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 // ─── Encryption helpers ──────────────────────────────────────────────────────

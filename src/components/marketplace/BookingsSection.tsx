@@ -140,7 +140,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
     doc.setFontSize(14);
     doc.text('Pricing', 20, 85);
     doc.setFontSize(10);
-    doc.text(`Base Price: ${Number(booking.price).toFixed(2)} MAD`, 20, 95);
+    doc.text(`Base Price: ${(Number(booking.price) || 0).toFixed(2)} MAD`, 20, 95);
     doc.text(`Platform Fee: ${(booking.price * 0.05).toFixed(2)} MAD`, 20, 100);
     
     doc.setFontSize(16);
@@ -251,8 +251,8 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                 </div>
               </div>
               <div className="text-center md:text-right">
-                <p className="text-2xl font-bold text-[var(--accent)] mb-4">{Number(booking.price).toFixed(2)} MAD</p>
-                <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+                <p className="text-2xl font-bold text-[var(--accent)] mb-4">{(Number(booking.price) || 0).toFixed(2)} MAD</p>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 justify-center md:justify-end">
                   {booking.status === 'proposal_submitted' && (
                     <div className="w-full mt-4 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl p-4 text-left">
                       <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -261,7 +261,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                       <div className="bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)] mb-4">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-[var(--text-muted)]">Proposed Labor Price:</span>
-                          <span className="text-sm font-bold">{Number(booking.artisanProposedPrice).toFixed(2)} MAD</span>
+                          <span className="text-sm font-bold">{(Number(booking.artisanProposedPrice) || 0).toFixed(2)} MAD</span>
                         </div>
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-[var(--text-muted)]">Material Cost:</span>
@@ -278,7 +278,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full *:w-full *:sm:w-auto">
                         <button 
                           onClick={() => {
                             onAction(`Rejecting proposal...`);
@@ -309,7 +309,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                       {t('track_artisan')}
                     </button>
                   )}
-                  {booking.status === 'pending' && (!booking.payment_status || booking.payment_status === 'failed') && (
+                  {(booking.status === 'pending' || booking.status === 'proposal_approved' || booking.status === 'accepted') && (!booking.payment_status || booking.payment_status === 'failed') && (
                     <button 
                       onClick={async () => {
                         if (booking.payment_status === 'failed') {
@@ -338,7 +338,7 @@ export default function BookingsSection({ onAction, onNavigate, onTrackArtisan }
                       {booking.payment_status === 'failed' ? 'Retry Payment' : t('pay_now')}
                     </button>
                   )}
-                  {booking.status === 'pending' && (
+                  {(booking.status === 'pending' || booking.status === 'proposal_submitted' || booking.status === 'proposal_approved' || booking.status === 'accepted') && (
                     <button 
                       onClick={() => onAction(`Cancelling booking ${booking.id}...`)}
                       className="px-4 py-3.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors flex items-center gap-1"

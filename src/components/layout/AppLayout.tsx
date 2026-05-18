@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Home, Search, Clock, ShoppingBag, 
-  MessageSquare, User, LayoutDashboard 
+  MessageSquare, User, LayoutDashboard, Wallet
 } from 'lucide-react';
 import AppNavbar from './AppNavbar';
 import MobileNav from '../common/MobileNav';
@@ -18,12 +18,11 @@ export default function AppLayout({ children, activeTab = 'home', onTabChange, o
   const { t } = useTranslation();
 
   const mobileNavItems = [
-    { id: 'home', label: t('nav_home'), icon: <Home size={20} /> },
-    { id: 'find', label: t('nav_find'), icon: <Search size={20} /> },
-    { id: 'bookings', label: t('nav_bookings'), icon: <Clock size={20} /> },
-    { id: 'store', label: t('nav_store_short'), icon: <ShoppingBag size={20} /> },
-    { id: 'messages', label: t('nav_messages'), icon: <MessageSquare size={20} /> },
-    { id: 'account', label: t('nav_profile'), icon: <User size={20} /> },
+    { id: 'home', label: t('nav_home'), icon: <Home size={22} className="w-[20px] h-[20px] md:w-[22px] md:h-[22px]" /> },
+    { id: 'find', label: t('nav_find') || 'Search', icon: <Search size={22} className="w-[20px] h-[20px] md:w-[22px] md:h-[22px]" /> },
+    { id: 'bookings', label: t('nav_bookings') || 'Orders', icon: <Clock size={22} className="w-[20px] h-[20px] md:w-[22px] md:h-[22px]" /> },
+    { id: 'wallet', label: t('nav_wallet') || 'Wallet', icon: <Wallet size={22} className="w-[20px] h-[20px] md:w-[22px] md:h-[22px]" /> },
+    { id: 'account', label: t('nav_profile') || 'Profile', icon: <User size={22} className="w-[20px] h-[20px] md:w-[22px] md:h-[22px]" /> },
   ];
 
   return (

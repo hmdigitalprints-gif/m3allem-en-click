@@ -133,7 +133,7 @@ export default function Store() {
                     <p className="text-[var(--text-muted)] text-sm font-medium">{t(product.category, product.category)}</p>
                   </div>
                   <div className="text-end">
-                    <p className="text-[var(--accent)] font-bold text-2xl">{Number(product.price).toFixed(2)} MAD</p>
+                    <p className="text-[var(--accent)] font-bold text-2xl">{(Number(product.price) || 0).toFixed(2)} MAD</p>
                     <p className="text-[10px] text-[var(--text-muted)]/30 uppercase tracking-widest font-bold">{t('store_lbl_free_shipping')}</p>
                   </div>
                 </div>

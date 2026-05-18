@@ -58,7 +58,7 @@ export function DashboardTab({
                 <p className="text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">{t('total_earnings', 'Total Earnings')}</p>
               </div>
               <h2 className="text-4xl md:text-5xl font-black text-[var(--accent)] tracking-tighter italic">
-                {Number(stats.earnings || 0).toFixed(2)} <span className="text-xl md:text-2xl text-[var(--text-muted)] opacity-50">MAD</span>
+                {(Number(stats.earnings) || 0).toFixed(2)} <span className="text-xl md:text-2xl text-[var(--text-muted)] opacity-50">MAD</span>
               </h2>
            </div>
            
@@ -257,7 +257,7 @@ function MissionCard({ booking, handleStatusUpdate, completingBookingId, current
         <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
           <div>
             <p className="text-[10px] text-[var(--text-muted)] font-black uppercase">{t('payout', 'Payout')}</p>
-            <p className="font-black text-xl italic text-[var(--text)]">{(booking.price || 0).toFixed(2)} MAD</p>
+            <p className="font-black text-xl italic text-[var(--text)]">{(Number(booking.price) || 0).toFixed(2)} MAD</p>
           </div>
           
           <div className="flex gap-2">

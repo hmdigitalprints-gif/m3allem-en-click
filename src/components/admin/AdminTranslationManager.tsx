@@ -124,7 +124,7 @@ export function AdminTranslationManager() {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20"
+          className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-lg font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-[var(--accent)]/20"
         >
           <Plus size={18} />
           Add Translation
@@ -153,7 +153,7 @@ export function AdminTranslationManager() {
             placeholder="Search keys or values..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+            className="w-full pl-10 pr-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
           />
         </div>
         <div className="relative">
@@ -161,7 +161,7 @@ export function AdminTranslationManager() {
           <select
             value={selectedLang}
             onChange={(e) => setSelectedLang(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 appearance-none transition-all tech-label"
+            className="w-full pl-10 pr-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 appearance-none transition-all tech-label"
           >
             <option value="all">All Languages</option>
             {languages.map(lang => (
@@ -179,7 +179,7 @@ export function AdminTranslationManager() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-8 shadow-2xl"
+              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 shadow-2xl"
             >
               <h3 className="text-2xl tech-header text-[var(--text)] mb-8">Add New Translation</h3>
               <form onSubmit={handleAdd} className="space-y-6">
@@ -191,7 +191,7 @@ export function AdminTranslationManager() {
                     placeholder="e.g. common.welcome"
                     value={newTranslation.key}
                     onChange={(e) => setNewTranslation({ ...newTranslation, key: e.target.value })}
-                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
                   />
                 </div>
                 <div>
@@ -199,7 +199,7 @@ export function AdminTranslationManager() {
                   <select
                     value={newTranslation.language_code}
                     onChange={(e) => setNewTranslation({ ...newTranslation, language_code: e.target.value })}
-                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-label"
+                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-label"
                   >
                     {languages.map(lang => (
                       <option key={lang.code} value={lang.code}>{lang.name}</option>
@@ -213,20 +213,20 @@ export function AdminTranslationManager() {
                     rows={3}
                     value={newTranslation.value}
                     onChange={(e) => setNewTranslation({ ...newTranslation, value: e.target.value })}
-                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
+                    className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all tech-value not-italic"
                   />
                 </div>
                 <div className="flex justify-end gap-4 mt-8">
                   <button
                     type="button"
                     onClick={() => setIsAdding(false)}
-                    className="flex-1 px-6 py-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] font-bold hover:bg-[var(--card-bg)] transition-all"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] font-bold hover:bg-[var(--card-bg)] transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-4 rounded-2xl bg-[var(--accent)] text-[var(--accent-foreground)] font-bold hover:opacity-90 transition-all active:scale-95"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] font-bold hover:opacity-90 transition-all active:scale-95"
                   >
                     Save Translation
                   </button>

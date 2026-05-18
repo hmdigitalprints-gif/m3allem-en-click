@@ -168,7 +168,7 @@ export default function AutoDevis() {
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">Estimated Price Range</p>
                     <div className="flex items-baseline gap-2">
-                      <h3 className="text-5xl font-bold tracking-tighter text-[var(--text)]">{Number(estimate.min).toFixed(2)} - {Number(estimate.max).toFixed(2)}</h3>
+                      <h3 className="text-5xl font-bold tracking-tighter text-[var(--text)]">{(Number(estimate.min) || 0).toFixed(2)} - {(Number(estimate.max) || 0).toFixed(2)}</h3>
                       <span className="text-xl font-bold text-[var(--text-muted)]">{t('currency_mad', 'MAD')}</span>
                     </div>
                   </div>
@@ -176,7 +176,7 @@ export default function AutoDevis() {
                   <div className="p-4 bg-[var(--accent)]/10 rounded-2xl border border-[var(--accent)]/20 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-[var(--accent)] uppercase">Suggested Price</p>
-                      <p className="text-2xl font-bold text-[var(--text)]">{Number(estimate.suggested).toFixed(2)} {t('currency_mad', 'MAD')}</p>
+                      <p className="text-2xl font-bold text-[var(--text)]">{(Number(estimate.suggested) || 0).toFixed(2)} {t('currency_mad', 'MAD')}</p>
                     </div>
                     <div className="w-12 h-12 bg-[var(--accent)] text-[var(--accent-foreground)] rounded-full flex items-center justify-center">
                       <CheckCircle2 size={24} />

@@ -428,11 +428,11 @@ export default function ArtisanProfile({ artisanId, onClose, onBook, onChat }: A
                     {artisan.services?.map((service) => (
                       <div key={service.id} className="bg-[var(--card-bg)]/5 border border-[var(--border)] rounded-3xl p-6 flex items-center justify-between">
                         <div>
-                          <h4 className="font-bold text-lg text-[var(--text)]">{service.name}</h4>
+                          <h4 className="font-bold text-lg text-[var(--text)]">{service.title || service.name}</h4>
                           <p className="text-[var(--text-muted)] text-sm mt-1">{service.description || 'Standard service'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[var(--accent)] font-bold text-xl">{Number(service.base_price).toFixed(2)} MAD</p>
+                          <p className="text-[var(--accent)] font-bold text-xl">{(Number(service.price || service.base_price) || 0).toFixed(2)} MAD</p>
                           <button 
                             onClick={() => onBook(artisan)}
                             className="mt-2 px-4 py-2 bg-[var(--card-bg)]/10 hover:bg-[var(--card-bg)]/20 rounded-xl text-sm font-bold transition-colors text-[var(--text)]"

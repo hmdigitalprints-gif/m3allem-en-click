@@ -312,6 +312,7 @@ enum BookingStatus {
   pending
   proposal_submitted
   proposal_approved
+  accepted
   en_route
   in_progress
   client_review
@@ -426,12 +427,13 @@ model Order {
 }
 
 model Wallet {
-  id        String   @id @default(uuid())
-  userId    String?  @unique @map("user_id")
-  balance   Decimal? @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User?    @relation(fields: [userId], references: [id])
-  transactions Transaction[]
+  id            String   @id @default(uuid())
+  userId        String?  @unique @map("user_id")
+  balance       Decimal? @default(0)
+  lockedBalance Decimal? @default(0) @map("locked_balance")
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User?    @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
 
   @@map("wallets")
 }

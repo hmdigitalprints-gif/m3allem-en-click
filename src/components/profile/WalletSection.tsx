@@ -41,7 +41,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
       setWalletData(data);
       setShowTopup(false);
       setAmount('');
-      onAction(`Successfully topped up ${Number(amount).toFixed(2)} MAD`);
+      onAction(`Successfully topped up ${(Number(amount) || 0).toFixed(2)} MAD`);
     } catch (err) {
       console.error(err);
     }
@@ -55,7 +55,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
       setWalletData(data);
       setShowWithdraw(false);
       setAmount('');
-      onAction(`Withdrawal request for ${Number(amount).toFixed(2)} MAD submitted`);
+      onAction(`Withdrawal request for ${(Number(amount) || 0).toFixed(2)} MAD submitted`);
     } catch (err) {
       console.error(err);
     }
@@ -135,7 +135,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                 </div>
                 <div className="text-right">
                   <p className={`font-bold text-lg ${tx.amount > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {tx.amount > 0 ? '+' : ''}{Number(tx.amount).toFixed(2)} MAD
+                    {tx.amount > 0 ? '+' : ''}{(Number(tx.amount) || 0).toFixed(2)} MAD
                   </p>
                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">{tx.status}</span>
                 </div>
@@ -186,7 +186,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                 </div>
                 <button 
                   onClick={() => {
-                    onAction(`Confirming top-up of ${Number(amount).toFixed(2)} MAD via ${method}`);
+                    onAction(`Confirming top-up of ${(Number(amount) || 0).toFixed(2)} MAD via ${method}`);
                     handleTopup();
                   }}
                   className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-4 rounded-2xl font-bold hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -263,7 +263,7 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
                       onAction('Insufficient balance');
                       return;
                     }
-                    onAction(`Requesting withdrawal of ${Number(amount).toFixed(2)} MAD via ${method}`);
+                    onAction(`Requesting withdrawal of ${(Number(amount) || 0).toFixed(2)} MAD via ${method}`);
                     handleWithdraw();
                   }}
                   disabled={!amount || parseFloat(amount) < 50 || parseFloat(amount) > walletData?.balance}

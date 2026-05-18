@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, X, CheckCircle, AlertCircle, Loader2, Star, Package } from 'lucide-react';
 import { ViewProps } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../../context/AuthContext';
 
-export default function MaterialSellersView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
+export default function MaterialSellersView({ onAction }: ViewProps) {
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,7 +39,7 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
-          },
+        },
         body: JSON.stringify(formData)
       });
       if (res.ok) {
@@ -62,85 +61,97 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 pt-4 pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Material Sellers</h1>
-          <p className="text-sm text-white/40 mt-1">Manage suppliers, inventory categories, and material pricing across the platform.</p>
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Material Sellers</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">Manage suppliers, inventory categories, and material pricing across the platform.</p>
         </div>
-        <div className="flex gap-3">
-          {/* <button 
-            onClick={() => onAction?.('Manage Categories functionality coming soon!')}
-            className="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-white/10 transition-all active:scale-95"
-          >
-            Manage Categories
-          </button> */}
+        <div className="flex gap-4">
           <button 
             onClick={() => setShowModal(true)}
-            className="bg-[#FFD700] text-black px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-[#E6C200] transition-all active:scale-95"
+            className="bg-[#FFD700] text-black px-6 py-3 rounded-lg text-sm font-black uppercase tracking-wider flex items-center gap-2 hover:bg-[#E6C200] transition-colors active:scale-95 shadow-lg shadow-[#FFD700]/10"
           >
-            <Plus size={18} /> Add Seller
+            <Plus size={18} strokeWidth={3} /> Add Seller
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className={`flex items-center px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} flex-1 max-w-md`}>
-          <Search size={18} className="text-white/40" />
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)] shadow-sm">
+        <div className="flex items-center px-5 py-3 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] flex-1 w-full max-w-md focus-within:border-[#FFD700]/50 transition-colors shadow-inner">
+          <Search size={18} className="text-[var(--text-muted)]" strokeWidth={2.5} />
           <input 
             type="text" 
             placeholder="Search sellers or categories..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none outline-none w-full ml-3 text-sm text-[var(--text)]" 
+            className="bg-transparent border-none outline-none w-full ml-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--text-muted)]" 
           />
         </div>
       </div>
 
-      <div className="hynex-card overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <h3 className="font-bold">Top Material Suppliers</h3>
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-white/[0.01]">
+          <h3 className="text-sm font-black uppercase tracking-wider text-[var(--text)]">Top Material Suppliers</h3>
           <button 
             onClick={() => setSearchTerm('')}
-            className="text-xs text-[#FFD700] hover:underline"
+            className="text-xs font-black uppercase tracking-wider text-[#FFD700] hover:text-[#E6C200] transition-colors"
           >
             View All
           </button>
         </div>
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-sm">
-            <thead className="text-[10px] uppercase tracking-widest text-white/20 border-b border-white/5">
-              <tr>
-                <th className="px-8 py-4 font-medium">Supplier</th>
-                <th className="px-8 py-4 font-medium">Category</th>
-                <th className="px-8 py-4 font-medium">Products</th>
-                <th className="px-8 py-4 font-medium">Rating</th>
-                <th className="px-8 py-4 font-medium text-right">Status</th>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-start whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Supplier</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Category</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Products</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Rating</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] text-end">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-white/40">Loading sellers...</td></tr>
-              ) : filteredSellers.length === 0 ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-white/40">No sellers found.</td></tr>
-              ) : filteredSellers.map((seller) => (
-                <tr key={seller.id} className="hover:bg-white/5 transition-all group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5">
-                        <Package size={18} className="text-[#FFD700]" />
-                      </div>
-                      <span className="font-bold">{seller.name}</span>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="w-10 h-10 animate-spin text-[#FFD700]" />
+                      Loading sellers...
                     </div>
                   </td>
-                  <td className="px-8 py-5 text-white/60">{seller.category}</td>
-                  <td className="px-8 py-5">{seller.product_count || 0}</td>
-                  <td className="px-8 py-5 text-[#FFD700] flex items-center gap-1">
-                    <Star size={14} fill="currentColor" /> {seller.rating || 'N/A'}
+                </tr>
+              ) : filteredSellers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
+                    No sellers found.
                   </td>
-                  <td className="px-8 py-5 text-right">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
-                      seller.is_verified ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                </tr>
+              ) : filteredSellers.map((seller) => (
+                <tr key={seller.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text-muted)] flex items-center justify-center shrink-0 group-hover:border-[#FFD700]/30 transition-colors group-hover:text-[#FFD700]">
+                        <Package size={24} strokeWidth={2} />
+                      </div>
+                      <span className="text-sm font-bold text-[var(--text)] tracking-tight">{seller.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{seller.category}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-black text-[var(--text)]">{seller.product_count || 0}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-black text-[#FFD700] flex items-center gap-1.5">
+                      <Star size={16} fill="currentColor" strokeWidth={2} /> {seller.rating || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-end">
+                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border items-center justify-center gap-1 w-fit shadow-sm ml-auto ${
+                      seller.is_verified ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'
                     }`}>
                       {seller.is_verified ? 'Verified' : 'Pending'}
                     </span>
@@ -155,86 +166,89 @@ export default function MaterialSellersView({ isDarkMode, cardClasses, textMuted
       {/* Add Seller Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-md ${cardClasses} border border-white/10 rounded-3xl p-8 shadow-2xl`}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 shadow-2xl relative overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">Add Material Seller</h3>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/5 rounded-xl transition-all">
-                  <X size={20} className="text-white/40" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FFD700] to-[#FF8C00]" />
+              
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-black text-[var(--text)] tracking-tight">Add Material Seller</h3>
+                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[var(--border)] rounded-xl transition-colors">
+                  <X size={20} className="text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddSeller} className="space-y-4">
+              <form onSubmit={handleAddSeller} className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Seller Name</label>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Seller Name</label>
                   <input 
                     type="text" 
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:border-[#FFD700]/50 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-[#FFD700]/50 outline-none transition-colors shadow-inner"
                     placeholder="Supplier Name"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Category</label>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Category</label>
                   <select 
                     required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:border-[#FFD700]/50 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-[#FFD700]/50 outline-none transition-colors shadow-inner appearance-none pr-10 cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center' }}
                   >
-                    <option value="" className="bg-zinc-900">Select Category</option>
-                    <option value="Construction" className="bg-zinc-900">Construction</option>
-                    <option value="Carpentry" className="bg-zinc-900">Carpentry</option>
-                    <option value="Masonry" className="bg-zinc-900">Masonry</option>
-                    <option value="Finishing" className="bg-zinc-900">Finishing</option>
-                    <option value="Plumbing" className="bg-zinc-900">Plumbing</option>
-                    <option value="Electrical" className="bg-zinc-900">Electrical</option>
+                    <option value="" className="bg-[var(--card-surface)]">Select Category</option>
+                    <option value="Construction" className="bg-[var(--card-surface)]">Construction</option>
+                    <option value="Carpentry" className="bg-[var(--card-surface)]">Carpentry</option>
+                    <option value="Masonry" className="bg-[var(--card-surface)]">Masonry</option>
+                    <option value="Finishing" className="bg-[var(--card-surface)]">Finishing</option>
+                    <option value="Plumbing" className="bg-[var(--card-surface)]">Plumbing</option>
+                    <option value="Electrical" className="bg-[var(--card-surface)]">Electrical</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Email Address</label>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Email Address</label>
                   <input 
                     type="email" 
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:border-[#FFD700]/50 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-[#FFD700]/50 outline-none transition-colors shadow-inner"
                     placeholder="contact@supplier.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Phone Number</label>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Phone Number</label>
                   <input 
                     type="tel" 
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:border-[#FFD700]/50 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-[#FFD700]/50 outline-none transition-colors shadow-inner"
                     placeholder="+212 5..."
                   />
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-4 pt-4">
                   <button 
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text-muted)] font-black uppercase tracking-wider hover:bg-[var(--border)] hover:text-[var(--text)] transition-colors text-sm"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 px-6 py-3 rounded-xl bg-[#FFD700] text-black text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[#FFD700] text-black font-black uppercase tracking-wider hover:bg-[#E6C200] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[#FFD700]/10 text-sm"
                   >
-                    {submitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                    {submitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} strokeWidth={2.5} />}
                     {submitting ? 'Adding...' : 'Add Seller'}
                   </button>
                 </div>

@@ -189,7 +189,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
               <StatCard title="Total Products" value={stats.totalProducts} icon={<Package className="text-[var(--accent)]" />} />
               <StatCard title="Active Orders" value={stats.activeOrders} icon={<ShoppingCart className="text-[var(--accent)]" />} />
               <StatCard title="Completed" value={stats.completedOrders} icon={<CheckCircle className="text-[var(--success)]" />} />
-              <StatCard title="Total Sales" value={`${Number(stats.totalSales).toFixed(2)} MAD`} icon={<TrendingUp className="text-[var(--accent)]" />} />
+              <StatCard title="Total Sales" value={`${(Number(stats.totalSales) || 0).toFixed(2)} MAD`} icon={<TrendingUp className="text-[var(--accent)]" />} />
             </div>
 
             {/* Quick Actions */}
@@ -244,7 +244,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
                         <td className="px-4 py-4 font-mono text-[var(--text)]">{order.id}</td>
                         <td className="px-4 py-4 text-[var(--text)]">{order.customer}</td>
                         <td className="px-4 py-4 text-[var(--text)]">{order.product}</td>
-                        <td className="px-4 py-4 font-bold text-[var(--text)]">{Number(order.amount).toFixed(2)} MAD</td>
+                        <td className="px-4 py-4 font-bold text-[var(--text)]">{(Number(order.amount) || 0).toFixed(2)} MAD</td>
                         <td className="px-4 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
                             order.status === 'pending' ? 'bg-[var(--warning)]/20 text-[var(--warning)]' : 'bg-[var(--success)]/20 text-[var(--success)]'
@@ -294,7 +294,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
                     <h4 className="font-bold text-lg mb-1 text-[var(--text)]">{product.name}</h4>
                     <p className="text-[var(--text-muted)] text-sm mb-4">{product.category}</p>
                     <div className="flex justify-between items-center">
-                      <span className="text-[var(--accent)] font-bold text-xl">{Number(product.price).toFixed(2)} MAD</span>
+                      <span className="text-[var(--accent)] font-bold text-xl">{(Number(product.price) || 0).toFixed(2)} MAD</span>
                       <button 
                         onClick={() => onAction?.(`Editing product ${product.name}...`)}
                         className="p-2 bg-[var(--text)]/5 rounded-lg hover:bg-[var(--text)]/10 transition-all active:scale-95 text-[var(--text)]"
@@ -398,7 +398,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-2 opacity-60">Total Balance</p>
               <div className="text-7xl font-black text-[var(--text)] mb-8 tracking-tighter flex items-baseline gap-3">
-                {Number(stats.totalSales).toFixed(2)} 
+                {(Number(stats.totalSales) || 0).toFixed(2)} 
                 <span className="text-2xl font-bold text-[var(--accent)] uppercase tracking-widest">MAD</span>
               </div>
               <button 

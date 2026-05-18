@@ -168,11 +168,12 @@ export default function JobRequestModal({ initialCategoryId, onClose, onSuccess 
                     {services?.map(s => (
                       <button 
                         key={s.id}
+                        type="button"
                         onClick={() => setFormData({...formData, serviceId: s.id})}
                         className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${formData.serviceId === s.id ? 'bg-[var(--accent)]/10 border-[var(--accent)] text-[var(--accent)]' : 'bg-[var(--card-bg)]/5 border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/20'}`}
                       >
                         <span className="font-bold">{s.title}</span>
-                        <span className="font-bold">{Number(s.price).toFixed(2)} MAD</span>
+                        <span className="font-bold">{(Number(s.price) || 0).toFixed(2)} MAD</span>
                       </button>
                     ))}
                   </div>
@@ -248,9 +249,9 @@ export default function JobRequestModal({ initialCategoryId, onClose, onSuccess 
                   <div className="p-4 bg-[var(--accent)]/5 border border-[var(--accent)]/10 rounded-2xl space-y-2 mt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-bold text-[var(--accent)] uppercase">AI Suggested</span>
-                      <span className="text-sm font-bold text-[var(--accent)]">{Number(aiEstimate.suggested).toFixed(2)} MAD</span>
+                      <span className="text-sm font-bold text-[var(--accent)]">{(Number(aiEstimate.suggested) || 0).toFixed(2)} MAD</span>
                     </div>
-                    <p className="text-[9px] text-[var(--text-muted)] italic">Range: {Number(aiEstimate.min).toFixed(2)} - {Number(aiEstimate.max).toFixed(2)} MAD</p>
+                    <p className="text-[9px] text-[var(--text-muted)] italic">Range: {(Number(aiEstimate.min) || 0).toFixed(2)} - {(Number(aiEstimate.max) || 0).toFixed(2)} MAD</p>
                   </div>
                 )}
               </div>

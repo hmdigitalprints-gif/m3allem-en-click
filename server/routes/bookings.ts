@@ -34,7 +34,20 @@ router.post("/", authenticateToken, async (req: any, res) => {
       return res.status(400).json({ error: "Missing required fields: serviceId" });
     }
 
-    // 1. Create booking in 'pending' status
+    // 1. Verify existence of service and artisan
+    const service = await prisma.service.findUnique({ where: { id: serviceId } });
+    if (!service) {
+      return res.status(400).json({ error: "Invalid service ID. If you are using mock data, please create a real service first." });
+    }
+
+    if (artisanId) {
+      const artisan = await prisma.artisan.findUnique({ where: { id: artisanId } });
+      if (!artisan) {
+        return res.status(400).json({ error: "Invalid artisan ID. If you are using mock data, please create a real artisan first." });
+      }
+    }
+
+    // 2. Create booking in 'pending' status
     const booking = await prisma.booking.create({
       data: {
         clientId,
@@ -214,7 +227,6 @@ router.get("/", authenticateToken, async (req: any, res) => {
           isUrgent: true,
           price: true,
           createdAt: true,
-          description: true,
           city: true,
           address: true,
           service: { select: { title: true } },
@@ -587,7 +599,7 @@ router.patch("/:id/status", authenticateToken, async (req: any, res) => {
     const { status, attachments } = req.body;
     const userId = req.user.id;
 
-    let validStatuses = ['pending', 'proposal_submitted', 'proposal_approved', 'en_route', 'in_progress', 'client_review', 'completed', 'cancelled'];
+    let validStatuses = ['pending', 'proposal_submitted', 'proposal_approved', 'accepted', 'en_route', 'in_progress', 'client_review', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid booking status" });
     }
@@ -619,6 +631,8 @@ router.patch("/:id/status", authenticateToken, async (req: any, res) => {
       }
     }
 
+    const previousStatus = booking.bookingStatus;
+
     await prisma.booking.update({
       where: { id },
       data: {
@@ -626,6 +640,77 @@ router.patch("/:id/status", authenticateToken, async (req: any, res) => {
         attachments: attachments || booking.attachments
       }
     });
+
+    // Logging the state transition
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'booking_status_change',
+        entityType: 'booking',
+        entityId: id,
+        details: `Status transitioned from ${previousStatus} to ${finalStatus}`,
+        ipAddress: req.ip || '127.0.0.1'
+      }
+    });
+
+    // Wallet/Payment updates upon transition to 'accepted' or 'en_route' (so it catches proposal_approved to en_route flow)
+    if ((finalStatus === 'accepted' || finalStatus === 'en_route') && booking.paymentStatus !== 'escrow' && booking.paymentStatus !== 'paid') {
+      if (booking.paymentMethod === 'wallet' && booking.clientId && booking.price) {
+        const clientWallet = await prisma.wallet.findUnique({ where: { userId: booking.clientId } });
+        const amount = Number(booking.price);
+        if (clientWallet && Number(clientWallet.balance) >= amount) {
+          await prisma.wallet.update({
+            where: { id: clientWallet.id },
+            data: { balance: { decrement: amount } }
+          });
+          await prisma.transaction.create({
+            data: {
+              walletId: clientWallet.id,
+              amount: amount,
+              type: 'payment',
+              status: 'completed',
+              description: `Payment escrow for booking ${id}`,
+              referenceId: id
+            }
+          });
+          await prisma.booking.update({
+            where: { id },
+            data: { paymentStatus: 'escrow' }
+          });
+        }
+      }
+    }
+
+    // Wallet/Payment updates upon transition to 'completed'
+    if ((previousStatus === 'in_progress' || previousStatus === 'client_review') && finalStatus === 'completed') {
+      if (booking.paymentMethod !== 'cash' && booking.artisan?.userId) {
+        const artisanWallet = await prisma.wallet.findUnique({ where: { userId: booking.artisan.userId } });
+        if (artisanWallet) {
+          // If no artisanAmount defined, use a fallback from price
+          const payout = booking.artisanAmount ? Number(booking.artisanAmount) : (booking.price ? Number(booking.price) : 0);
+          if (payout > 0) {
+            await prisma.wallet.update({
+              where: { id: artisanWallet.id },
+              data: { balance: { increment: payout } }
+            });
+            await prisma.transaction.create({
+              data: {
+                walletId: artisanWallet.id,
+                amount: payout,
+                type: 'release',
+                status: 'completed',
+                description: `Payout for completed booking ${id}`,
+                referenceId: id
+              }
+            });
+            await prisma.booking.update({
+              where: { id },
+              data: { paymentStatus: 'paid' }
+            });
+          }
+        }
+      }
+    }
 
     // Notify other party
     let recipientId;
@@ -897,16 +982,22 @@ router.get("/market-data", authenticateToken, async (req, res) => {
     }
 
     // 1. Average historical price for this category in this city
-    const historicalStats = await prisma.booking.aggregate({
+    const historicalBookings = await prisma.booking.findMany({
       where: {
         service: { categoryId: categoryId as string },
         city: city as string,
         bookingStatus: 'completed',
         price: { not: null }
       },
-      _avg: { price: true },
-      _count: { id: true }
+      select: { price: true }
     });
+
+    let totalHistPrice = 0;
+    for (const b of historicalBookings) {
+      if (b.price) totalHistPrice += Number(b.price);
+    }
+    const historicalAvg = historicalBookings.length > 0 ? (totalHistPrice / historicalBookings.length) : null;
+    const historicalCount = historicalBookings.length;
 
     // 2. Current demand (pending/proposal_submitted in last 24h)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -931,8 +1022,8 @@ router.get("/market-data", authenticateToken, async (req, res) => {
     });
 
     res.json({
-      avgHistoricalPrice: historicalStats._avg.price || 0,
-      totalCompleted: historicalStats._count.id,
+      avgHistoricalPrice: historicalAvg || 0,
+      totalCompleted: historicalCount,
       activeRequests: demandStats,
       onlineArtisans: onlineArtisans,
       timestamp: new Date().toISOString()

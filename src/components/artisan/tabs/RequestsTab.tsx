@@ -85,7 +85,7 @@ export function RequestsTab({
                     </div>
                     <div className="flex items-center gap-3 text-xs font-bold text-[var(--accent)]">
                       <Banknote size={14} />
-                      <span>{Number(booking.price).toFixed(2)} MAD - {booking.payment_method?.toUpperCase() || 'CASH'}</span>
+                      <span>{(Number(booking.price) || 0).toFixed(2)} MAD - {booking.payment_method?.toUpperCase() || 'CASH'}</span>
                     </div>
                     {booking.client_phone && (
                       <div className="flex items-center gap-3 pt-2">
@@ -154,7 +154,7 @@ export function RequestsTab({
                       </div>
                     )}
                     
-                    {booking.status === 'accepted' && (
+                    {(booking.status === 'accepted' || booking.status === 'proposal_approved') && (
                       <button 
                         onClick={() => handleStatusUpdate(booking.id, 'en_route')}
                         className="w-full py-4 bg-purple-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all hover:opacity-90 shadow-lg shadow-purple-500/20"

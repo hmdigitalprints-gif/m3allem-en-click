@@ -138,7 +138,7 @@ export default function MarketplaceExtras() {
                 <div className="flex items-center justify-between pt-6 border-t border-[var(--border)]">
                   <div>
                     <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider">{t('extras_lbl_bundle_price')}</p>
-                    <p className="text-2xl font-bold text-[var(--accent)]">{Number(pkg.price).toFixed(2)} MAD</p>
+                    <p className="text-2xl font-bold text-[var(--accent)]">{(Number(pkg.price) || 0).toFixed(2)} MAD</p>
                   </div>
                   <button 
                     onClick={() => {
@@ -187,7 +187,7 @@ export default function MarketplaceExtras() {
                   
                   <div className="bg-[var(--bg)] rounded-3xl p-6 flex flex-col items-center justify-center min-w-[140px] border border-[var(--border)]">
                     <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold mb-1">{t('extras_lbl_price_per_user')}</p>
-                    <p className="text-2xl font-bold text-[var(--accent)]">{Number(req.current_price_per_user).toFixed(2)} MAD</p>
+                    <p className="text-2xl font-bold text-[var(--accent)]">{(Number(req.current_price_per_user) || 0).toFixed(2)} MAD</p>
                     <p className="text-[10px] text-[var(--success)] font-bold mt-1 flex items-center gap-1">
                       <Info size={10} />
                       {t('extras_lbl_discount')}

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Search, MoreVertical, Loader2, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { ViewProps } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../../context/AuthContext';
 
-export default function FraudMonitoringView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
+export default function FraudMonitoringView({ onAction }: ViewProps) {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,104 +32,112 @@ export default function FraudMonitoringView({ isDarkMode, cardClasses, textMuted
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 pt-4 pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fraud Monitoring</h1>
-          <p className="text-sm text-white/40 mt-1">AI-powered fraud detection and risk assessment for all platform activities.</p>
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Fraud Monitoring</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">AI-powered fraud detection and risk assessment for all platform activities.</p>
         </div>
-        <button 
-          onClick={() => onAction?.('Reviewing high risk alerts...')}
-          className="bg-rose-500 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-rose-600 transition-all active:scale-95"
-        >
-          <ShieldAlert size={18} /> High Risk Alerts
-        </button>
+        
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="hynex-card p-6 border-l-4 border-rose-500">
-          <p className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">Critical Alerts</p>
-          <p className="text-3xl font-bold text-rose-500">{alerts.filter(a => a.risk_level === 'high').length}</p>
-          <p className="text-[10px] text-white/20 mt-2">Requires immediate action</p>
+        <div className="bg-[var(--card-bg)] rounded-xl p-6 border-l-4 border-l-red-500 border-t border-r border-b border-[var(--border)] relative overflow-hidden shadow-sm">
+          <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Critical Alerts</p>
+          <p className="text-4xl font-black text-red-500 tracking-tight">{alerts.filter(a => a.risk_level === 'high').length}</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] mt-3 uppercase tracking-wider">Requires immediate action</p>
         </div>
-        <div className="hynex-card p-6 border-l-4 border-[#F59E0B]">
-          <p className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">Suspicious Users</p>
-          <p className="text-3xl font-bold text-[#F59E0B]">{alerts.filter(a => a.risk_level === 'medium').length}</p>
-          <p className="text-[10px] text-white/20 mt-2">Under manual review</p>
+        <div className="bg-[var(--card-bg)] rounded-xl p-6 border-l-4 border-l-orange-500 border-t border-r border-b border-[var(--border)] relative overflow-hidden shadow-sm">
+          <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Suspicious Users</p>
+          <p className="text-4xl font-black text-orange-500 tracking-tight">{alerts.filter(a => a.risk_level === 'medium').length}</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] mt-3 uppercase tracking-wider">Under manual review</p>
         </div>
-        <div className="hynex-card p-6 border-l-4 border-[#FFD700]">
-          <p className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">Risk Score Avg</p>
-          <p className="text-3xl font-bold text-[#FFD700]">14%</p>
-          <p className="text-[10px] text-white/20 mt-2">Platform-wide average</p>
+        <div className="bg-[var(--card-bg)] rounded-xl p-6 border-l-4 border-l-[#FFD700] border-t border-r border-b border-[var(--border)] relative overflow-hidden shadow-sm">
+          <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Risk Score Avg</p>
+          <p className="text-4xl font-black text-[#FFD700] tracking-tight">14%</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] mt-3 uppercase tracking-wider">Platform-wide average</p>
         </div>
-        <div className="hynex-card p-6 border-l-4 border-[#10B981]">
-          <p className="text-xs text-white/40 uppercase tracking-widest font-bold mb-1">Verified Safe</p>
-          <p className="text-3xl font-bold text-[#10B981]">98.2%</p>
-          <p className="text-[10px] text-white/20 mt-2">Transactions verified</p>
+        <div className="bg-[var(--card-bg)] rounded-xl p-6 border-l-4 border-l-emerald-500 border-t border-r border-b border-[var(--border)] relative overflow-hidden shadow-sm">
+          <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">Verified Safe</p>
+          <p className="text-4xl font-black text-emerald-500 tracking-tight">98.2%</p>
+          <p className="text-xs font-bold text-[var(--text-muted)] mt-3 uppercase tracking-wider">Transactions verified</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className={`flex items-center px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} flex-1 max-w-md`}>
-          <Search size={18} className="text-white/40" />
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-[var(--card-bg)] p-4 rounded-xl border border-[var(--border)] shadow-sm">
+        <div className="flex items-center px-5 py-3 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] flex-1 w-full max-w-md focus-within:border-[#FFD700]/50 transition-colors shadow-inner">
+          <Search size={18} className="text-[var(--text-muted)]" strokeWidth={2.5} />
           <input 
             type="text" 
             placeholder="Search alerts by user or reason..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent border-none outline-none w-full ml-3 text-sm text-[var(--text)]" 
+            className="bg-transparent border-none outline-none w-full ml-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--text-muted)]" 
           />
         </div>
       </div>
 
-      <div className="hynex-card overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <h3 className="font-bold">Recent Risk Alerts</h3>
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-white/[0.01]">
+          <h3 className="text-sm font-black uppercase tracking-wider text-[var(--text)]">Recent Risk Alerts</h3>
           <button 
             onClick={() => setSearchTerm('')}
-            className="text-xs text-[#FFD700] hover:underline"
+            className="text-xs font-black uppercase tracking-wider text-[#FFD700] hover:text-[#E6C200] transition-colors"
           >
             View All
           </button>
         </div>
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-sm">
-            <thead className="text-[10px] uppercase tracking-widest text-white/20 border-b border-white/5">
-              <tr>
-                <th className="px-8 py-4 font-medium">User</th>
-                <th className="px-8 py-4 font-medium">Reason</th>
-                <th className="px-8 py-4 font-medium">Risk Level</th>
-                <th className="px-8 py-4 font-medium">Date</th>
-                <th className="px-8 py-4 font-medium text-right">Actions</th>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-start whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">User</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Reason</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Risk Level</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Date</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] text-end">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-white/40">Loading alerts...</td></tr>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="w-10 h-10 animate-spin text-[#FFD700]" />
+                      Loading alerts...
+                    </div>
+                  </td>
+                </tr>
               ) : filteredAlerts.length === 0 ? (
-                <tr><td colSpan={5} className="px-8 py-10 text-center text-white/40">No alerts found.</td></tr>
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
+                    No alerts found.
+                  </td>
+                </tr>
               ) : filteredAlerts.map((alert) => (
-                <tr key={alert.id} className="hover:bg-white/5 transition-all group">
-                  <td className="px-8 py-5 font-bold">{alert.user_name}</td>
-                  <td className="px-8 py-5 text-white/60">{alert.reason}</td>
-                  <td className="px-8 py-5">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase flex items-center gap-2 w-fit ${
-                      alert.risk_level === 'high' ? 'bg-rose-500/10 text-rose-500' : 
-                      alert.risk_level === 'medium' ? 'bg-amber-500/10 text-amber-500' : 
-                      'bg-blue-500/10 text-blue-500'
+                <tr key={alert.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-bold text-[var(--text)] tracking-tight">{alert.user_name}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-[var(--text-muted)] max-w-xs block truncate">{alert.reason}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border items-center justify-center gap-1.5 w-fit shadow-sm ${
+                      alert.risk_level === 'high' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 
+                      alert.risk_level === 'medium' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 
+                      'bg-blue-500/10 text-blue-500 border-blue-500/20'
                     }`}>
-                      {alert.risk_level === 'high' ? <ShieldAlert size={12} /> : <AlertTriangle size={12} />}
+                      {alert.risk_level === 'high' ? <ShieldAlert size={14} strokeWidth={3} /> : <AlertTriangle size={14} strokeWidth={3} />}
                       {alert.risk_level}
                     </span>
                   </td>
-                  <td className="px-8 py-5 text-white/40">{new Date(alert.created_at).toLocaleString()}</td>
-                  <td className="px-8 py-5 text-right">
-                    <button 
-                      onClick={() => onAction?.(`Taking action on alert for ${alert.user_name}...`)}
-                      className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-medium text-[var(--text-muted)]">{new Date(alert.created_at).toLocaleString()}</span>
+                  </td>
+                  <td className="px-6 py-4 text-end">
+                    
                   </td>
                 </tr>
               ))}

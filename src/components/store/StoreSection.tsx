@@ -208,7 +208,7 @@ export default function StoreSection({ onAction }: { onAction: (msg: string) => 
                     
                     <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                       <div>
-                        <span className="text-2xl font-bold">{Number(product.price).toFixed(2)}</span>
+                        <span className="text-2xl font-bold">{(Number(product.price) || 0).toFixed(2)}</span>
                         <span className="text-xs text-[var(--accent)] font-bold ml-1">MAD</span>
                       </div>
                       <button 

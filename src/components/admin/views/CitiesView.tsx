@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, Settings, X, Save, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Settings, X, Save, Trash2, MapPin } from 'lucide-react';
 import { ViewProps } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 
-export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, hoverClasses, onAction }: ViewProps) {
+export default function CitiesView({ onAction }: ViewProps) {
   const [cities, setCities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +39,7 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
-          },
+        },
         body: JSON.stringify({ name: newCityName })
       });
       if (res.ok) {
@@ -86,84 +86,91 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
   };
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+    <div className="space-y-8 pb-20 pt-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter italic uppercase">Cities & Coverage</h1>
-          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-2">Manage operational cities and service availability zones.</p>
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Cities & Coverage</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">Manage operational cities and service availability zones.</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
-          className="bg-[#FFD400] text-black px-8 py-4 rounded-[20px] text-xs font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#FFD400]/90 transition-all active:scale-95 shadow-xl shadow-[#FFD400]/10"
+          className="bg-[#FFD700] text-black px-6 py-3 rounded-lg text-sm font-black uppercase tracking-wider flex items-center gap-2 hover:bg-[#E6C200] transition-colors active:scale-95 shadow-lg shadow-[#FFD700]/10"
         >
-          <Plus size={18} /> Add City
+          <Plus size={18} strokeWidth={3} /> Add City
         </button>
       </div>
 
-      <div className="hynex-card overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left">
+      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-start whitespace-nowrap">
             <thead>
-              <tr className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 border-b border-white/5">
-                <th className="px-10 py-8 font-black">City Name</th>
-                <th className="px-10 py-8 font-black">Active Artisans</th>
-                <th className="px-10 py-8 font-black">Active Orders</th>
-                <th className="px-10 py-8 font-black">Status</th>
-                <th className="px-10 py-8 font-black text-right">Actions</th>
+              <tr className="border-b border-[var(--border)] bg-white/[0.01]">
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">City Name</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Active Artisans</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Active Orders</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Status</th>
+                <th className="px-6 py-5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] text-end">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-10 py-32 text-center">
-                    <div className="flex flex-col items-center gap-6">
-                      <Loader2 size={40} className="animate-spin text-[#FFD400]" />
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Loading cities...</p>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="w-10 h-10 animate-spin text-[#FFD700]" />
+                      <p className="text-sm font-bold text-[var(--text-muted)] tracking-wider uppercase">Loading cities...</p>
                     </div>
                   </td>
                 </tr>
               ) : cities.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-10 py-32 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">No cities found.</p>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
+                    No cities found.
                   </td>
                 </tr>
               ) : cities.map((city) => (
-                <tr key={city.id} className="group hover:bg-white/5 transition-all">
-                  <td className="px-10 py-8">
-                    <p className="text-sm font-black uppercase tracking-tight">{city.name}</p>
+                <tr key={city.id} className="group hover:bg-white/[0.02] transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--card-surface)] border border-[var(--border)] text-[#FFD700] flex items-center justify-center shrink-0 group-hover:border-[#FFD700]/30 transition-colors">
+                        <MapPin size={20} strokeWidth={2} />
+                      </div>
+                      <p className="text-sm font-bold text-[var(--text)] uppercase tracking-tight">{city.name}</p>
+                    </div>
                   </td>
-                  <td className="px-10 py-8">
-                    <p className="text-xs font-mono font-bold">{Math.floor(Math.random() * 500)}</p>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-mono font-bold text-[var(--text)] tracking-wider bg-[var(--border)] px-2.5 py-1 rounded-lg">
+                      {Math.floor(Math.random() * 500)}
+                    </span>
                   </td>
-                  <td className="px-10 py-8">
-                    <p className="text-xs font-mono font-bold">{Math.floor(Math.random() * 2000)}</p>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-mono font-bold text-[var(--text)] tracking-wider bg-[var(--border)] px-2.5 py-1 rounded-lg">
+                      {Math.floor(Math.random() * 2000)}
+                    </span>
                   </td>
-                  <td className="px-10 py-8">
-                    <button 
-                      onClick={() => toggleCityStatus(city.id)}
-                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/5 transition-all hover:opacity-80 ${
-                        city.is_active ? 'text-[#22C55E]' : 'text-[#F59E0B]'
-                      }`}
-                    >
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border border-[var(--border)] ${
+                      city.is_active ? 'bg-[#22C55E]/10 text-[#22C55E]' : 'bg-orange-500/10 text-orange-500'
+                    }`}>
                       {city.is_active ? 'Active' : 'Inactive'}
-                    </button>
+                    </span>
                   </td>
-                  <td className="px-10 py-8 text-right">
-                    <div className="flex items-center justify-end gap-3">
+                  <td className="px-6 py-4 text-end">
+                    <div className="flex items-center justify-end gap-2">
                       <button 
-                        onClick={() => onAction?.(`Managing settings for ${city.name}...`)}
-                        className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all"
-                        title="City Settings"
+                        onClick={() => toggleCityStatus(city.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors border border-transparent shadow-sm ${city.is_active ? 'hover:bg-orange-500/10 text-orange-500' : 'hover:bg-emerald-500/10 text-emerald-500'}`}
                       >
-                        <Settings size={18} />
+                        {city.is_active ? 'Pause' : 'Activate'}
                       </button>
+                      
                       <button 
                         onClick={() => handleDeleteCity(city.id)}
-                        className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-rose-500/20 text-rose-500 transition-all"
+                        className="p-2.5 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors border border-transparent"
                         title="Delete City"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={18} strokeWidth={2.5} />
                       </button>
                     </div>
                   </td>
@@ -177,29 +184,30 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
       {/* Add City Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-[32px] p-8 shadow-2xl"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 shadow-2xl relative overflow-hidden"
             >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FFD700] to-[#FF8C00]" />
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black italic uppercase tracking-tighter">Add New City</h3>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/5 rounded-xl transition-all">
-                  <X size={20} className="text-zinc-500" />
+                <h3 className="text-2xl font-black text-[var(--text)] tracking-tight">Add New City</h3>
+                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[var(--border)] rounded-xl transition-colors">
+                  <X size={20} className="text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" />
                 </button>
               </div>
 
               <form onSubmit={handleAddCity} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2">City Name</label>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">City Name</label>
                   <input 
                     type="text" 
                     required
                     value={newCityName}
                     onChange={(e) => setNewCityName(e.target.value)}
-                    className="w-full px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:border-[#FFD400]/50 outline-none transition-all font-bold"
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-[#FFD700]/50 outline-none transition-colors shadow-inner"
                     placeholder="e.g. Casablanca"
                   />
                 </div>
@@ -208,16 +216,16 @@ export default function CitiesView({ isDarkMode, cardClasses, textMutedClasses, 
                   <button 
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text-muted)] font-black uppercase tracking-wider hover:bg-[var(--border)] hover:text-[var(--text)] transition-colors text-sm"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 px-6 py-4 rounded-2xl bg-[#FFD400] text-black font-black uppercase tracking-widest text-[10px] hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-[#FFD400]/10"
+                    className="flex-1 px-6 py-4 rounded-lg bg-[#FFD700] text-black font-black uppercase tracking-wider hover:bg-[#E6C200] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[#FFD700]/10 text-sm"
                   >
-                    {submitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    {submitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} strokeWidth={2.5} />}
                     {submitting ? 'Adding...' : 'Add City'}
                   </button>
                 </div>

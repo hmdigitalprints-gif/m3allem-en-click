@@ -138,268 +138,264 @@ export default function PaymentSettingsView({ onAction }: PaymentSettingsViewPro
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
+      <div className="flex flex-col items-center justify-center py-24 gap-4 pb-20 pt-4">
+        <Loader2 className="w-10 h-10 animate-spin text-[#FFD700]" />
+        <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">Loading settings...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12">
-
-      {/* Active payment methods (always-on) */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-6">
-        <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-          <Wallet size={20} className="text-[var(--accent)]" />
-          Active Payment Methods
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mb-5">
-          These methods are always available and require no external configuration.
-        </p>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-green-50 dark:bg-green-950/20">
-            <div className="flex items-center gap-3">
-              <Wallet size={18} className="text-green-600 dark:text-green-400" />
-              <div>
-                <p className="font-semibold text-sm">Internal Wallet (Solde)</p>
-                <p className="text-xs text-[var(--text-muted)]">Clients pay from their M3allem balance</p>
-              </div>
-            </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-green-400">
-              <CheckCircle size={14} /> Active
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-green-50 dark:bg-green-950/20">
-            <div className="flex items-center gap-3">
-              <Banknote size={18} className="text-green-600 dark:text-green-400" />
-              <div>
-                <p className="font-semibold text-sm">Cash on Completion</p>
-                <p className="text-xs text-[var(--text-muted)]">Client pays artisan directly after service is done</p>
-              </div>
-            </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-green-400">
-              <CheckCircle size={14} /> Active
-            </span>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 pt-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div>
+          <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Payment Settings</h1>
+          <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">Configure payment methods and Stripe integration</p>
         </div>
       </div>
 
-      {/* Commission info */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-6">
-        <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-          <ShieldCheck size={20} className="text-[var(--accent)]" />
-          Commission & Payout Logic
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mb-4">
-          Commission is automatically deducted from every completed order.
-        </p>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          {[
-            { label: 'Client pays', value: '100 MAD', color: 'text-[var(--text)]' },
-            { label: 'Platform commission', value: '10 MAD (10%)', color: 'text-orange-500' },
-            { label: 'Artisan receives', value: '90 MAD', color: 'text-green-500' },
-          ].map((item) => (
-            <div key={item.label} className="bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)]">
-              <p className={`text-base font-bold ${item.color}`}>{item.value}</p>
-              <p className="text-xs text-[var(--text-muted)] mt-1">{item.label}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-[var(--text-muted)] mt-3">
-          Commission rate is configurable in <strong>Settings → Commission</strong>.
-          Category-specific rates override the global rate.
-        </p>
-      </div>
-
-      {/* Stripe configuration */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <CreditCard size={20} className="text-[var(--accent)]" />
-            Stripe Configuration
+      <div className="grid grid-cols-1 gap-8">
+        {/* Active payment methods (always-on) */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 relative overflow-hidden shadow-sm group hover:border-[#22C55E]/30 transition-colors">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#22C55E]/5 rounded-bl-full pointer-events-none group-hover:opacity-60 transition-opacity" />
+          <h2 className="text-lg font-black text-[var(--text)] mb-8 flex items-center gap-3 relative z-10 w-fit">
+            <span className="p-2.5 rounded-xl bg-[var(--card-surface)] border border-[var(--border)] text-[#22C55E] shadow-inner">
+              <Wallet size={20} strokeWidth={2.5} />
+            </span>
+            Active Payment Methods
           </h2>
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-            stripeEnabled
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-          }`}>
-            {stripeEnabled ? 'Enabled' : 'Disabled'}
-          </span>
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mb-6">
-          Stripe is optional. The platform works without it. Add keys here to enable online top-ups.
-        </p>
-
-        {/* Enable / disable toggle */}
-        <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] mb-6">
-          <div>
-            <p className="font-semibold text-sm">Enable Stripe</p>
-            <p className="text-xs text-[var(--text-muted)]">
-              {settings?.stripe_secret_key_set
-                ? 'Keys are configured. Toggle to enable/disable Stripe.'
-                : 'Add keys below first, then enable.'}
-            </p>
-          </div>
-          <button
-            onClick={() => setStripeEnabled((v) => !v)}
-            disabled={!settings?.stripe_secret_key_set}
-            className={`relative w-12 h-6 rounded-full transition-colors focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
-              stripeEnabled ? 'bg-[var(--accent)]' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
-            aria-label="Toggle Stripe"
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                stripeEnabled ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Key inputs */}
-        <div className="space-y-4">
-          {/* Secret key */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5 mb-2">
-              <Lock size={12} /> Stripe Secret Key
-              {settings?.stripe_secret_key_set && (
-                <span className="ml-auto text-green-600 dark:text-green-400 font-semibold">✓ Set</span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type={showSecret ? 'text' : 'password'}
-                value={secretKey}
-                onChange={(e) => setSecretKey(e.target.value)}
-                placeholder={settings?.stripe_secret_key_set ? 'Leave blank to keep existing' : 'sk_live_…'}
-                className="w-full px-4 py-3 pr-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm focus:outline-none focus:border-[var(--accent)] font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                aria-label={showSecret ? 'Hide' : 'Show'}
-              >
-                {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {settings?.stripe_secret_key_set && (
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-xs text-[var(--text-muted)] font-mono">{settings.stripe_secret_key}</span>
-                <button
-                  onClick={() => handleDeleteKey('stripe_secret_key')}
-                  className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
-                >
-                  <Trash2 size={12} /> Remove
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Webhook secret */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5 mb-2">
-              <Lock size={12} /> Webhook Secret
-              {settings?.stripe_webhook_secret_set && (
-                <span className="ml-auto text-green-600 dark:text-green-400 font-semibold">✓ Set</span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type={showWebhook ? 'text' : 'password'}
-                value={webhookSecret}
-                onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder={settings?.stripe_webhook_secret_set ? 'Leave blank to keep existing' : 'whsec_…'}
-                className="w-full px-4 py-3 pr-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm focus:outline-none focus:border-[var(--accent)] font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowWebhook((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                aria-label={showWebhook ? 'Hide' : 'Show'}
-              >
-                {showWebhook ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {settings?.stripe_webhook_secret_set && (
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-xs text-[var(--text-muted)] font-mono">{settings.stripe_webhook_secret}</span>
-                <button
-                  onClick={() => handleDeleteKey('stripe_webhook_secret')}
-                  className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
-                >
-                  <Trash2 size={12} /> Remove
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Public key */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5 mb-2">
-              Stripe Publishable Key
-              {settings?.stripe_public_key_set && (
-                <span className="ml-auto text-green-600 dark:text-green-400 font-semibold">✓ Set</span>
-              )}
-            </label>
-            <input
-              type="text"
-              value={publicKey}
-              onChange={(e) => setPublicKey(e.target.value)}
-              placeholder={settings?.stripe_public_key_set ? settings.stripe_public_key || '' : 'pk_live_…'}
-              className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm focus:outline-none focus:border-[var(--accent)] font-mono"
-            />
-          </div>
-        </div>
-
-        {/* Test connection result */}
-        {testResult && (
-          <div
-            className={`mt-4 p-4 rounded-xl flex items-start gap-3 border ${
-              testResult.success
-                ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
-                : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-            }`}
-          >
-            {testResult.success ? (
-              <CheckCircle size={16} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-            ) : (
-              <XCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-            )}
-            <p className={`text-sm ${testResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-400'}`}>
-              {testResult.message}
-            </p>
-          </div>
-        )}
-
-        {/* Security notice */}
-        <div className="mt-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 flex gap-3">
-          <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            Keys are encrypted with AES-256-GCM before being stored in the database.
-            Secret keys are never exposed to the frontend — only masked previews are shown.
-            Only admins with database access can decrypt stored keys.
+          <p className="text-sm text-[var(--text-muted)] font-medium mb-6 relative z-10">
+            These methods are always available and require no external configuration.
           </p>
+          <div className="space-y-4 relative z-10">
+            <div className="flex items-center justify-between p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#22C55E]/10 flex items-center justify-center shrink-0 border border-[#22C55E]/20 shadow-sm">
+                  <Wallet className="text-[#22C55E]" size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p className="text-[var(--text)] font-bold text-sm tracking-tight">Internal Wallet (Solde)</p>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] mt-0.5 uppercase tracking-wider">Clients pay from their balance</p>
+                </div>
+              </div>
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#22C55E] bg-[#22C55E]/10 border border-[#22C55E]/20 px-3 py-1.5 rounded-lg shadow-sm">
+                <CheckCircle size={14} strokeWidth={2.5} /> Active
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#22C55E]/10 flex items-center justify-center shrink-0 border border-[#22C55E]/20 shadow-sm">
+                  <Banknote className="text-[#22C55E]" size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p className="text-[var(--text)] font-bold text-sm tracking-tight">Cash on Completion</p>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] mt-0.5 uppercase tracking-wider">Client pays directly</p>
+                </div>
+              </div>
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#22C55E] bg-[#22C55E]/10 border border-[#22C55E]/20 px-3 py-1.5 rounded-lg shadow-sm">
+                <CheckCircle size={14} strokeWidth={2.5} /> Active
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-3 flex-wrap">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-3 bg-[var(--accent)] text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            Save Settings
-          </button>
-          <button
-            onClick={handleTestStripe}
-            disabled={testing || !settings?.stripe_secret_key_set}
-            className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] rounded-xl font-semibold text-sm hover:bg-[var(--border)]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {testing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            Test Connection
-          </button>
+        {/* Stripe configuration */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 relative overflow-hidden shadow-sm group hover:border-[#635BFF]/30 transition-colors">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#635BFF]/5 rounded-bl-full pointer-events-none group-hover:opacity-60 transition-opacity" />
+          <div className="flex items-center justify-between mb-8 relative z-10 w-fit w-full">
+            <h2 className="text-lg font-black text-[var(--text)] flex items-center gap-3">
+              <span className="p-2.5 rounded-xl bg-[var(--card-surface)] border border-[var(--border)] text-[#635BFF] shadow-inner">
+                <CreditCard size={20} strokeWidth={2.5} />
+              </span>
+              Stripe Configuration
+            </h2>
+            <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg border shadow-sm ${
+              stripeEnabled
+                ? 'bg-[#635BFF]/10 text-[#8680FF] border-[#635BFF]/20'
+                : 'bg-[var(--card-surface)] text-[var(--text-muted)] border-[var(--border)]'
+            }`}>
+              {stripeEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          
+          <div className="relative z-10">
+            <p className="text-sm text-[var(--text-muted)] font-medium mb-8 bg-[var(--card-surface)] p-4 rounded-lg border border-[var(--border)] shadow-inner">
+              Stripe is optional. The platform works without it. Add keys here to enable online top-ups.
+            </p>
+
+            {/* Enable / disable toggle */}
+            <div className="flex items-center justify-between p-5 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] mb-8 shadow-inner">
+              <div>
+                <p className="text-[var(--text)] font-bold text-sm tracking-tight">Enable Stripe Integration</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">
+                  {settings?.stripe_secret_key_set
+                    ? 'Keys are configured. Toggle to enable/disable Stripe.'
+                    : 'Add keys below first, then enable.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setStripeEnabled((v) => !v)}
+                disabled={!settings?.stripe_secret_key_set}
+                className={`relative w-14 h-7 rounded-full transition-colors focus:outline-none shadow-inner disabled:opacity-40 disabled:cursor-not-allowed ${
+                  stripeEnabled ? 'bg-[#635BFF]' : 'bg-[var(--border)]'
+                }`}
+                aria-label="Toggle Stripe"
+              >
+                <span
+                  className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    stripeEnabled ? 'translate-x-7 bg-white' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Key inputs */}
+            <div className="space-y-6">
+              {/* Secret key */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2 mb-3">
+                  <Lock size={14} className="text-[#635BFF]" strokeWidth={2.5} /> Stripe Secret Key
+                  {settings?.stripe_secret_key_set && (
+                    <span className="ml-auto text-emerald-500 font-black tracking-widest text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">SET</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSecret ? 'text' : 'password'}
+                    value={secretKey}
+                    onChange={(e) => setSecretKey(e.target.value)}
+                    placeholder={settings?.stripe_secret_key_set ? 'Leave blank to keep existing' : 'sk_live_…'}
+                    className="w-full px-5 py-4 pr-12 rounded-lg border border-[var(--border)] bg-[var(--card-surface)] text-sm text-[var(--text)] focus:outline-none focus:border-[#635BFF]/50 font-mono transition-colors shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+                    aria-label={showSecret ? 'Hide' : 'Show'}
+                  >
+                    {showSecret ? <EyeOff size={18} strokeWidth={2.5} /> : <Eye size={18} strokeWidth={2.5} />}
+                  </button>
+                </div>
+                {settings?.stripe_secret_key_set && (
+                  <div className="mt-2 flex items-center justify-between px-2">
+                    <span className="text-xs text-[var(--text-muted)] font-mono tracking-wider">{settings.stripe_secret_key}</span>
+                    <button
+                      onClick={() => handleDeleteKey('stripe_secret_key')}
+                      className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:bg-red-500/10 px-2 py-1 flex items-center gap-1.5 transition-colors border border-transparent rounded-lg"
+                    >
+                      <Trash2 size={12} strokeWidth={2.5} /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Webhook secret */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2 mb-3">
+                  <Lock size={14} className="text-[#635BFF]" strokeWidth={2.5} /> Webhook Secret
+                  {settings?.stripe_webhook_secret_set && (
+                    <span className="ml-auto text-emerald-500 font-black tracking-widest text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">SET</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showWebhook ? 'text' : 'password'}
+                    value={webhookSecret}
+                    onChange={(e) => setWebhookSecret(e.target.value)}
+                    placeholder={settings?.stripe_webhook_secret_set ? 'Leave blank to keep existing' : 'whsec_…'}
+                    className="w-full px-5 py-4 pr-12 rounded-lg border border-[var(--border)] bg-[var(--card-surface)] text-sm text-[var(--text)] focus:outline-none focus:border-[#635BFF]/50 font-mono transition-colors shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWebhook((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+                    aria-label={showWebhook ? 'Hide' : 'Show'}
+                  >
+                    {showWebhook ? <EyeOff size={18} strokeWidth={2.5} /> : <Eye size={18} strokeWidth={2.5} />}
+                  </button>
+                </div>
+                {settings?.stripe_webhook_secret_set && (
+                  <div className="mt-2 flex items-center justify-between px-2">
+                    <span className="text-xs text-[var(--text-muted)] font-mono tracking-wider">{settings.stripe_webhook_secret}</span>
+                    <button
+                      onClick={() => handleDeleteKey('stripe_webhook_secret')}
+                      className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:bg-red-500/10 px-2 py-1 flex items-center gap-1.5 transition-colors border border-transparent rounded-lg"
+                    >
+                      <Trash2 size={12} strokeWidth={2.5} /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Public key */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2 mb-3">
+                  Stripe Publishable Key
+                  {settings?.stripe_public_key_set && (
+                    <span className="ml-auto text-emerald-500 font-black tracking-widest text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">SET</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={publicKey}
+                  onChange={(e) => setPublicKey(e.target.value)}
+                  placeholder={settings?.stripe_public_key_set ? settings.stripe_public_key || '' : 'pk_live_…'}
+                  className="w-full px-5 py-4 rounded-lg border border-[var(--border)] bg-[var(--card-surface)] text-sm text-[var(--text)] focus:outline-none focus:border-[#635BFF]/50 font-mono transition-colors shadow-inner"
+                />
+              </div>
+            </div>
+
+            {/* Test connection result */}
+            {testResult && (
+              <div
+                className={`mt-6 p-5 rounded-lg flex items-center gap-3 border shadow-sm ${
+                  testResult.success
+                    ? 'bg-[#22C55E]/10 border-[#22C55E]/20'
+                    : 'bg-red-500/10 border-red-500/20'
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle size={18} className="text-[#22C55E] flex-shrink-0" strokeWidth={2.5} />
+                ) : (
+                  <XCircle size={18} className="text-red-500 flex-shrink-0" strokeWidth={2.5} />
+                )}
+                <p className={`text-sm font-bold tracking-tight ${testResult.success ? 'text-[#22C55E]' : 'text-red-500'}`}>
+                  {testResult.message}
+                </p>
+              </div>
+            )}
+
+            {/* Security notice */}
+            <div className="mt-6 p-5 rounded-lg bg-[#FFD700]/5 border border-[#FFD700]/10 flex gap-4 shadow-sm">
+              <AlertTriangle size={20} className="text-[#FFD700] flex-shrink-0" strokeWidth={2.5} />
+              <p className="text-xs text-[var(--text-muted)] font-semibold tracking-wide leading-relaxed">
+                <strong className="text-[#FFD700] font-black uppercase">Security Notice:</strong> Keys are encrypted with AES-256-GCM before being stored in the database.
+                Secret keys are never exposed to the frontend — only masked previews are shown.
+                Only admins with database access can decrypt stored keys.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-8 flex gap-4 flex-wrap">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 max-w-[250px] flex items-center justify-center gap-2 px-6 py-4 bg-[#FFD700] text-black rounded-lg font-black uppercase tracking-wider text-sm hover:bg-[#E6C200] transition-colors disabled:opacity-50 shadow-lg shadow-[#FFD700]/10"
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" strokeWidth={2.5} /> : <Save size={18} strokeWidth={2.5} />}
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+              <button
+                onClick={handleTestStripe}
+                disabled={testing || !settings?.stripe_secret_key_set}
+                className="flex-1 max-w-[250px] flex items-center justify-center gap-2 px-6 py-4 bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text-muted)] rounded-lg font-black uppercase tracking-wider text-sm hover:text-[var(--text)] hover:bg-[var(--border)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              >
+                {testing ? <Loader2 size={18} className="animate-spin text-[#635BFF]" strokeWidth={2.5} /> : <RefreshCw size={18} className={settings?.stripe_secret_key_set ? 'text-[#635BFF]' : 'text-[var(--text-muted)]'} strokeWidth={2.5} />}
+                Test Stripe
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

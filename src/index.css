@@ -19,6 +19,94 @@ html[lang^="ar"] {
 }
 
 @layer base {
+  /* --- MOBILE RESPONSIVE OVERHAUL --- */
+  /* Typography fix for mobile */
+  h1, .text-4xl, .text-5xl, .text-6xl, .text-7xl {
+    font-size: clamp(1.25rem, 5vw, 2rem);
+    line-height: 1.2;
+  }
+  
+  h2, .text-3xl {
+    font-size: clamp(1.125rem, 4vw, 1.5rem);
+    line-height: 1.3;
+  }
+  
+  h3, .text-2xl {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    line-height: 1.4;
+  }
+
+  /* Compact Body text */
+  p, .text-lg {
+    font-size: clamp(0.875rem, 2vw, 1rem);
+  }
+
+  @media (max-width: 639px) {
+    /* Apply style changes to the selected element(s) */
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > header > div > div > div:nth-of-type(3) > div:nth-of-type(2) svg,
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > header > div > div > div:nth-of-type(3) > div:nth-of-type(1) svg,
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > main > div > div:nth-of-type(1) svg,
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > main > div > div:nth-of-type(2) > div > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) svg {
+      width: 18px !important;
+      height: 18px !important;
+      max-width: 22px !important;
+      max-height: 22px !important;
+      flex-shrink: 0;
+    }
+
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > header > div > div > div:nth-of-type(3) > div:nth-of-type(2),
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > header > div > div > div:nth-of-type(3) > div:nth-of-type(1),
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > main > div > div:nth-of-type(1),
+    div#root > div:nth-of-type(1) > div:nth-of-type(2) > main > div > div:nth-of-type(2) > div > div > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+    }
+
+    /* Safe layout resets */
+    main .grid-cols-2:not(.buttons, .calendar), 
+    main .grid-cols-3, 
+    main .grid-cols-4 {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Tables to horizontal scroll */
+    .overflow-x-auto, table {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Limit icon sizes globally on mobile to maintain touch target scale without overflowing */
+    .lucide, svg.lucide {
+      max-width: 22px !important;
+      max-height: 22px !important;
+      min-width: 16px !important;
+      min-height: 16px !important;
+    }
+    
+    /* Exceptions for large illustrative icons like background watermarks */
+    .w-64.lucide, .h-64.lucide, .w-48.lucide, .h-48.lucide, .w-32.lucide, .h-32.lucide, .w-24.lucide, .h-24.lucide, .w-20.lucide, .h-20.lucide {
+      max-width: none !important;
+      max-height: none !important;
+    }
+
+    /* Cards should adapt smoothly to full width */
+    .hynex-card, .card-luxury {
+      width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      border-radius: 16px !important;
+      padding: 16px !important;
+    }
+
+    /* Touch targets */
+    button, a.btn, input, select {
+      min-height: 44px;
+    }
+  }
+
   html {
     font-family: var(--primary-font);
     font-size: 16px;
