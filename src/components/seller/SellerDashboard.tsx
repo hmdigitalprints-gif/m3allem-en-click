@@ -371,6 +371,20 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
                                 Complete
                               </button>
                             )}
+                            
+                            {order.status === 'completed' && (
+                              <button 
+                                onClick={() => {
+                                  import('../../utils/pdfGenerator').then(({ generateInvoicePDF }) => {
+                                    generateInvoicePDF(order);
+                                  });
+                                }}
+                                className="px-3 py-1 bg-[var(--text)] text-[var(--bg)] text-[10px] font-bold rounded-lg hover:opacity-80 transition-all active:scale-95 flex items-center gap-1"
+                              >
+                                Invoice
+                              </button>
+                            )}
+
                             <button 
                               onClick={() => onAction?.(`Viewing details for order ${order.id}...`)}
                               className="p-1 px-2 text-[var(--text-muted)] hover:text-[var(--text)] text-[10px] font-bold"

@@ -457,12 +457,64 @@ router.get("/transactions", authenticateAdmin, async (req, res) => {
     
     const formatted = transactions.map(t => ({
       ...t,
-      user_name: t.wallet.user.name
+      user_name: t.wallet?.user?.name
     }));
     
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch transactions" });
+  }
+});
+
+router.get("/wallet-diagnostics", authenticateAdmin, async (req, res) => {
+  try {
+    const wallets = await prisma.wallet.findMany({
+      include: {
+        user: { select: { name: true } },
+        transactions: true
+      }
+    });
+
+    const diagnostics = wallets.map(w => {
+      let calcBalance = 0;
+      let calcLocked = 0;
+      
+      for (const t of w.transactions) {
+        if (t.status === 'completed' || t.status === 'successful' || t.status === 'success' || !t.status) {
+          if (t.type === 'topup' || t.type === 'refund' || t.type === 'release') {
+            calcBalance += Number(t.amount || 0);
+          } else if (t.type === 'payment' || t.type === 'withdrawal' || t.type === 'commission') {
+            calcBalance -= Number(t.amount || 0);
+          }
+        } else if (t.status === 'pending') {
+          if (t.type === 'withdrawal' || t.type === 'payment') {
+            calcLocked += Number(t.amount || 0);
+          }
+        }
+      }
+
+      const actualBalance = Number(w.balance || 0);
+      const actualLocked = Number(w.lockedBalance || 0);
+      
+      return {
+        wallet_id: w.id,
+        user_id: w.userId,
+        user_name: w.user?.name || 'Unknown',
+        actual_balance: actualBalance,
+        calculated_balance: calcBalance,
+        balance_discrepancy: actualBalance - calcBalance,
+        actual_locked: actualLocked,
+        calculated_locked: calcLocked,
+        locked_discrepancy: actualLocked - calcLocked,
+        transaction_count: w.transactions.length,
+        is_synchronized: (actualBalance === calcBalance) && (actualLocked === calcLocked)
+      };
+    });
+
+    res.json(diagnostics);
+  } catch (error) {
+    console.error("Diagnostic error:", error);
+    res.status(500).json({ error: "Failed to generate wallet diagnostic report" });
   }
 });
 

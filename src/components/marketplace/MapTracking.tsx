@@ -16,19 +16,54 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Custom icon for artisan
 const artisanIcon = L.divIcon({
-  className: 'custom-artisan-icon',
+  className: 'custom-artisan-icon !transition-transform !duration-1000 !ease-linear',
   html: `<div class="w-10 h-10 bg-[var(--accent)] rounded-full border-4 border-[var(--bg)] shadow-lg flex items-center justify-center text-[var(--accent-foreground)]">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
          </div>`,
   iconSize: [40, 40],
   iconAnchor: [20, 20]});
 
-function RecenterMap({ coords }: { coords: [number, number] }) {
+function MapController({ clientLoc, artisanLoc }: { clientLoc: [number, number], artisanLoc: [number, number] | null }) {
   const map = useMap();
+  const [initialFit, setInitialFit] = useState(false);
+  
+  const handleZoomToFit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (artisanLoc) {
+      const bounds = L.latLngBounds([clientLoc, artisanLoc]);
+      map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 16, duration: 1.5 });
+    } else {
+      map.flyTo(clientLoc, 15, { duration: 1.5 });
+    }
+  };
+
   useEffect(() => {
-    map.setView(coords);
-  }, [coords, map]);
-  return null;
+    if (!initialFit) {
+      if (artisanLoc) {
+        const bounds = L.latLngBounds([clientLoc, artisanLoc]);
+        map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 16, duration: 1.5 });
+      } else {
+        map.flyTo(clientLoc, 15, { duration: 1.5 });
+      }
+      setInitialFit(true);
+    }
+  }, [clientLoc, artisanLoc, map, initialFit]);
+
+  // Center artisan on update if we are already initialized and the user tracking is active?
+  // We'll leave the manual zoom-to-fit button for repeated fitting.
+
+  return (
+    <div className="absolute top-4 right-4 z-[1000]">
+      <button 
+        onClick={handleZoomToFit}
+        className="bg-white text-black p-2.5 rounded-xl shadow-lg hover:bg-gray-100 flex items-center justify-center transition-colors border border-black/10"
+        title="Zoom to Fit Location"
+      >
+        <MapPin size={20} className="text-[var(--accent)]" />
+      </button>
+    </div>
+  );
 }
 
 interface MapTrackingProps {
@@ -93,13 +128,12 @@ export default function MapTracking({ artisanId, artisanName, clientLocation, on
 
             {/* Artisan Location */}
             {artisanLocation && (
-              <>
-                <Marker position={artisanLocation} icon={artisanIcon}>
-                  <Popup>{artisanName} is here</Popup>
-                </Marker>
-                <RecenterMap coords={artisanLocation} />
-              </>
+              <Marker position={artisanLocation} icon={artisanIcon}>
+                <Popup>{artisanName} is here</Popup>
+              </Marker>
             )}
+
+            <MapController clientLoc={clientLocation} artisanLoc={artisanLocation} />
           </MapContainer>
 
           {!artisanLocation && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,7 +8,8 @@ import {
   Sparkles, 
   ChevronRight,
   ShieldCheck,
-  Search
+  Search,
+  Clock
 } from 'lucide-react';
 import { aiService } from '../../services/aiService';
 import { Artisan, Category } from '../../services/marketplaceService';
@@ -38,7 +39,29 @@ export default function HomeSection({
   const navigate = useNavigate();
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [matching, setMatching] = useState(false);
+
+  useEffect(() => {
+    const history = localStorage.getItem('marketplace_search_history');
+    if (history) {
+      try {
+        setSearchHistory(JSON.parse(history));
+      } catch (e) {}
+    }
+  }, []);
+
+  const saveToHistory = (query: string) => {
+    if (!query.trim()) return;
+    const current = [...searchHistory];
+    const index = current.indexOf(query.trim());
+    if (index !== -1) current.splice(index, 1);
+    current.unshift(query.trim());
+    const newHistory = current.slice(0, 5);
+    setSearchHistory(newHistory);
+    localStorage.setItem('marketplace_search_history', JSON.stringify(newHistory));
+  };
   const [suggesting, setSuggesting] = useState(false);
   const [problemDescription, setProblemDescription] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState<{ categoryId: string, categoryName: string, suggestedServiceName: string } | null>(null);
@@ -120,24 +143,58 @@ export default function HomeSection({
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 placeholder={t('search_placeholder')} 
                 className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-6 text-xl focus:outline-none focus:ring-4 focus:ring-[var(--accent)]/10 transition-all shadow-2xl text-[var(--text)] italic font-black"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') onAction('Searching for: ' + searchQuery);
+                  if (e.key === 'Enter') {
+                    saveToHistory(searchQuery);
+                    onAction('Searching for: ' + searchQuery);
+                  }
                 }}
               />
-              {searchSuggestions.length > 0 && (
+              {(isSearchFocused || searchSuggestions.length > 0) && (
                 <div className="absolute top-full inset-x-0 mt-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-[24px] overflow-hidden shadow-2xl z-50 text-start">
-                  {searchSuggestions.map((s, i) => (
-                    <button 
-                      key={i}
-                      onClick={() => { setSearchQuery(s); setSearchSuggestions([]); }}
-                      className="w-full px-6 py-4 hover:bg-[var(--accent)]/5 transition-colors text-sm font-bold border-b border-[var(--border)] last:border-0 text-[var(--text)] flex items-center gap-3"
-                    >
-                      <Search size={16} className="text-[var(--accent)]" />
-                      {s}
-                    </button>
-                  ))}
+                  {searchSuggestions.length > 0 ? (
+                    searchSuggestions.map((s, i) => (
+                      <button 
+                        key={i}
+                        onClick={() => { 
+                          setSearchQuery(s); 
+                          setSearchSuggestions([]); 
+                          saveToHistory(s);
+                          onAction('Searching for: ' + s);
+                        }}
+                        className="w-full px-6 py-4 hover:bg-[var(--accent)]/5 transition-colors text-sm font-bold border-b border-[var(--border)] last:border-0 text-[var(--text)] flex items-center gap-3"
+                      >
+                        <Search size={16} className="text-[var(--accent)]" />
+                        {s}
+                      </button>
+                    ))
+                  ) : (
+                    searchHistory.length > 0 && searchQuery.length === 0 && (
+                      <div className="py-2">
+                        <div className="px-6 py-2 text-[10px] font-black uppercase text-[var(--accent)] tracking-widest opacity-80 flex items-center justify-between">
+                          <span>{t('recent_searches', 'Recent Searches')}</span>
+                        </div>
+                        {searchHistory.map((s, i) => (
+                          <button 
+                            key={`hist-${i}`}
+                            onClick={() => { 
+                                setSearchQuery(s); 
+                                saveToHistory(s);
+                                onAction('Searching for: ' + s);
+                            }}
+                            className="w-full px-6 py-3 hover:bg-[var(--accent)]/5 transition-colors text-sm font-bold border-b border-[var(--border)] last:border-0 text-[var(--text)] flex items-center gap-3"
+                          >
+                            <Clock size={16} className="text-[var(--text-muted)]" />
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>

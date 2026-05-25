@@ -54,22 +54,19 @@ const getHeaders = () => {
 };
 
 export const fetchJson = async (url: string, options: RequestInit = {}) => {
-  options.credentials = 'include';
-  
-  // Explicitly add language header as fallback if global interception fails
   const currentLang = typeof window !== 'undefined' ? (localStorage.getItem('m3allem_lang') || localStorage.getItem('i18nextLng') || 'en') : 'en';
-  if (options.headers instanceof Headers) {
-    if (!options.headers.has('Accept-Language')) {
-      options.headers.set('Accept-Language', currentLang);
-    }
-  } else {
-    options.headers = {
-      'Accept-Language': currentLang,
-      ...(options.headers || {}),
-    };
+  
+  const headers = new Headers(options.headers || {});
+  if (!headers.has('Accept-Language')) {
+    headers.set('Accept-Language', currentLang);
   }
 
-  const res = await fetch(url, options);
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include'
+  });
+  
   const contentType = res.headers.get("content-type");
   
   if (!contentType || !contentType.includes("application/json")) {

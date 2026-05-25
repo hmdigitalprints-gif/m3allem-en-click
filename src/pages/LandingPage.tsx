@@ -120,8 +120,8 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
               to="/" 
               className="flex items-center gap-2 group cursor-pointer"
             >
-              <div className="h-10 flex items-center justify-center overflow-hidden transition-transform duration-500 hover:scale-105">
-                <img src={symbolUrl} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5 bg-[var(--accent)] text-[var(--accent-foreground)] rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
               </div>
               <span className="text-2xl font-bold tracking-tighter">
                 {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
@@ -509,8 +509,8 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2 mb-6">
-                <div className="h-8 flex items-center justify-center overflow-hidden">
-                  <img src={symbolUrl} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-[var(--text)] text-[var(--bg)]">
+                  <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-xl font-bold tracking-tight">
                   {settings?.platform_name ? settings.platform_name : 'M3allem'}

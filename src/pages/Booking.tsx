@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, Clock, MapPin, CheckCircle, Star, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, Star, MessageSquare, Download } from 'lucide-react';
 import Layout from '../components/layout/Layout';
 import ReviewModal from '../components/marketplace/ReviewModal';
 import { Booking as MarketplaceBooking } from '../services/marketplaceService';
@@ -186,6 +186,19 @@ export default function Booking() {
                   <button className="flex-1 bg-[var(--card-bg)] hover:bg-[var(--bg)] text-[var(--text)] py-4 rounded-2xl font-bold transition-colors text-sm border border-[var(--border)]">
                     View Details
                   </button>
+                  {booking.status === 'completed' && (
+                    <button 
+                      onClick={() => {
+                        import('../utils/pdfGenerator').then(({ generateInvoicePDF }) => {
+                          generateInvoicePDF(booking);
+                        });
+                      }}
+                      className="flex-1 bg-[var(--text)] hover:bg-[var(--text)]/90 text-[var(--bg)] py-4 rounded-2xl font-bold transition-colors text-sm flex items-center justify-center gap-2"
+                    >
+                      <Download size={18} />
+                      Download Invoice
+                    </button>
+                  )}
                   {booking.status === 'completed' && !booking.has_review && (
                     <button 
                       onClick={() => {

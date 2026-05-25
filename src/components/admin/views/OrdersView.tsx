@@ -118,16 +118,26 @@ export default function OrdersView({ onAction }: ViewProps) {
                     No orders found matching your criteria.
                   </td>
                 </tr>
-              ) : filteredOrders.map((order) => (
-                <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer">
+              ) : filteredOrders.map((order) => {
+                const createdDate = new Date(order.createdAt || order.created_at || new Date());
+                const hoursDiff = (new Date().getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+                const isDelayed = (order.status === 'pending' || order.status === 'in_progress') && hoursDiff > 48;
+                
+                return (
+                <tr key={order.id} className={`group hover:bg-white/[0.04] transition-colors cursor-pointer ${isDelayed ? 'bg-amber-500/[0.05] border-l-2 border-l-amber-500' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[var(--card-surface)] flex items-center justify-center border border-[var(--border)] group-hover:border-[#FFD700]/30 transition-colors text-[var(--text-muted)] group-hover:text-[#FFD700]">
+                      <div className={`w-12 h-12 rounded-xl bg-[var(--card-surface)] flex items-center justify-center border border-[var(--border)] transition-colors ${isDelayed ? 'text-amber-500 border-amber-500/30' : 'text-[var(--text-muted)] group-hover:border-[#FFD700]/30 group-hover:text-[#FFD700]'}`}>
                         <Package size={20} strokeWidth={2} />
                       </div>
-                      <span className="text-sm font-bold text-[var(--text)] font-mono uppercase tracking-widest group-hover:text-[#FFD700] transition-colors">
-                        #{order.id.substring(0, 8)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-bold font-mono uppercase tracking-widest transition-colors ${isDelayed ? 'text-amber-500' : 'text-[var(--text)] group-hover:text-[#FFD700]'}`}>
+                          #{order.id.substring(0, 8)}
+                        </span>
+                        {isDelayed && (
+                          <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mt-1 flex items-center gap-1"><AlertTriangle size={10} /> Delayed</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -159,7 +169,7 @@ export default function OrdersView({ onAction }: ViewProps) {
                     
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

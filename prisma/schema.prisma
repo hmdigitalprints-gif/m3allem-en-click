@@ -93,6 +93,7 @@ model User {
   withdrawalRequests   WithdrawalRequest[]
 
   @@map("users")
+  @@index([createdAt])
 }
 
 model Store {
@@ -369,6 +370,8 @@ model Booking {
   @@index([clientId])
   @@index([artisanId])
   @@index([bookingStatus])
+  @@index([createdAt])
+  @@index([bookingStatus, createdAt])
   @@index([scheduledAt])
 }
 

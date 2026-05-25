@@ -279,7 +279,7 @@ router.post("/seed", authenticateAdmin, async (req, res) => {
         if (status === 'completed') {
             await prisma.rating.create({
                 data: {
-                    orderId: booking.id,
+                    bookingId: booking.id,
                     clientId: client.id,
                     artisanId: artisan.id,
                     stars: Math.floor(Math.random() * 2) + 4, // 4-5 stars

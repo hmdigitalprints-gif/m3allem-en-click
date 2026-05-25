@@ -23,6 +23,11 @@ import {
   Sun,
   Moon,
   Home,
+  Building2,
+  ShoppingBag,
+  ShieldAlert,
+  UserCog,
+  ScrollText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -52,54 +57,40 @@ export default function AdminLayout({
   // Grouped Navigation
   const navigationGroups = [
     {
-      label: "Main Menu",
+      label: "Overview",
       items: [
-        {
-          id: "overview",
-          label: t("nav_overview"),
-          icon: <LayoutDashboard size={18} />,
-        },
-        {
-          id: "orders",
-          label: t("nav_orders"),
-          icon: <ShoppingCart size={18} />,
-        },
+        { id: "overview", label: t("nav_overview"), icon: <LayoutDashboard size={18} /> },
+        { id: "subscriptions", label: "Subscriptions", icon: <ScrollText size={18} /> },
       ],
     },
     {
-      label: "Network",
+      label: "Marketplace",
       items: [
         { id: "users", label: t("nav_users"), icon: <Users size={18} /> },
-        {
-          id: "artisans",
-          label: t("nav_artisans"),
-          icon: <Hammer size={18} />,
-        },
+        { id: "artisans", label: t("nav_artisans"), icon: <Hammer size={18} /> },
+        { id: "companies", label: "Companies", icon: <Building2 size={18} /> },
+        { id: "sellers", label: "Material Sellers", icon: <ShoppingBag size={18} /> },
+        { id: "orders", label: t("nav_orders"), icon: <ShoppingCart size={18} /> },
+        { id: "disputes", label: "Disputes", icon: <ShieldCheck size={18} /> },
       ],
     },
     {
       label: "Finance",
       items: [
-        {
-          id: "payments",
-          label: t("nav_payments"),
-          icon: <CreditCard size={18} />,
-        },
-        {
-          id: "withdrawals",
-          label: t("nav_withdrawals"),
-          icon: <ArrowDownRight size={18} />,
-        },
+        { id: "payments", label: t("nav_payments"), icon: <CreditCard size={18} /> },
+        { id: "wallets", label: "Wallets", icon: <CreditCard size={18} /> },
+        { id: "withdrawals", label: t("nav_withdrawals"), icon: <ArrowDownRight size={18} /> },
+        { id: "cash_collections", label: "Cash Collections", icon: <Activity size={18} /> },
+        { id: "escrow", label: "Escrow Rules", icon: <ShieldCheck size={18} /> },
+        { id: "fraud", label: "Fraud Monitoring", icon: <ShieldAlert size={18} /> },
       ],
     },
     {
       label: "System",
       items: [
-        {
-          id: "settings",
-          label: t("nav_settings"),
-          icon: <Settings size={18} />,
-        },
+        { id: "settings", label: t("nav_settings"), icon: <Settings size={18} /> },
+        { id: "team", label: "Admin Team", icon: <UserCog size={18} /> },
+        { id: "audit", label: "Audit Logs", icon: <ScrollText size={18} /> },
       ],
     },
   ];

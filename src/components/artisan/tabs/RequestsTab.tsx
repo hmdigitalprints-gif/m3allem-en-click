@@ -11,7 +11,8 @@ import {
   MessageSquare, 
   Video, 
   CheckCircle,
-  Plus
+  Plus,
+  Download
 } from 'lucide-react';
 
 interface RequestsTabProps {
@@ -48,7 +49,7 @@ export function RequestsTab({
             <p className="text-[var(--text-muted)]">{t('no_requests_desc', 'When clients book your services, they will appear here.')}</p>
           </div>
         ) : (
-          bookings?.filter(b => b.status !== 'completed' && b.status !== 'cancelled').map(booking => (
+          bookings?.filter(b => b.status !== 'cancelled').map(booking => (
             <div key={booking.id} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[40px] p-8 glass group hover:shadow-2xl transition-all">
               <div className="flex flex-col lg:flex-row gap-8">
                 {/* Client Info & Status */}
@@ -182,6 +183,20 @@ export function RequestsTab({
                       </button>
                     )}
                   </div>
+
+                  {booking.status === 'completed' && (
+                    <button 
+                      onClick={() => {
+                        import('../../../utils/pdfGenerator').then(({ generateInvoicePDF }) => {
+                          generateInvoicePDF(booking);
+                        });
+                      }}
+                      className="w-full py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all hover:bg-[var(--text)]/90"
+                    >
+                      <Download size={16} />
+                      {t('download_invoice', 'Download Invoice')}
+                    </button>
+                  )}
 
                   <button 
                     onClick={() => {

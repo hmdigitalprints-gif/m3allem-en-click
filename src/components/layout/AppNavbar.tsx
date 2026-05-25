@@ -42,8 +42,8 @@ export default function AppNavbar({ onSwitchView, currentView, activeTab, onTabC
       <div className="w-full flex items-center justify-between gap-4 max-w-[1600px] mx-auto">
         {/* Left: Logo */}
         <button onClick={() => onTabChange?.('dashboard')} className="flex items-center gap-3 shrink-0">
-          <div className="h-8 md:h-10 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105">
-            <img src={isDarkMode ? premiumLogo : premiumLogo} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-[var(--accent)] text-black rounded-xl flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 transform hover:-rotate-6 transition-transform">
+            <img src={isDarkMode ? premiumLogo : premiumLogo} alt="M3allem Symbol" className="w-full h-full object-contain" />
           </div>
           <span className="font-black text-lg md:text-xl tracking-tighter uppercase italic hidden sm:block">
             M3allem <span className="text-[var(--accent)]">Pro</span>

@@ -52,10 +52,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
   React.useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/marketplace/categories');
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data);
+        const { marketplaceService } = await import('../../services/marketplaceService');
+        const data = await marketplaceService.getCategories();
+        if (data && Array.isArray(data)) {
+           setCategories(data);
         }
       } catch (err) {
         console.error('Failed to fetch categories:', err);

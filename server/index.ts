@@ -367,6 +367,32 @@ async function startServer() {
         return res.status(400).json({ error: "Invalid filename" });
       }
 
+      // Supabase Storage Integration
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+      const supabaseBucket = process.env.SUPABASE_BUCKET || "uploads";
+
+      if (supabaseUrl && supabaseAnonKey) {
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+          
+          const { error: uploadError } = await supabase.storage
+            .from(supabaseBucket)
+            .upload(filename, finalBuffer, {
+              contentType: mimeType === "image/svg+xml" ? "image/svg+xml" : "image/webp",
+              upsert: true
+            });
+            
+          if (uploadError) {
+              console.error("Supabase storage upload failed:", uploadError);
+              return res.status(500).json({ error: "Cloud storage upload failed", details: uploadError.message });
+          }
+          
+          const { data: publicData } = supabase.storage.from(supabaseBucket).getPublicUrl(filename);
+          return res.json({ url: publicData.publicUrl });
+      }
+
+      // Fallback: Local filesystem (Ephemeral in Cloud Run)
       const filepath = path.join(uploadDir, filename);
 
       fs.writeFileSync(filepath, finalBuffer);

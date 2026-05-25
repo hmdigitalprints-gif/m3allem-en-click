@@ -108,33 +108,32 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     switch (activeTab) {
       case 'overview':
         return <DashboardOverview stats={stats} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'subscriptions':
+        return <SubscriptionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'users':
         return <UsersView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'artisans':
         return <ArtisansView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'companies':
+        return <CompaniesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'sellers':
+        return <MaterialSellersView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'orders':
-        return (
-          <div className="space-y-8">
-            <OrdersView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            <div className="pt-8 border-t border-[var(--border)]">
-              <h3 className="text-xl font-black mb-6 uppercase italic">Disputes & Support</h3>
-              <DisputesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            </div>
-          </div>
-        );
+        return <OrdersView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'disputes':
+        return <DisputesView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'payments':
-        return (
-          <div className="space-y-8">
-            <PaymentsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <WalletsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-              <CashCollectionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />
-            </div>
-            <CommissionRulesView settings={settings} updateSettings={updateSettings} isDarkMode={isDarkMode} textMutedClasses={textMutedClasses} onAction={onAction} />
-          </div>
-        );
+        return <PaymentsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'wallets':
+        return <WalletsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'cash_collections':
+        return <CashCollectionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'withdrawals':
         return <WithdrawalsView onAction={onAction} />;
+      case 'escrow':
+        return <EscrowView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'fraud':
+        return <FraudMonitoringView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'settings':
         return (
           <ParametersView 
@@ -148,6 +147,10 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
             analyticsData={analyticsData}
           />
         );
+      case 'team':
+        return <AdminManagementView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'audit':
+        return <AuditLogsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       default:
         return <DashboardOverview stats={stats} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
     }

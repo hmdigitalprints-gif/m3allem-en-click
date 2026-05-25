@@ -37,8 +37,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-2xl border-b border-[var(--border)] px-4 sm:px-6 h-20 flex justify-between items-center shadow-[0_4px_30px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className={`h-10 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105`}>
-              <img src={symbolUrl} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg shadow-[var(--accent)]/20 ring-1 ring-white/10 dark:ring-white/5 bg-[var(--accent)] text-[var(--accent-foreground)] transform hover:-rotate-12 transition-transform duration-500`}>
+              <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance hidden sm:block">
               {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}

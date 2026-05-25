@@ -16,7 +16,8 @@ import {
   Sparkles,
   Loader2,
   User,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -268,13 +269,30 @@ function BookingCard({ booking, onNavigate }: { booking: any, onNavigate: (tab: 
       </div>
       
       <div className="mt-6 flex items-center justify-between border-t border-[var(--border)] pt-4 relative z-10">
-        <button 
-          onClick={() => onNavigate('bookings')}
-          className="text-xs font-black text-[var(--accent)] hover:scale-105 transition-all flex items-center gap-2"
-        >
-          {t('track_status', 'Track Order')}
-          <ArrowRight size={14} />
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => onNavigate('bookings')}
+            className="text-xs font-black text-[var(--accent)] hover:scale-105 transition-all flex items-center gap-2"
+          >
+            {t('track_status', 'Track Order')}
+            <ArrowRight size={14} />
+          </button>
+          
+          {booking.status === 'completed' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                import('../../utils/pdfGenerator').then(({ generateInvoicePDF }) => {
+                  generateInvoicePDF(booking);
+                });
+              }}
+              className="text-xs font-black text-[var(--text)] hover:scale-105 transition-all flex items-center gap-2 bg-[var(--text)]/5 px-3 py-1 rounded-full"
+            >
+              <Download size={12} />
+              {t('download_invoice', 'Invoice')}
+            </button>
+          )}
+        </div>
         <div className="text-right">
           <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">{t('estimated_price', 'Est. Price')}</p>
           <p className="font-black text-sm">{(Number(booking.price) || 0).toFixed(2)} MAD</p>

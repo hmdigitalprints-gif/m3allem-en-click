@@ -25,8 +25,8 @@ export default function PublicLayout({ children, onGetStarted }: { children: Rea
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3 group cursor-pointer">
-              <div className={`h-10 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105`}>
-                <img src={symbolUrl} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden bg-transparent ${hoverAnimClass}`}>
+                <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
               </div>
               <span className="text-xl font-bold tracking-tighter text-[var(--text)] text-balance hidden sm:block">
                 {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
@@ -65,8 +65,8 @@ export default function PublicLayout({ children, onGetStarted }: { children: Rea
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
             <div className="col-span-1 md:col-span-1">
               <Link to="/" className="flex items-center gap-3 mb-6 group">
-                <div className={`h-8 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-105`}>
-                  <img src={symbolUrl} alt="M3allem Symbol" className="h-full w-auto object-contain" />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ring-1 ring-white/10 dark:ring-white/5 bg-[var(--accent)] text-[var(--accent-foreground)] ${hoverAnimClass}`}>
+                  <img src={symbolUrl} alt="M3allem Symbol" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-lg font-bold tracking-tighter text-[var(--text)]">
                   {settings?.platform_name ? settings.platform_name : <>M3allem <span className="text-[var(--accent)]">{t('nav_brand_accent')}</span></>}
