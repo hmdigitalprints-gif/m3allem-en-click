@@ -99,7 +99,7 @@ export default function Services() {
                 {React.cloneElement(cat.icon as React.ReactElement<any>, { size: 40 })}
               </div>
               <div className="flex flex-col gap-2 mb-4">
-                <h3 className="text-3xl font-bold text-[var(--text)]">{t(cat.id, cat.name)}</h3>
+                <h3 className="text-3xl font-bold text-[var(--text)]">{cat.name}</h3>
                 <span className="text-[var(--accent)] text-xs font-bold bg-[var(--accent)]/10 px-3 py-1 rounded-full w-fit">
                   {t('services_pros_available_count', { count: 300 + (i * 50) })}
                 </span>

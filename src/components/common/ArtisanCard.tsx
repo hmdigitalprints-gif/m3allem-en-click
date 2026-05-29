@@ -30,7 +30,7 @@ const ArtisanCard = memo(({ name, category, rating, reviews, price, image, onAct
             <div className="flex flex-wrap items-start justify-between gap-2 overflow-hidden mb-1">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <h3 className="text-base md:text-lg font-bold text-[var(--text)] truncate" title={name}>{name}</h3>
-                {isVerified && <ShieldCheck size={16} className="text-[var(--success)] shrink-0" title="Verified" />}
+                {isVerified && <span title="Verified"><ShieldCheck size={16} className="text-[var(--success)] shrink-0" /></span>}
               </div>
               <div className="flex items-center gap-1 bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-1 rounded-lg text-xs font-bold shrink-0">
                 <Star size={12} fill="currentColor" />

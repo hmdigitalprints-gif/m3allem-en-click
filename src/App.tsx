@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { formatDuration } from './lib/utils';
 import { 
   Users, 
@@ -112,7 +112,11 @@ export default function App() {
   const [view, setView] = useState<'admin' | 'customer' | 'artisan' | 'seller' | 'company'>('customer');
   const [customerTab, setCustomerTab] = useState<'dashboard' | 'home' | 'find' | 'store' | 'bookings' | 'account' | 'documents' | 'messages'>(() => (sessionStorage.getItem('m3allem_customerTab') as any) || 'dashboard');
 
-  useEffect(() => { sessionStorage.setItem('m3allem_customerTab', customerTab); }, [customerTab]);
+  const handleSwitchViewCustomer = useCallback(() => setView('customer'), []);
+
+  useEffect(() => {
+    sessionStorage.setItem('m3allem_customerTab', customerTab);
+  }, [customerTab]);
   
   // Sync language with user preference
   useEffect(() => {
@@ -184,6 +188,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('start-live-diagnostic', handleStartDiagnostic);
+      socket.off('booking_status_updated');
       socket.off('incoming_call');
     };
   }, [user]);
@@ -214,7 +219,7 @@ export default function App() {
   );
 
   const mainContent = !user ? (
-    showLogin ? <AuthScreens onSuccess={() => setShowLogin(false)} onBack={() => setShowLogin(false)} /> : <LandingPage onGetStarted={() => setShowLogin(true)} onAction={(msg) => showToast(msg, 'info')} isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user} />
+    showLogin ? <AuthScreens onSuccess={() => setShowLogin(false)} onBack={() => setShowLogin(false)} /> : <LandingPage onGetStarted={() => setShowLogin(true)} onAction={showToast} isDarkMode={isDarkMode} toggleTheme={toggleTheme} user={user} />
   ) : (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans">
       <PromoBanner />
@@ -222,7 +227,7 @@ export default function App() {
       {view === 'admin' ? (
         <ErrorBoundary>
           <AdminDashboard 
-            onSwitchView={() => setView('customer')} 
+            onSwitchView={handleSwitchViewCustomer} 
             onLogout={logout} 
             onAction={showToast}
             isDarkMode={isDarkMode} 
@@ -230,11 +235,11 @@ export default function App() {
           />
         </ErrorBoundary>
       ) : view === 'artisan' ? (
-        <ErrorBoundary><ArtisanDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        <ErrorBoundary><ArtisanDashboard onLogout={logout} onSwitchView={handleSwitchViewCustomer} onAction={showToast} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
       ) : view === 'seller' ? (
-        <ErrorBoundary><SellerDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        <ErrorBoundary><SellerDashboard onLogout={logout} onSwitchView={handleSwitchViewCustomer} onAction={showToast} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
       ) : view === 'company' ? (
-        <ErrorBoundary><CompanyDashboard onLogout={logout} onSwitchView={() => setView('customer')} onAction={(msg) => showToast(msg)} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
+        <ErrorBoundary><CompanyDashboard onLogout={logout} onSwitchView={handleSwitchViewCustomer} onAction={showToast} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /></ErrorBoundary>
       ) : (
         <AppLayout 
           activeTab={customerTab} 

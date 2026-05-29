@@ -308,7 +308,10 @@ router.get("/artisans", authenticateAdmin, async (req, res) => {
     const artisans = await prisma.artisan.findMany({
       include: {
         user: { select: { name: true, phone: true, avatarUrl: true } },
-        category: { select: { name: true } }
+        category: { select: { name: true } },
+        _count: {
+          select: { bookings: true }
+        }
       }
     });
     
@@ -317,7 +320,8 @@ router.get("/artisans", authenticateAdmin, async (req, res) => {
       name: a.user.name,
       phone: a.user.phone,
       avatar_url: a.user.avatarUrl,
-      category_name: a.category?.name
+      category_name: a.category?.name,
+      total_jobs: a._count.bookings
     }));
     
     res.json(formatted);

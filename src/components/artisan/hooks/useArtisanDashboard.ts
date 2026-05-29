@@ -105,7 +105,6 @@ export function useArtisanDashboard(user: any, onAction: (msg: string) => void) 
     }
     return () => {
       socket.off('new_job_available');
-      socket.disconnect();
     };
   }, [user?.id, onAction, fetchNearbyJobs]);
 
@@ -133,7 +132,7 @@ export function useArtisanDashboard(user: any, onAction: (msg: string) => void) 
   }, [bookings, watchId, artisanId]);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 

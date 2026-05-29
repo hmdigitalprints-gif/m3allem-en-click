@@ -103,7 +103,7 @@ export default function FindSection({ onAction, onSelectArtisan, onBookArtisan, 
                       handleFilterChange('category', cat.id);
                     }}>
                       <div className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${filters.category === cat.id ? 'bg-[var(--accent)] border-[var(--accent)] scale-110 shadow-lg shadow-[var(--accent)]/20' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`} />
-                      <span className={`text-sm transition-colors ${filters.category === cat.id ? 'text-[var(--text)] font-bold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>{t(cat.id || cat.name, cat.name)}</span>
+                      <span className={`text-sm transition-colors ${filters.category === cat.id ? 'text-[var(--text)] font-bold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>{cat.name}</span>
                     </label>
                   ))}
                 </div>

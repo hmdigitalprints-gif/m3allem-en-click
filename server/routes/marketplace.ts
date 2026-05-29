@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/artisans", async (req, res) => {
   try {
     const lang = await getPreferredLanguage(req);
-    const { categoryId, city, search, page = '1', limit = '20' } = req.query;
+    const { categoryId, city, search, isOnline, minRating, minPrice, maxPrice, page = '1', limit = '20' } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
@@ -22,6 +22,14 @@ router.get("/artisans", async (req, res) => {
     if (city) {
       where.city = { contains: city as string, mode: 'insensitive' };
     }
+    
+    if (isOnline === 'true') {
+      where.isOnline = true;
+    }
+    
+    if (minRating) {
+      where.rating = { gte: Number(minRating) };
+    }
 
     if (search) {
       where.OR = [
@@ -29,6 +37,17 @@ router.get("/artisans", async (req, res) => {
         { expertise: { contains: search as string, mode: 'insensitive' } },
         { user: { name: { contains: search as string, mode: 'insensitive' } } }
       ];
+    }
+    
+    if (minPrice || maxPrice) {
+      where.services = {
+        some: {
+          price: {
+            ...(minPrice ? { gte: Number(minPrice) } : {}),
+            ...(maxPrice ? { lte: Number(maxPrice) } : {})
+          }
+        }
+      };
     }
 
     const artisans = await prisma.artisan.findMany({
@@ -93,7 +112,12 @@ router.get("/artisans/:id", async (req, res) => {
     const translatedCatName = await t(categoryNameKey, lang);
 
     const services = await prisma.service.findMany({
-      where: { categoryId: artisan.categoryId }
+      where: { 
+        OR: [
+          { artisanId: artisan.id },
+          { categoryId: artisan.categoryId, artisanId: null }
+        ]
+      }
     });
 
     res.json({ 

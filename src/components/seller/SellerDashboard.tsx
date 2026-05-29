@@ -431,7 +431,7 @@ export default function SellerDashboard({ onLogout, onSwitchView, isDarkMode, to
           </div>
         );
       case 'settings':
-        return <AccountSection onAction={(msg) => onAction?.(msg)} />;
+        return <AccountSection onAction={onAction} />;
       default:
         return null;
     }

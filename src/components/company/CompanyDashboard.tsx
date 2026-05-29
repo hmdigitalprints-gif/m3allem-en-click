@@ -388,7 +388,7 @@ export default function CompanyDashboard({ onLogout, onSwitchView, isDarkMode, t
           </div>
         );
       case 'settings':
-        return <AccountSection onAction={(msg) => onAction?.(msg)} />;
+        return <AccountSection onAction={onAction} />;
       default:
         return null;
     }

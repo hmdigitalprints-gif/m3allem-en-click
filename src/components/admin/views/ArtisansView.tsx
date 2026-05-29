@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Star, CheckCircle, AlertCircle, Zap, MoreVertical, X, ShieldCheck, ShieldAlert, Filter } from 'lucide-react';
+import { Search, Loader2, Star, CheckCircle, AlertCircle, Zap, MoreVertical, X, ShieldCheck, ShieldAlert, Filter, FileText } from 'lucide-react';
 import { ViewProps } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function ArtisansView({ onAction }: ViewProps) {
   const [artisans, setArtisans] = useState<any[]>([]);
@@ -62,6 +64,60 @@ export default function ArtisansView({ onAction }: ViewProps) {
     }
   };
 
+  const exportToPdf = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text('Artisan Performance Report', 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // Overview metrics
+    const totalArtisans = artisans.length;
+    const verifiedArtisans = artisans.filter(a => a.is_verified).length;
+    const featuredArtisans = artisans.filter(a => a.is_featured).length;
+    
+    doc.setFontSize(12);
+    doc.setTextColor(60);
+    doc.text(`Total Artisans: ${totalArtisans}`, 14, 40);
+    doc.text(`Verified Artisans: ${verifiedArtisans}`, 14, 46);
+    doc.text(`Featured Artisans: ${featuredArtisans}`, 14, 52);
+
+    // Table Data
+    const tableColumn = ["Name", "Category", "City", "Rating", "Total Jobs", "Reviews", "Status", "Featured"];
+    const tableRows: any[] = [];
+
+    artisans.forEach(artisan => {
+      const artisanData = [
+        artisan.name || 'N/A',
+        artisan.category_name || 'N/A',
+        artisan.city || 'N/A',
+        Number(artisan.rating || 0).toFixed(1),
+        artisan.total_jobs || 0,
+        artisan.review_count || 0,
+        artisan.is_verified ? 'Verified' : 'Pending',
+        artisan.is_featured ? 'Yes' : 'No'
+      ];
+      tableRows.push(artisanData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 60,
+      theme: 'grid',
+      styles: { fontSize: 8, font: 'helvetica' },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 }
+    });
+
+    doc.save('artisan_performance_report.pdf');
+    onAction?.('PDF Report downloaded successfully');
+  };
+
   const filteredArtisans = artisans.filter(a => {
     const matchesSearch = a.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          a.category_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -77,6 +133,14 @@ export default function ArtisansView({ onAction }: ViewProps) {
           <p className="text-sm font-semibold text-[var(--text-muted)] mt-1 uppercase tracking-wider">Approve, feature & monitor performance</p>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={exportToPdf}
+            className="px-4 py-3 rounded-lg text-sm font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 border shadow-sm bg-[var(--card-surface)] text-[var(--accent)] border-[var(--border)] hover:bg-[var(--accent)]/10"
+            title="Download PDF Report"
+          >
+            <FileText size={18} strokeWidth={2.5} />
+            <span className="hidden sm:inline">Export Report</span>
+          </button>
           <button 
             onClick={() => setShowPendingOnly(!showPendingOnly)}
             className={`px-6 py-3 rounded-lg text-sm font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 border shadow-sm ${
@@ -112,6 +176,7 @@ export default function ArtisansView({ onAction }: ViewProps) {
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Artisan</th>
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Category</th>
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Rating</th>
+                <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Jobs</th>
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider text-center">Featured</th>
                 <th className="px-6 py-5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider text-end">Actions</th>
@@ -120,7 +185,7 @@ export default function ArtisansView({ onAction }: ViewProps) {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 size={32} className="animate-spin text-[#FFD700]" />
                       <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">Loading artisans...</p>
@@ -129,7 +194,7 @@ export default function ArtisansView({ onAction }: ViewProps) {
                 </tr>
               ) : filteredArtisans.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm font-bold text-[var(--text-muted)]">
                     No artisans found.
                   </td>
                 </tr>
@@ -156,6 +221,9 @@ export default function ArtisansView({ onAction }: ViewProps) {
                       <Star size={16} className="fill-current" strokeWidth={2} />
                       <span className="text-sm font-black">{Number(artisan.rating || 0).toFixed(1)}</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-[var(--text)]">
+                    {artisan.total_jobs || 0}
                   </td>
                   <td className="px-6 py-4">
                     {artisan.is_verified ? (

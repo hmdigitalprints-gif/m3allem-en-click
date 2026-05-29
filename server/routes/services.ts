@@ -41,7 +41,7 @@ router.get("/by-category/:categoryId", async (req, res) => {
   try {
     const { categoryId } = req.params;
     const services = await prisma.service.findMany({
-      where: { categoryId }
+      where: { categoryId, artisanId: null }
     });
     res.json(services);
   } catch (error) {

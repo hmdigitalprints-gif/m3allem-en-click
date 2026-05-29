@@ -271,7 +271,7 @@ export default function HomeSection({
               <div className="w-16 h-16 rounded-2xl bg-[var(--bg)] flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform shadow-inner">
                 <CategoryIcon name={cat.name} className="w-8 h-8" />
               </div>
-              <span className="font-black text-[10px] uppercase tracking-widest text-center">{t(cat.id || cat.name, cat.name)}</span>
+              <span className="font-black text-[10px] uppercase tracking-widest text-center">{cat.name}</span>
             </motion.button>
           ))}
         </div>
