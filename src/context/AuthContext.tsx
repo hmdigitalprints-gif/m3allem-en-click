@@ -24,6 +24,8 @@ interface AuthContextType {
   updateProfile: (data: { name?: string; avatarUrl?: string; city?: string; address?: string; phone?: string }) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  loginWithGoogle?: (token: string) => Promise<any>;
+  completeGoogleRole?: (role: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -185,8 +187,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (token: string) => {
+    try {
+      const res = await fetch('/api/auth/google', { 
+        credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Google login failed');
+      }
+      const data = await res.json();
+      if (data.user && !data.requiresRoleSelection) {
+        localStorage.clear();
+        sessionStorage.clear();
+        setUser(data.user);
+        window.location.reload();
+      }
+      return data;
+    } catch (err: any) {
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        throw new Error('Unable to connect to the server. Please check your internet connection.');
+      }
+      throw err;
+    }
+  };
+
+  const completeGoogleRole = async (role: string) => {
+    try {
+      const res = await fetch('/api/auth/complete-role', { 
+        credentials: 'include', 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to select role');
+      }
+      const data = await res.json();
+      if (data.user) {
+        localStorage.clear();
+        sessionStorage.clear();
+        setUser(data.user);
+        window.location.reload();
+      }
+      return data;
+    } catch (err: any) {
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        throw new Error('Unable to connect to the server. Please check your internet connection.');
+      }
+      throw err;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, verifyOtp, register, updateLanguage, updateProfile, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, verifyOtp, register, updateLanguage, updateProfile, logout, isLoading, loginWithGoogle, completeGoogleRole }}>
       {children}
     </AuthContext.Provider>
   );

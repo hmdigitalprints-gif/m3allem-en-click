@@ -55,7 +55,8 @@ router.get("/artisans", async (req, res) => {
       include: {
         user: { select: { name: true, avatarUrl: true } },
         category: { select: { name: true, id: true } },
-        portfolio: { take: 1, orderBy: { createdAt: 'desc' } }
+        portfolio: { take: 1, orderBy: { createdAt: 'desc' } },
+        services: true
       },
       orderBy: { rating: 'desc' },
       skip,
@@ -71,11 +72,17 @@ router.get("/artisans", async (req, res) => {
       const categoryNameKey = `cat_${a.category?.id || 'unknown'}`;
       const translatedCatName = translations[categoryNameKey];
       
+      const artisanServices = a.services || [];
+      const servicePrices = artisanServices.map(s => Number(s.price || 0)).filter(p => p > 0);
+      const startingPrice = servicePrices.length > 0 ? Math.min(...servicePrices) : 150.00;
+      
       return {
         ...a,
         name: a.user?.name,
         avatar_url: a.user?.avatarUrl,
-        category_name: translatedCatName !== categoryNameKey ? translatedCatName : (a.category?.name || 'Artisan')
+        category_name: translatedCatName !== categoryNameKey ? translatedCatName : (a.category?.name || 'Artisan'),
+        starting_price: startingPrice,
+        price: startingPrice
       };
     });
 
@@ -120,6 +127,9 @@ router.get("/artisans/:id", async (req, res) => {
       }
     });
 
+    const servicePrices = services.map(s => Number(s.price || 0)).filter(p => p > 0);
+    const startingPrice = servicePrices.length > 0 ? Math.min(...servicePrices) : 150.00;
+
     res.json({ 
       ...artisan,
       name: artisan.user?.name,
@@ -127,6 +137,8 @@ router.get("/artisans/:id", async (req, res) => {
       category_name: translatedCatName !== categoryNameKey ? translatedCatName : (artisan.category?.name || 'Artisan'),
       portfolio: artisan.portfolio,
       services,
+      starting_price: startingPrice,
+      price: startingPrice,
       reviews: artisan.ratings.map(r => ({
         ...r,
         client_name: r.client?.name,

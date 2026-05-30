@@ -169,6 +169,9 @@ router.get("/:id", async (req, res) => {
       where: { categoryId: artisan.categoryId }
     });
 
+    const servicePrices = services.map(s => Number(s.price || 0)).filter(p => p > 0);
+    const startingPrice = servicePrices.length > 0 ? Math.min(...servicePrices) : 150.00;
+
     res.json({ 
       ...artisan,
       name: artisan.user?.name,
@@ -176,6 +179,8 @@ router.get("/:id", async (req, res) => {
       category_name: artisan.category?.name,
       portfolio: artisan.portfolio,
       services,
+      starting_price: startingPrice,
+      price: startingPrice,
       reviews: artisan.ratings.map(r => ({
         ...r,
         client_name: r.client?.name,
@@ -520,6 +525,37 @@ router.post("/withdraw", authenticateToken, async (req: any, res) => {
     }
     console.error("Withdrawal error:", error);
     res.status(500).json({ error: "Failed to process withdrawal" });
+  }
+});
+
+// Add a service
+router.post("/me/services", authenticateToken, async (req: any, res) => {
+  try {
+    const { title, description, price, categoryName, imageUrl, categoryId } = req.body;
+    const userId = req.user.id;
+
+    const artisan = await prisma.artisan.findUnique({
+      where: { userId },
+      select: { id: true }
+    });
+    if (!artisan) return res.status(403).json({ error: "Only artisans can add services" });
+
+    const service = await prisma.service.create({
+      data: {
+        title,
+        description,
+        price: Number(price),
+        categoryName,
+        imageUrl,
+        artisanId: artisan.id,
+        categoryId
+      }
+    });
+
+    res.status(201).json(service);
+  } catch (error) {
+    console.error("Add service error:", error);
+    res.status(500).json({ error: "Failed to add service" });
   }
 });
 

@@ -5,6 +5,9 @@ import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { SymmetricalIcon } from '../common/SymmetricalIcon';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "300438340428-placeholder.apps.googleusercontent.com";
 
 interface AuthScreensProps {
   onSuccess: () => void;
@@ -13,7 +16,7 @@ interface AuthScreensProps {
 
 export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) => {
   const { t, i18n } = useTranslation();
-  const [step, setStep] = useState<'login' | 'otp' | 'register' | 'role' | 'channel'>('login');
+  const [step, setStep] = useState<'login' | 'otp' | 'register' | 'role' | 'channel' | 'google-role'>('login');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -37,7 +40,59 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
-  const { login, verifyOtp, register } = useAuth();
+  const { login, verifyOtp, register, loginWithGoogle, completeGoogleRole } = useAuth();
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (!credentialResponse?.credential) {
+        throw new Error('Google authentication returned invalid credential.');
+      }
+      
+      if (!loginWithGoogle) {
+        throw new Error('Google OAuth provider not configured on AuthContext.');
+      }
+
+      console.log("[AuthScreens] Triggering signature validation with credential token");
+      const res = await loginWithGoogle(credentialResponse.credential);
+      
+      if (res.requiresRoleSelection) {
+        console.log("[AuthScreens] New user created without a selected role. Launching role onboarding view.");
+        setStep('google-role');
+      } else if (res.token) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error("[AuthScreens] Google sign-in failed:", err);
+      setError(err.message || 'Google authentication failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google Sign-In failed. Please try again or use standard credentials.');
+  };
+
+  const handleCompleteGoogleRole = async () => {
+    if (!role) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (!completeGoogleRole) {
+        throw new Error('Google role selection update mechanism is unconfigured.');
+      }
+      const res = await completeGoogleRole(role);
+      if (res.token) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to persist selected role.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   React.useEffect(() => {
     let timer: any;
@@ -238,7 +293,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex items-center justify-center p-4 md:p-6 transition-colors duration-300 relative">
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex items-center justify-center p-4 md:p-6 transition-colors duration-300 relative">
       {onBack && (
         <button 
           onClick={onBack}
@@ -316,6 +372,26 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 >
                   {t('auth_no_account')} {t('auth_btn_create')}
                 </button>
+
+                <div className="relative flex py-4 items-center">
+                  <div className="flex-grow border-t border-[var(--border)]"></div>
+                  <span className="flex-shrink mx-4 text-[var(--text-muted)] text-xs uppercase font-extrabold tracking-widest">{t('auth_or_with', 'Or continue with')}</span>
+                  <div className="flex-grow border-t border-[var(--border)]"></div>
+                </div>
+
+                <div className="flex justify-center w-full min-h-[50px] overflow-hidden rounded-[24px] border border-[var(--border)] bg-black/5 hover:bg-black/10 transition-all">
+                  <div className="w-full flex justify-center items-center py-2 px-4 cursor-pointer scale-105">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      theme="filled_blue"
+                      size="large"
+                      text="continue_with"
+                      shape="pill"
+                      width="100%"
+                    />
+                  </div>
+                </div>
               </form>
 
               {/* DEMO QUICK LOGIN */}
@@ -765,11 +841,115 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
                 >
                   {t('auth_back_select_role')}
                 </button>
+
+                <div className="relative flex py-4 items-center">
+                  <div className="flex-grow border-t border-[var(--border)]"></div>
+                  <span className="flex-shrink mx-4 text-[var(--text-muted)] text-xs uppercase font-extrabold tracking-widest">{t('auth_or_with', 'Or continue with')}</span>
+                  <div className="flex-grow border-t border-[var(--border)]"></div>
+                </div>
+
+                <div className="flex justify-center w-full min-h-[50px] overflow-hidden rounded-[24px] border border-[var(--border)] bg-black/5 hover:bg-black/10 transition-all">
+                  <div className="w-full flex justify-center items-center py-2 px-4 cursor-pointer scale-105">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      theme="filled_blue"
+                      size="large"
+                      text="continue_with"
+                      shape="pill"
+                      width="100%"
+                    />
+                  </div>
+                </div>
               </form>
+            </motion.div>
+          )}
+
+          {step === 'google-role' && (
+            <motion.div
+              key="google-role"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{t('auth_choose')} <span className="text-[var(--accent)]">{t('auth_role_short', 'Account Type')}</span></h1>
+                <p className="text-[var(--text-muted)]">{t('auth_choose_role_desc', 'To complete your Google sign-up, choose your account type.')}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setRole('client')}
+                  className={`p-6 bg-[var(--glass-bg)] border text-left rounded-[30px] transition-all group active:scale-95 ${role === 'client' ? 'border-[var(--accent)] ring-4 ring-[var(--accent)]/20' : 'border-[var(--glass-border)] hover:border-[var(--accent)]/50'}`}
+                >
+                  <div className={`p-3 rounded-xl w-fit mb-4 transition-all ${role === 'client' ? 'bg-[var(--accent)] text-black' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
+                    <User size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">{t('role_client', 'Client')}</h3>
+                  <p className="text-[var(--text-muted)] text-xs">{t('client_desc', 'Find and book skilled craftsmen.')}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('artisan')}
+                  className={`p-6 bg-[var(--glass-bg)] border text-left rounded-[30px] transition-all group active:scale-95 ${role === 'artisan' ? 'border-[var(--accent)] ring-4 ring-[var(--accent)]/20' : 'border-[var(--glass-border)] hover:border-[var(--accent)]/50'}`}
+                >
+                  <div className={`p-3 rounded-xl w-fit mb-4 transition-all ${role === 'artisan' ? 'bg-[var(--accent)] text-black' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
+                    <ShieldCheck size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">{t('role_artisan', 'Artisan')}</h3>
+                  <p className="text-[var(--text-muted)] text-xs">{t('artisan_desc', 'Offer your services.')}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('seller')}
+                  className={`p-6 bg-[var(--glass-bg)] border text-left rounded-[30px] transition-all group active:scale-95 ${role === 'seller' ? 'border-[var(--accent)] ring-4 ring-[var(--accent)]/20' : 'border-[var(--glass-border)] hover:border-[var(--accent)]/50'}`}
+                >
+                  <div className={`p-3 rounded-xl w-fit mb-4 transition-all ${role === 'seller' ? 'bg-[var(--accent)] text-black' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
+                    <Sparkles size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">{t('role_seller', 'Seller')}</h3>
+                  <p className="text-[var(--text-muted)] text-xs">{t('seller_desc', 'Sell tools and materials.')}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('company')}
+                  className={`p-6 bg-[var(--glass-bg)] border text-left rounded-[30px] transition-all group active:scale-95 ${role === 'company' ? 'border-[var(--accent)] ring-4 ring-[var(--accent)]/20' : 'border-[var(--glass-border)] hover:border-[var(--accent)]/50'}`}
+                >
+                  <div className={`p-3 rounded-xl w-fit mb-4 transition-all ${role === 'company' ? 'bg-[var(--accent)] text-black' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
+                    <ArrowRight size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">{t('role_company', 'Company')}</h3>
+                  <p className="text-[var(--text-muted)] text-xs">{t('company_desc', 'Manage your service team.')}</p>
+                </button>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-3 text-rose-500 bg-rose-500/10 p-5 rounded-[24px] border border-rose-500/20 backdrop-blur-md">
+                  <div className="p-2 bg-rose-500/20 rounded-xl">
+                    <AlertCircle size={20} />
+                  </div>
+                  <p className="font-bold text-sm">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleCompleteGoogleRole}
+                disabled={isLoading || !role}
+                className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] py-6 rounded-3xl font-bold text-xl hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 className="animate-spin" /> : <>{t('continue', 'Complete Registration')} <SymmetricalIcon icon={ArrowRight} size={20} /></>}
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
+    </GoogleOAuthProvider>
   );
 };

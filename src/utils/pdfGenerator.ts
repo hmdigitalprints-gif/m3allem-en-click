@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
 
-export const generateInvoicePDF = (booking: any) => {
+export const generateInvoicePDF = async (booking: any) => {
   const doc = new jsPDF();
   
   // Custom styling and layout
@@ -90,6 +91,7 @@ export const generateInvoicePDF = (booking: any) => {
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   
   doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(33, 33, 33);
   doc.text("Total:", pageWidth - 50, finalY);
   
@@ -97,6 +99,36 @@ export const generateInvoicePDF = (booking: any) => {
   doc.setFont("helvetica", "bold");
   doc.text(`${price} MAD`, pageWidth - 14, finalY, { align: 'right' });
   
+  // Verification QR Code
+  const verificationUrl = `${window.location.origin}/booking?id=${booking.id}`;
+  let qrCodeDataUrl = '';
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+      margin: 1,
+      width: 150,
+      color: {
+        dark: '#212121',
+        light: '#FFFFFF'
+      }
+    });
+  } catch (err) {
+    console.error('Failed to generate verification QR code:', err);
+  }
+
+  if (qrCodeDataUrl) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(33, 33, 33);
+    doc.text("Invoice Verification", 14, finalY);
+    
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(110, 110, 110);
+    doc.text("Scan to verify details on M3ALLEMI platform", 14, finalY + 5);
+    
+    doc.addImage(qrCodeDataUrl, 'PNG', 14, finalY + 8, 28, 28);
+  }
+
   // Footer
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");

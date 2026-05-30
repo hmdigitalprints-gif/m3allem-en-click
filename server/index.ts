@@ -369,12 +369,15 @@ async function startServer() {
 
       // Supabase Storage Integration
       const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
       const supabaseBucket = process.env.SUPABASE_BUCKET || "uploads";
 
-      if (supabaseUrl && supabaseAnonKey) {
+      if (supabaseUrl && (supabaseServiceKey || supabaseAnonKey)) {
+        try {
           const { createClient } = await import("@supabase/supabase-js");
-          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+          // Use service key if available to bypass RLS, otherwise use anon key
+          const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
           
           const { error: uploadError } = await supabase.storage
             .from(supabaseBucket)
@@ -384,12 +387,18 @@ async function startServer() {
             });
             
           if (uploadError) {
-              console.error("Supabase storage upload failed:", uploadError);
-              return res.status(500).json({ error: "Cloud storage upload failed", details: uploadError.message });
+            console.error("Supabase storage upload failed, falling back to local storage:", uploadError);
+            // DO NOT exit with 500 - let it fall through to the local file writer
+          } else {
+            const { data: publicData } = supabase.storage.from(supabaseBucket).getPublicUrl(filename);
+            if (publicData?.publicUrl) {
+              return res.json({ url: publicData.publicUrl });
+            }
           }
-          
-          const { data: publicData } = supabase.storage.from(supabaseBucket).getPublicUrl(filename);
-          return res.json({ url: publicData.publicUrl });
+        } catch (err) {
+          console.error("Supabase client operation failed, falling back to local storage:", err);
+          // DO NOT exit with 500 - let it fall through to the local file writer
+        }
       }
 
       // Fallback: Local filesystem (Ephemeral in Cloud Run)

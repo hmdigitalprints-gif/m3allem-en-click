@@ -1,6 +1,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
+import rateLimit from "express-rate-limit";
 import prisma from "../lib/prisma.ts";
 import { addMinutes, isAfter, differenceInDays } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -14,7 +16,7 @@ import {
   registerSellerSchema,
   registerCompanySchema,
 } from "../lib/schemas.ts";
-import { Role } from "@prisma/client";
+import { Role, AuthProvider } from "@prisma/client";
 
 const router = express.Router();
 if (!process.env.JWT_SECRET) {
@@ -1210,6 +1212,254 @@ router.get("/artisans", async (req, res) => {
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch artisans" });
+  }
+});
+
+// --- Google OAuth ---
+const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+
+const googleAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "Too many login attempts, please try again after 15 minutes" },
+  validate: { trustProxy: false },
+});
+
+router.post("/google", googleAuthLimiter, async (req: any, res: any) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: "Google token is required" });
+    }
+
+    // 1. Verify token
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: token,
+        audience: process.env.VITE_GOOGLE_CLIENT_ID,
+      });
+    } catch (verifyErr: any) {
+      console.error("[Auth] Google token verification failed:", verifyErr.message);
+      await auditService.log(
+        null,
+        "GOOGLE_AUTH_FAILED",
+        "system",
+        "google-oauth",
+        { error: verifyErr.message },
+        req.ip,
+      );
+      return res.status(401).json({ error: "Google authentication failed. Invalid token." });
+    }
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({ error: "Invalid Google token payload." });
+    }
+
+    const { sub: googleId, email, name, picture, email_verified } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: "Google account does not have an email." });
+    }
+
+    if (!email_verified) {
+      return res.status(400).json({ error: "Google email is not verified." });
+    }
+
+    // 2. Locate user
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { googleId },
+          { email }
+        ]
+      }
+    });
+
+    if (user) {
+      // User exists. Update coordinates.
+      let updateData: any = {};
+      if (!user.googleId) {
+        updateData.googleId = googleId;
+        updateData.authProvider = AuthProvider.GOOGLE;
+        updateData.emailVerified = true;
+      }
+      
+      // Never overwrite custom profile image if already set (check if current avatar is empty)
+      if (picture && !user.avatarUrl && !user.avatar) {
+        updateData.avatarUrl = picture;
+        updateData.avatar = picture;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+        });
+        console.log(`[Google Auth] Linked existing account: ${user.email}`);
+      }
+    } else {
+      // 3. New user flow
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split("@")[0],
+          googleId,
+          authProvider: AuthProvider.GOOGLE,
+          verified: true,
+          emailVerified: true,
+          avatarUrl: picture || null,
+          avatar: picture || null,
+          role: null, // Force onboarding selection
+        }
+      });
+      console.log(`[Google Auth] Created new user: ${user.email}`);
+      
+      await auditService.log(
+        user.id,
+        "REGISTER_GOOGLE",
+        "user",
+        user.id,
+        { email },
+        req.ip,
+      );
+    }
+
+    // Bootstrap Admin Promotion
+    if (user.email === "mohammedboucherouite@gmail.com" && user.role !== Role.admin) {
+      console.log(`[Auth] Promoting admin ${user.email}`);
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: Role.admin, verified: true },
+      });
+    }
+
+    // Update login activity
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastVerified: new Date() },
+    });
+
+    const jwtToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
+      expiresIn: user.role === Role.admin ? "2h" : "7d",
+    });
+    setTokenCookie(res, jwtToken);
+
+    await auditService.log(
+      user.id,
+      "LOGIN_SUCCESS",
+      "user",
+      user.id,
+      { provider: "google" },
+      req.ip,
+    );
+
+    res.json({
+      message: "Login successful",
+      token: jwtToken,
+      requiresRoleSelection: !user.role,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        verified: user.verified,
+        avatar_url: user.avatarUrl || user.avatar,
+        preferred_language: user.preferredLanguage,
+        city: user.city,
+        address: user.address,
+      },
+    });
+
+  } catch (error: any) {
+    console.error("[Auth] Exception during Google Auth flow:", error);
+    res.status(500).json({ error: "Google authentication failed due to server error." });
+  }
+});
+
+// Role Completion Flow
+router.post("/complete-role", authenticateToken, async (req: any, res: any) => {
+  try {
+    const { role } = req.body;
+    const userId = req.user.id;
+
+    if (!role || !["client", "artisan", "seller", "company"].includes(role)) {
+      return res.status(400).json({ error: "Invalid or missing role." });
+    }
+
+    // Update user role
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: role as Role,
+        verified: true, // Auto verify role if authenticated with Google
+      },
+    });
+
+    // Create role-specific records if needed
+    if (role === "artisan") {
+      const existingArtisan = await prisma.artisan.findUnique({ where: { userId } });
+      if (!existingArtisan) {
+        await prisma.artisan.create({
+          data: {
+            userId,
+            rating: 5.0,
+            isVerified: false,
+          }
+        });
+      }
+    } else if (role === "seller") {
+      const existingStore = await prisma.store.findFirst({ where: { userId } });
+      if (!existingStore) {
+        await prisma.store.create({
+          data: {
+            userId,
+            name: `${updatedUser.name}'s Shop`,
+            isVerified: false,
+          }
+        });
+      }
+    } else if (role === "company") {
+      const existingCompany = await prisma.company.findFirst({ where: { userId } });
+      if (!existingCompany) {
+        await prisma.company.create({
+          data: {
+            userId,
+            name: `${updatedUser.name}'s Company`,
+            isVerified: false,
+          }
+        });
+      }
+    }
+
+    // Refresh JWT with the new role
+    const jwtToken = jwt.sign({ id: updatedUser.id, role: updatedUser.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    setTokenCookie(res, jwtToken);
+
+    res.json({
+      message: "Role selection completed",
+      token: jwtToken,
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        verified: updatedUser.verified,
+        avatar_url: updatedUser.avatarUrl || updatedUser.avatar,
+        preferred_language: updatedUser.preferredLanguage,
+        city: updatedUser.city,
+        address: updatedUser.address,
+      },
+    });
+
+  } catch (error: any) {
+    console.error("[Auth] Role completion error:", error);
+    res.status(500).json({ error: "Failed to complete role registration." });
   }
 });
 

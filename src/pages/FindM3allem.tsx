@@ -15,8 +15,30 @@ import NearbyArtisansMap from '../components/marketplace/NearbyArtisansMap';
 
 import { LanguageSwitcher } from '../components/layout/LanguageSwitcher';
 
-const categories = ["All", "Plumbing", "Electricity", "Painting", "Cleaning", "AC Repair", "Construction"];
-const cities = ["All", "Casablanca", "Rabat", "Marrakech", "Tangier", "Fes"];
+const categories = [
+  "All", 
+  "Home & Construction", 
+  "Repair & Maintenance", 
+  "Automotive", 
+  "IT & Technology", 
+  "Web & Mobile Development", 
+  "Design & Creative", 
+  "Digital Marketing", 
+  "Training & Coaching", 
+  "Health & Wellness", 
+  "Professional Services", 
+  "Transport & Logistics", 
+  "Home Services", 
+  "Events", 
+  "Photography & Video", 
+  "Beauty", 
+  "Pets", 
+  "Crafts", 
+  "Finance & Accounting", 
+  "Legal", 
+  "Translation & Writing"
+];
+const cities = ["All", "Casablanca", "Rabat", "Marrakech", "Tangier", "Agadir", "Fes", "Meknes", "Oujda", "Tetouan"];
 
 export default function FindM3allem() {
   const { user } = useAuth();
@@ -136,7 +158,7 @@ export default function FindM3allem() {
               className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
             >
               <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all')}</option>
-              {categories?.filter(c => c !== 'All').map(cat => <option key={cat} value={cat} className="bg-[var(--card-bg)]">{t(`cat_${cat.toLowerCase().replace(/ /g, '_')}`, cat)}</option>)}
+              {categories?.filter(c => c !== 'All').map(cat => <option key={cat} value={cat} className="bg-[var(--card-bg)]">{t(`cat_${cat.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_')}`, cat)}</option>)}
             </select>
             <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
           </div>
@@ -246,7 +268,7 @@ export default function FindM3allem() {
                           </div>
                         </div>
                         <div className="text-end">
-                          <p className="text-[var(--accent)] font-bold text-lg">{Number(artisan.starting_price || artisan.price).toFixed(2)} MAD</p>
+                          <p className="text-[var(--accent)] font-bold text-lg">{Number(artisan.starting_price || artisan.price || 150).toFixed(2)} MAD</p>
                           <p className="text-[10px] text-[var(--text-muted)]/50 uppercase tracking-widest font-bold">{t('find_ar_per_hour')}</p>
                         </div>
                       </div>

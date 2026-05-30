@@ -28,6 +28,7 @@ import {
   ShieldAlert,
   UserCog,
   ScrollText,
+  Globe,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -60,6 +61,7 @@ export default function AdminLayout({
       label: "Overview",
       items: [
         { id: "overview", label: t("nav_overview"), icon: <LayoutDashboard size={18} /> },
+        { id: "geographic", label: "Geo-Analytics Map", icon: <Globe size={18} /> },
         { id: "subscriptions", label: "Subscriptions", icon: <ScrollText size={18} /> },
       ],
     },

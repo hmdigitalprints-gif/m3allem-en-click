@@ -25,6 +25,7 @@ import { LanguageSwitcher } from '../layout/LanguageSwitcher';
 
 // Import extracted views
 import DashboardOverview from './views/DashboardOverview';
+import GeographicAnalyticsView from './views/GeographicAnalyticsView';
 import WalletsView from './views/WalletsView';
 import DisputesView from './views/DisputesView';
 import CashCollectionsView from './views/CashCollectionsView';
@@ -108,6 +109,8 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
     switch (activeTab) {
       case 'overview':
         return <DashboardOverview stats={stats} isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'geographic':
+        return <GeographicAnalyticsView onAction={onAction} />;
       case 'subscriptions':
         return <SubscriptionsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'users':

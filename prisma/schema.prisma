@@ -48,6 +48,11 @@ enum Role {
   admin
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
 model User {
   id                String    @id @default(uuid())
   name              String?
@@ -61,6 +66,9 @@ model User {
   resetToken        String?   @map("reset_token")
   resetTokenExpires DateTime? @map("reset_token_expires")
   avatarUrl         String?   @map("avatar_url")
+  avatar            String?
+  googleId          String?   @unique @map("google_id")
+  authProvider      AuthProvider @default(LOCAL) @map("auth_provider")
   points            Int       @default(0)
   preferredLanguage String?   @default("en") @map("preferred_language")
   city              String?
