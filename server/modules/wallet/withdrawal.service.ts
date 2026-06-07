@@ -27,7 +27,7 @@ export class WithdrawalService {
         }
       });
       
-      await auditService.log(userId, "WITHDRAWAL_REQUESTED", "wallet", request.id, { amount, method }, tx);
+      await auditService.log(userId, "WITHDRAWAL_REQUESTED", "wallet", request.id, { amount, method });
       return request;
     });
   }
@@ -53,7 +53,7 @@ export class WithdrawalService {
         data: { status: "approved", adminNote: note }
       });
 
-      await auditService.log(adminId, "WITHDRAWAL_APPROVED", "wallet", request.id, { amount: request.amount, targetUserId: request.userId }, tx);
+      await auditService.log(adminId, "WITHDRAWAL_APPROVED", "wallet", request.id, { amount: request.amount, targetUserId: request.userId });
       return updated;
     });
   }
@@ -79,7 +79,7 @@ export class WithdrawalService {
         data: { status: "rejected", adminNote: reason }
       });
 
-      await auditService.log(adminId, "WITHDRAWAL_REJECTED", "wallet", request.id, { amount: request.amount, reason }, tx);
+      await auditService.log(adminId, "WITHDRAWAL_REJECTED", "wallet", request.id, { amount: request.amount, reason });
       return updated;
     });
   }

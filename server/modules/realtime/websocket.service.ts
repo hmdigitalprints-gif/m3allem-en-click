@@ -5,8 +5,35 @@ let io: SocketIOServer | null = null;
 
 export class RealtimeService {
   static init(server: HttpServer) {
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "https://m3allem.ma",
+      "https://www.m3allem.ma",
+    ];
+
+    if (process.env.APP_URL) {
+      allowedOrigins.push(process.env.APP_URL);
+    }
+
+    const isOriginAllowed = (origin: string | undefined): boolean => {
+      if (!origin) return true;
+      if (allowedOrigins.includes(origin)) return true;
+      return /^https:\/\/ais-(dev|pre)-[a-z0-9]+-\d+\.[a-z0-9-]+\.run\.app$/.test(origin);
+    };
+
     io = new SocketIOServer(server, {
-      cors: { origin: "*" }
+      cors: {
+        origin: (origin, callback) => {
+          if (isOriginAllowed(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error("Not allowed by CORS"));
+          }
+        },
+        credentials: true
+      }
     });
 
     io.on("connection", (socket) => {

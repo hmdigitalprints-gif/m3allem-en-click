@@ -16,6 +16,7 @@ import {
 import { aiService } from '../services/aiService';
 import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
+import { useToast } from '../context/ToastContext';
 
 const MOROCCAN_CITIES = [
   'Casablanca', 'Rabat', 'Marrakech', 'Tangier', 'Agadir', 'Fes', 'Meknes', 'Oujda', 'Kenitra', 'Tetouan'
@@ -23,6 +24,7 @@ const MOROCCAN_CITIES = [
 
 export default function AutoDevis() {
   const { t } = useTranslation();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     serviceType: '',
@@ -45,8 +47,16 @@ export default function AutoDevis() {
         formData.urgency
       );
       setEstimate(result);
-    } catch (error) {
+      toast.success(
+        t('auto_devis_success_title', 'Estimate Generated!'),
+        t('auto_devis_success_msg', 'Your custom AI automatic quote is ready for preview.')
+      );
+    } catch (error: any) {
       console.error(error);
+      toast.error(
+        t('auto_devis_error_title', 'Generation Failed'),
+        error.message || t('auto_devis_error_msg', 'Failed to calculate quote estimate. Please try again.')
+      );
     } finally {
       setLoading(false);
     }

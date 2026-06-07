@@ -38,6 +38,8 @@ import OrdersView from './views/OrdersView';
 import PaymentsView from './views/PaymentsView';
 import EscrowView from './views/EscrowView';
 import FraudMonitoringView from './views/FraudMonitoringView';
+import UserReportsView from './views/UserReportsView';
+import ContentModerationView from './views/ContentModerationView';
 import ArtisansView from './views/ArtisansView';
 import SettingsView from './views/SettingsView';
 import PaymentSettingsView from './views/PaymentSettingsView';
@@ -46,6 +48,7 @@ import AiInsightsView from './views/AiInsightsView';
 import AnalyticsView from './views/AnalyticsView';
 import AdminManagementView from './views/AdminManagementView';
 import AuditLogsView from './views/AuditLogsView';
+import KycReviewView from './views/KycReviewView';
 import CommissionRulesView from './views/CommissionRulesView';
 import CategoriesView from './views/CategoriesView';
 import BrandingView from './views/BrandingView';
@@ -137,6 +140,12 @@ export default function AdminDashboard({ onSwitchView, onLogout, onAction, isDar
         return <EscrowView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'fraud':
         return <FraudMonitoringView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'reports':
+        return <UserReportsView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'moderation':
+        return <ContentModerationView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
+      case 'kyc_review':
+        return <KycReviewView isDarkMode={isDarkMode} cardClasses={cardClasses} textMutedClasses={textMutedClasses} hoverClasses={hoverClasses} onAction={onAction} />;
       case 'settings':
         return (
           <ParametersView 

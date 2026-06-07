@@ -1,8 +1,5 @@
 import prisma from './prisma.ts';
-import NodeCache from 'node-cache';
-
-// Cache for translations and settings (1 hour)
-const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
+import { getCache, setCache } from './redis.ts';
 
 // Check if we have a valid database URL
 const isDbReady = () => {
@@ -19,7 +16,7 @@ export async function t(key: string, lang: string = 'en'): Promise<string> {
   if (!isDbReady()) return key;
   
   const cacheKey = `trans_${key}_${lang}`;
-  const cached = cache.get<string>(cacheKey);
+  const cached = await getCache<string>(cacheKey);
   if (cached !== undefined) return cached;
   
   try {
@@ -52,7 +49,7 @@ export async function t(key: string, lang: string = 'en'): Promise<string> {
       }
     }
     
-    cache.set(cacheKey, result);
+    await setCache(cacheKey, result, 3600);
     return result;
   } catch (error: any) {
     if (!error?.message?.includes('PrismaClientInitializationError') && !String(error).includes('PrismaClientInitializationError')) {
@@ -73,15 +70,15 @@ export async function getTranslations(keys: string[], lang: string = 'en'): Prom
   const results: Record<string, string> = {};
   const missingKeys: string[] = [];
 
-  keys.forEach(key => {
+  await Promise.all(keys.map(async (key) => {
     const cacheKey = `trans_${key}_${lang}`;
-    const cached = cache.get<string>(cacheKey);
+    const cached = await getCache<string>(cacheKey);
     if (cached !== undefined) {
       results[key] = cached;
     } else {
       missingKeys.push(key);
     }
-  });
+  }));
 
   if (missingKeys.length === 0) return results;
 
@@ -113,11 +110,11 @@ export async function getTranslations(keys: string[], lang: string = 'en'): Prom
     }
 
     // Populate results and cache
-    uniqueMissingKeys.forEach(key => {
+    await Promise.all(uniqueMissingKeys.map(async (key) => {
       const value = resultMap.get(key) || key;
       results[key] = value;
-      cache.set(`trans_${key}_${lang}`, value);
-    });
+      await setCache(`trans_${key}_${lang}`, value, 3600);
+    }));
 
     return results;
   } catch (error) {
@@ -128,14 +125,14 @@ export async function getTranslations(keys: string[], lang: string = 'en'): Prom
 
 async function getDefaultLanguage(): Promise<string> {
   const cacheKey = 'default_lang';
-  const cached = cache.get<string>(cacheKey);
+  const cached = await getCache<string>(cacheKey);
   if (cached) return cached;
 
   const defaultLangSetting = await prisma.setting.findUnique({
     where: { key: 'default_language' }
   });
   const val = defaultLangSetting?.value || 'en';
-  cache.set(cacheKey, val);
+  await setCache(cacheKey, val, 3600);
   return val;
 }
 

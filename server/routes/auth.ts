@@ -3,6 +3,17 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import rateLimit from "express-rate-limit";
+import {
+  loginIpLimiter,
+  loginUserLimiter,
+  registerIpLimiter,
+  otpIpLimiter,
+  otpUserLimiter,
+  otpVerifyIpLimiter,
+  otpVerifyUserLimiter,
+  passwordResetIpLimiter,
+  passwordResetUserLimiter
+} from "../lib/rateLimiters.ts";
 import prisma from "../lib/prisma.ts";
 import { addMinutes, isAfter, differenceInDays } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -23,14 +34,15 @@ if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is missing.");
 }
 const JWT_SECRET = process.env.JWT_SECRET;
-const DISABLE_OTP = process.env.ENABLE_OTP === "false";
+const DISABLE_OTP = process.env.NODE_ENV === "production" ? false : (process.env.ENABLE_OTP === "false");
 
 // Helper to set cookie
 const setTokenCookie = (res: any, token: string) => {
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie("token", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -57,12 +69,40 @@ export const authenticateToken = async (req: any, res: any, next: any) => {
       // Identity isolation: Fetch MUST be fresh and scoped to decoded ID
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        select: { id: true, role: true, preferredLanguage: true, name: true, avatarUrl: true, verified: true },
+        select: { 
+          id: true, 
+          role: true, 
+          preferredLanguage: true, 
+          name: true, 
+          avatarUrl: true, 
+          verified: true,
+          isSuspended: true,
+          suspensionReason: true,
+          suspendedUntil: true
+        },
       });
       
       if (!user) {
         console.warn(`[Auth][${requestId}] Authenticated user not found in DB: ${decoded.id}`);
         return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check current suspension status
+      if (user.isSuspended) {
+        const until = user.suspendedUntil ? new Date(user.suspendedUntil) : null;
+        if (!until || until > new Date()) {
+          const expirationMessage = until ? ` until ${until.toLocaleString()}` : " permanently";
+          return res.status(403).json({ 
+            error: `Your account has been suspended${expirationMessage}. Reason: ${user.suspensionReason || 'Violation of platform terms.'}`,
+            isSuspended: true 
+          });
+        } else {
+          // Suspension duration has expired, auto-lift it
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { isSuspended: false, suspensionReason: null, suspendedUntil: null }
+          }).catch(console.error);
+        }
       }
 
       // Per-request user attachment
@@ -144,7 +184,7 @@ function parseIdentifier(identifier: string) {
 
 // --- Registration ---
 
-router.post("/register", async (req, res) => {
+router.post("/register", registerIpLimiter, async (req, res) => {
   try {
     const { name, email, phone, role, password } = req.body;
 
@@ -218,7 +258,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/register/client", async (req, res) => {
+router.post("/register/client", registerIpLimiter, async (req, res) => {
   try {
     const validatedData = registerClientSchema.parse(req.body);
     const { name, identifier, password } = validatedData;
@@ -302,7 +342,7 @@ router.post("/register/client", async (req, res) => {
         userId: user.id,
         user: null,
         isSimulation: otpResult.isSimulation,
-        otp: otpResult.otp
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
     }
   } catch (error) {
@@ -316,7 +356,7 @@ router.post("/register/client", async (req, res) => {
   }
 });
 
-router.post("/register/artisan", async (req, res) => {
+router.post("/register/artisan", registerIpLimiter, async (req, res) => {
   try {
     const validatedData = registerArtisanSchema.parse(req.body);
     const { name, identifier, password, categoryId } = validatedData;
@@ -393,7 +433,7 @@ router.post("/register/artisan", async (req, res) => {
         message: "Registration successful. Please verify your account.",
         userId: result.id,
         isSimulation: otpResult.isSimulation,
-        otp: otpResult.otp
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -406,7 +446,7 @@ router.post("/register/artisan", async (req, res) => {
   }
 });
 
-router.post("/register/seller", async (req, res) => {
+router.post("/register/seller", registerIpLimiter, async (req, res) => {
   try {
     const validatedData = registerSellerSchema.parse(req.body);
     const { storeName, identifier, password } = validatedData;
@@ -491,7 +531,7 @@ router.post("/register/seller", async (req, res) => {
         message: "Registration successful. Please verify your account.",
         userId: result.id,
         isSimulation: otpResult.isSimulation,
-        otp: otpResult.otp
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -504,7 +544,7 @@ router.post("/register/seller", async (req, res) => {
   }
 });
 
-router.post("/register/company", async (req, res) => {
+router.post("/register/company", registerIpLimiter, async (req, res) => {
   try {
     const validatedData = registerCompanySchema.parse(req.body);
     const { companyName, identifier, password } = validatedData;
@@ -589,7 +629,7 @@ router.post("/register/company", async (req, res) => {
         message: "Registration successful. Please verify your account.",
         userId: result.id,
         isSimulation: otpResult.isSimulation,
-        otp: otpResult.otp
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
@@ -604,7 +644,7 @@ router.post("/register/company", async (req, res) => {
 
 // --- Login ---
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginIpLimiter, loginUserLimiter, async (req, res) => {
   try {
     const validatedData = loginSchema.parse(req.body);
     const { identifier, password, otpChannel } = validatedData;
@@ -656,10 +696,17 @@ router.post("/login", async (req, res) => {
         null,
         req.ip,
       );
+
+      // Trigger OTP creation automatically to help users complete verification upon login
+      const defaultChannel = user.email ? "email" : "sms";
+      const otpResult = await OtpService.sendOTP(user.id, defaultChannel);
+
       return res.status(403).json({
-        error: "Account not verified",
+        error: "Account not verified. A new verification code has been sent.",
         userId: user.id,
         requiresVerification: true,
+        isSimulation: otpResult.isSimulation,
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
     }
 
@@ -702,7 +749,7 @@ router.post("/login", async (req, res) => {
         userId: user.id,
         requiresOtp: true,
         isSimulation: otpResult.isSimulation,
-        otp: otpResult.otp
+        otp: process.env.NODE_ENV === "production" ? undefined : otpResult.otp
       });
     }
 
@@ -755,7 +802,8 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: message });
     }
     console.error("Login error:", error);
-    res.status(500).json({ error: "Login failed" });
+    const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : "Login failed";
+    res.status(500).json({ error: errMsg });
   }
 });
 
@@ -791,7 +839,7 @@ router.post("/verify-email", async (req, res) => {
 
 // --- Password Reset ---
 
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", passwordResetIpLimiter, passwordResetUserLimiter, async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
@@ -858,7 +906,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", passwordResetIpLimiter, passwordResetUserLimiter, async (req, res) => {
   const { token, newPassword } = req.body;
 
   if (!token || !newPassword) {
@@ -890,7 +938,7 @@ router.post("/reset-password", async (req, res) => {
 
 // --- OTP Verification ---
 
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", otpVerifyIpLimiter, otpVerifyUserLimiter, async (req, res) => {
   const { userId, code } = req.body;
 
   if (!userId || !code) {
@@ -961,7 +1009,7 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-router.post("/resend-otp", async (req, res) => {
+router.post("/resend-otp", otpIpLimiter, otpUserLimiter, async (req, res) => {
   const { userId, channel } = req.body;
 
   if (!userId || !channel) {
@@ -976,13 +1024,13 @@ router.post("/resend-otp", async (req, res) => {
   res.json({ 
     message: "OTP resent successfully",
     isSimulation: result.isSimulation,
-    otp: result.otp
+    otp: process.env.NODE_ENV === "production" ? undefined : result.otp
   });
 });
 
 // --- Phone Number Authentication System ---
 
-router.post("/send-otp", async (req, res) => {
+router.post("/send-otp", otpIpLimiter, otpUserLimiter, async (req, res) => {
   const { userId, channel } = req.body;
 
   if (!userId || !channel) {
@@ -997,7 +1045,7 @@ router.post("/send-otp", async (req, res) => {
   res.json({ 
     message: "OTP sent successfully",
     isSimulation: result.isSimulation,
-    otp: result.otp
+    otp: process.env.NODE_ENV === "production" ? undefined : result.otp
   });
 });
 

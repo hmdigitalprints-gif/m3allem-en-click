@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import premiumLogo from '../../assets/images/logo.webp';
+import premiumLogo from '../../assets/images/logo.png';
 import { formatDuration } from '../../lib/utils';
 import { 
   LayoutDashboard, 

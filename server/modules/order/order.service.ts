@@ -25,8 +25,7 @@ export class OrderService {
         `ORDER_${newStatus.toUpperCase()}`, 
         "booking", 
         orderId, 
-        { previousStatus, newStatus, reason, role: actorRole }, 
-        tx
+        { previousStatus, newStatus, reason, role: actorRole }
       );
 
       // 3. Payment Flow Triggers

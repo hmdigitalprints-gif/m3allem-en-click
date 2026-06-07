@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
@@ -11,11 +12,15 @@ import serviceRoutes from "./routes/services.ts";
 import adminRoutes from "./routes/admin.ts";
 import artisanRoutes from "./routes/artisans.ts";
 import walletRoutes from "./routes/wallet.ts";
+import escrowRoutes from "./routes/escrow.ts";
 import sellerRoutes from "./routes/sellers.ts";
 import marketplaceRoutes from "./routes/marketplace.ts";
 import companyRoutes from "./routes/companies.ts";
 import aiRoutes from "./routes/ai.ts";
 import messageRoutes from "./routes/messages.ts";
+import kycRoutes from "./routes/kyc.ts";
+import { BlockService } from "./services/blockService.ts";
+import { bootstrapSchema } from "./lib/dbPatch.ts";
 import simulationRoutes from "./routes/simulation.ts";
 import {
   initNotificationService,
@@ -30,11 +35,22 @@ import rateLimit from "express-rate-limit";
 import fs from "fs";
 import path from "path";
 import acceptLanguage from "accept-language-parser";
-import NodeCache from "node-cache";
+import { getCache, setCache } from "./lib/redis.ts";
+import { setupQueueProcessors } from "./services/queueRunner.ts";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import * as Sentry from "@sentry/node";
 import compression from "compression";
+import {
+  ensureUploadDirectories,
+  ALLOWED_MIME_TYPES,
+  uploadRateLimiter,
+  scanFileForMalware,
+  optimizeAndFormatImage,
+  generateRandomFileName,
+  saveUploadedFileLocally
+} from "./lib/secureUpload.ts";
+import { csrfProtection, getCsrfTokenRoute } from "./lib/csrf.ts";
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -45,20 +61,57 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-const langCache = new NodeCache({ stdTTL: 300 });
-
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is missing.");
 }
 const JWT_SECRET = process.env.JWT_SECRET;
 
 async function startServer() {
+  // Initialize BullMQ jobs/queues and system events
+  setupQueueProcessors();
+  await bootstrapSchema();
+
   const app = express();
   app.set("trust proxy", 1);
 
-  // Enable CORS
+  // SECURE CORS WHITELIST (No Wildcards allowed to prevent cross-origin abuse and credential hijacking)
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "https://m3allem.ma",
+    "https://www.m3allem.ma",
+  ];
+
+  if (process.env.APP_URL) {
+    allowedOrigins.push(process.env.APP_URL);
+  }
+
+  const isOriginAllowed = (origin: string | undefined): boolean => {
+    if (!origin) return true; // Allow non-browser requests (e.g. server-to-server or tools with omit origin)
+    
+    // Explicit whitelist check
+    if (allowedOrigins.includes(origin)) {
+      return true;
+    }
+
+    // Dynamic AI Studio developer and shared preview environments matching cloud run pattern
+    const isAiStudioPreview = /^https:\/\/ais-(dev|pre)-[a-z0-9]+-\d+\.[a-z0-9-]+\.run\.app$/.test(origin);
+    if (isAiStudioPreview) {
+      return true;
+    }
+
+    return false;
+  };
+
   app.use(cors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy blocked request from origin: ${origin}`));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept-Language", "Cookie"]
@@ -95,7 +148,14 @@ async function startServer() {
 
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || (isDev ? "*" : "https://m3allem.ma"),
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      credentials: true,
     },
   });
 
@@ -167,19 +227,20 @@ async function startServer() {
   // Apply rate limiter to all API routes
   app.use("/api/", limiter);
 
-  // Stricter rate limit for auth routes
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Increased slightly but still limited for security
-    message: "Too many login attempts, please try again after 15 minutes",
-    validate: { trustProxy: false },
-  });
-  app.use("/api/auth/login", authLimiter);
-  app.use("/api/auth/register", authLimiter);
+  // CSRF Protection Middleware
+  app.get("/api/csrf-token", getCsrfTokenRoute);
+  app.use("/api/", csrfProtection);
 
   // Language Detection Middleware
   const detectLanguage = async (req: any, res: any, next: any) => {
     try {
+      // Fast path for non-API requests (static assets, Vite files, client pages) to prevent database call blockages
+      if (!req.url.startsWith("/api/")) {
+        req.lang = "en";
+        req.isRTL = false;
+        return next();
+      }
+
       const langCode = await getPreferredLanguage(req);
 
       // Avoid Prisma calls if DB is not ready to prevent timeouts
@@ -190,7 +251,7 @@ async function startServer() {
       }
 
       const cacheKey = `lang_${langCode}`;
-      const cachedResult: any = langCache.get(cacheKey);
+      const cachedResult = await getCache<any>(cacheKey);
 
       if (cachedResult) {
         req.lang = cachedResult.lang;
@@ -209,7 +270,7 @@ async function startServer() {
       if (!lang) {
         // Fallback to default setting if requested language not found/active
         let fallbackCode = "en";
-        const defaultLangSettingCache = langCache.get(
+        const defaultLangSettingCache = await getCache<string>(
           "default_language_setting",
         );
         if (defaultLangSettingCache !== undefined) {
@@ -219,16 +280,16 @@ async function startServer() {
             where: { key: "default_language" },
           });
           fallbackCode = defaultLangSetting?.value || "en";
-          langCache.set("default_language_setting", fallbackCode, 300);
+          await setCache("default_language_setting", fallbackCode, 300);
         }
 
         const fallbackCacheKey = `lang_data_${fallbackCode}`;
-        let fallback: any = langCache.get(fallbackCacheKey);
+        let fallback = await getCache<any>(fallbackCacheKey);
         if (fallback === undefined) {
           fallback = await prisma.language.findUnique({
             where: { code: fallbackCode },
           });
-          langCache.set(fallbackCacheKey, fallback || null, 300);
+          await setCache(fallbackCacheKey, fallback || null, 300);
         }
 
         finalLang = fallback?.code || "en";
@@ -238,7 +299,7 @@ async function startServer() {
         finalIsRTL = lang.isRtl === true;
       }
 
-      langCache.set(cacheKey, { lang: finalLang, isRTL: finalIsRTL }, 3600);
+      await setCache(cacheKey, { lang: finalLang, isRTL: finalIsRTL }, 3600);
       req.lang = finalLang;
       req.isRTL = finalIsRTL;
     } catch (error: any) {
@@ -257,11 +318,10 @@ async function startServer() {
 
   app.use(detectLanguage);
 
-  // Serve static uploads
-  const uploadDir = path.join(process.cwd(), "uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  // Ensure the public/private structure is fully built and ready
+  ensureUploadDirectories();
+
+  // Serve only uploads/public statically (Safe, public-facing assets)
   app.use(
     "/uploads",
     (req, res, next) => {
@@ -278,96 +338,192 @@ async function startServer() {
 
       next();
     },
-    express.static(uploadDir),
+    express.static(path.join(process.cwd(), "uploads", "public")),
   );
 
-  // Upload endpoint
-  app.post("/api/upload", authenticateToken, async (req, res) => {
+  // Secure API endpoint for private files (authenticated, checked bounds)
+  app.get("/api/uploads/private/:filename", authenticateToken, async (req: any, res) => {
     try {
-      const { file, type } = req.body; // type: image, audio
+      const { filename } = req.params;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      // Prevent directory traversal attacks
+      if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+        return res.status(400).json({ error: "Invalid file request" });
+      }
+
+      const privatePath = path.join(process.cwd(), "uploads", "private", filename);
+
+      // Verify actual presence
+      if (!fs.existsSync(privatePath)) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      // 1. Admin overrides
+      if (userRole === "ADMIN" || userRole === "admin") {
+        res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Disposition", "attachment; filename=" + JSON.stringify(filename));
+        return res.sendFile(privatePath);
+      }
+
+      // 2. Owner of matching KycVerification records
+      const kyc = await prisma.kycVerification.findFirst({
+        where: {
+          userId: userId,
+          OR: [
+            { documentUrl: { contains: filename } },
+            { idDocumentUrl: { contains: filename } },
+            { companyRegistration: { contains: filename } }
+          ]
+        }
+      });
+
+      if (kyc) {
+        res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Disposition", "attachment; filename=" + JSON.stringify(filename));
+        return res.sendFile(privatePath);
+      }
+
+      // 3. Owner of matching ArtisanVerification records
+      const verification = await prisma.artisanVerification.findFirst({
+        where: {
+          userId: userId,
+          OR: [
+            { idDocument: { contains: filename } },
+            { professionalLicense: { contains: filename } }
+          ]
+        }
+      });
+
+      if (verification) {
+        res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Disposition", "attachment; filename=" + JSON.stringify(filename));
+        return res.sendFile(privatePath);
+      }
+
+      // 3. User inside target Booking (client or artisan) associated with file
+      const booking = await prisma.booking.findFirst({
+        where: {
+          OR: [
+            { clientId: userId },
+            { artisan: { userId: userId } }
+          ],
+          attachments: { not: null }
+        }
+      });
+
+      if (booking) {
+        const attachmentsString = String(booking.attachments || "");
+        if (attachmentsString.includes(filename)) {
+          res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.setHeader("Content-Disposition", "attachment; filename=" + JSON.stringify(filename));
+          return res.sendFile(privatePath);
+        }
+      }
+
+      return res.status(403).json({ error: "Unauthorized access: You do not have permission to view this file" });
+    } catch (unauthErr) {
+      console.error("Private secure download error:", unauthErr);
+      res.status(500).json({ error: "An error occurred retrieving the secure document" });
+    }
+  });
+
+  // Security-hardened Upload endpoint
+  app.post("/api/upload", authenticateToken, uploadRateLimiter, async (req: any, res) => {
+    try {
+      const { file, type } = req.body; // type: image, audio, doc, etc.
+      const userId = req.user.id;
+
       if (!file) {
         return res.status(400).json({ error: "No file provided" });
       }
 
-      // Extract base64 data
+      // Extract and validate base64 scheme
       const matches = file.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
-        return res.status(400).json({ error: "Invalid base64 string" });
+        return res.status(400).json({ error: "Invalid file coding (expected base64 URI scheme)" });
       }
 
       const mimeType = matches[1];
-      const allowedMimes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "image/svg+xml",
-        "audio/webm",
-        "audio/mp3",
-        "audio/mpeg",
-        "audio/ogg",
-        "application/pdf",
-      ];
+      const base64Data = matches[2];
+
+      // Validate allowed mime list strictly
+      const allowedMimes = Object.keys(ALLOWED_MIME_TYPES);
       if (!allowedMimes.includes(mimeType)) {
-        return res.status(400).json({ error: "Disallowed file type" });
+        return res.status(400).json({ error: "Disallowed or unsafe file type" });
       }
 
-      const buffer = Buffer.from(matches[2], "base64");
-      if (buffer.length > 5 * 1024 * 1024) {
-        // 5MB limit
-        return res
-          .status(400)
-          .json({ error: "File size limit exceeded (5MB maximum)" });
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Verify file size limit based on type: 5MB for PDFs, 3MB for images/audio
+      const isPdf = mimeType === "application/pdf";
+      const maxSize = isPdf ? 5 * 1024 * 1024 : 3 * 1024 * 1024;
+      if (buffer.length > maxSize) {
+        return res.status(400).json({ 
+          error: `File size limit exceeded. Max size allowed is ${isPdf ? "5MB" : "3MB"}` 
+        });
+      }
+
+      // Generate secure base file name to pre-scan
+      const tempExt = mimeType.split("/")[1]?.split("+")[0] || "bin";
+      const unscannedFilename = `unscanned-${uuidv4()}.${tempExt}`;
+
+      // Run advanced virus and signature heuristic scan
+      const malwareScan = scanFileForMalware(buffer, mimeType, unscannedFilename);
+      if (!malwareScan.secure) {
+        console.warn(`[SECURITY WARN] Blocked malware upload from user ${userId}: ${malwareScan.reason}`);
+        return res.status(422).json({ error: `Security check block: ${malwareScan.reason}` });
       }
 
       let finalBuffer = buffer;
-      let ext = "png";
+      let finalExt = tempExt;
 
       if (mimeType === "image/svg+xml") {
-        // file-type package often misidentifies SVGs
-        const contentString = buffer.toString('utf-8');
-        if (!contentString.includes('<svg') && !contentString.includes('<SVG')) {
-          return res.status(400).json({ error: "Invalid SVG file" });
+        // Double check SVG markup validity
+        const svgText = buffer.toString("utf8");
+        if (!svgText.includes("<svg") && !svgText.includes("<SVG")) {
+          return res.status(400).json({ error: "Corrupted or invalid visual template" });
         }
-        ext = "svg";
+        finalExt = "svg";
       } else {
-        // Validate magic bytes
-        const { fileTypeFromBuffer } = await import("file-type");
-        const actualType = await fileTypeFromBuffer(buffer);
-  
-        if (!actualType || !allowedMimes.includes(actualType.mime)) {
-          return res
-            .status(400)
-            .json({ error: "File content does not match allowed types" });
+        // Enforce magic byte check using file-type package to avoid falsified mime declarations
+        const { fileTypeFromBuffer: getFileType } = await import("file-type");
+        const actualType = await getFileType(buffer);
+        if (!actualType || !allowedMimes.includes(actualType.mime) || actualType.mime !== mimeType) {
+          return res.status(400).json({ error: "Tampered or misidentified file structure" });
         }
-  
-        ext =
-          actualType.ext ||
-          mimeType.split("/")[1] ||
-          (type === "audio" ? "webm" : "png");
-  
-        if (
-          actualType.mime.startsWith("image/") &&
-          actualType.mime !== "image/gif"
-        ) {
-          const sharp = (await import("sharp")).default;
-          // Optimize to webp but preserve high original resolution (up to 4k basically)
-          finalBuffer = await sharp(buffer)
-            .resize({ width: 3840, withoutEnlargement: true })
-            .webp({ quality: 85 })
-            .toBuffer();
-          ext = "webp";
+
+        // Run metadata removal & conversion to WebP for standard raster images
+        if (actualType.mime.startsWith("image/") && actualType.mime !== "image/gif") {
+          try {
+            const optimized = await optimizeAndFormatImage(buffer, actualType.mime);
+            finalBuffer = optimized.finalBuffer;
+            finalExt = optimized.extension;
+          } catch (optError) {
+            console.error("Image optimization failed:", optError);
+            return res.status(400).json({ error: "Failed to optimize image payload smoothly" });
+          }
+        } else if (actualType.mime === "image/gif") {
+          const optimized = await optimizeAndFormatImage(buffer, actualType.mime);
+          finalBuffer = optimized.finalBuffer;
+          finalExt = optimized.extension;
+        } else {
+          finalExt = actualType.ext;
         }
       }
 
-      const filename = `${uuidv4()}.${ext}`;
+      // Generate fully high-entropy random filename with secure suffix
+      const secureFilename = generateRandomFileName(finalExt);
 
-      // Prevent path traversal
-      if (filename.includes("..") || filename.includes("/")) {
-        return res.status(400).json({ error: "Invalid filename" });
-      }
+      // Group into Private directory if it is a sensitive verification document (PDF)
+      const isPrivateFile = isPdf || type === "verification" || type === "doc";
 
-      // Supabase Storage Integration
+      // Supabase upload sync if active
       const supabaseUrl = process.env.SUPABASE_URL;
       const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -376,41 +532,41 @@ async function startServer() {
       if (supabaseUrl && (supabaseServiceKey || supabaseAnonKey)) {
         try {
           const { createClient } = await import("@supabase/supabase-js");
-          // Use service key if available to bypass RLS, otherwise use anon key
           const supabase = createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey);
           
+          const targetPath = isPrivateFile ? `private/${secureFilename}` : `public/${secureFilename}`;
           const { error: uploadError } = await supabase.storage
             .from(supabaseBucket)
-            .upload(filename, finalBuffer, {
-              contentType: mimeType === "image/svg+xml" ? "image/svg+xml" : "image/webp",
+            .upload(targetPath, finalBuffer, {
+              contentType: mimeType === "image/svg+xml" ? "image/svg+xml" : (mimeType.startsWith("image/") ? "image/webp" : mimeType),
               upsert: true
             });
             
-          if (uploadError) {
-            console.error("Supabase storage upload failed, falling back to local storage:", uploadError);
-            // DO NOT exit with 500 - let it fall through to the local file writer
-          } else {
-            const { data: publicData } = supabase.storage.from(supabaseBucket).getPublicUrl(filename);
-            if (publicData?.publicUrl) {
-              return res.json({ url: publicData.publicUrl });
+          if (!uploadError) {
+            if (isPrivateFile) {
+              // Create dynamic secure url proxy pointing to our Express service
+              return res.json({ url: `/api/uploads/private/${secureFilename}` });
+            } else {
+              const { data: publicData } = supabase.storage.from(supabaseBucket).getPublicUrl(targetPath);
+              if (publicData?.publicUrl) {
+                return res.json({ url: publicData.publicUrl });
+              }
             }
+          } else {
+            console.error("Supabase Storage integration issues, falling back to local system:", uploadError);
           }
-        } catch (err) {
-          console.error("Supabase client operation failed, falling back to local storage:", err);
-          // DO NOT exit with 500 - let it fall through to the local file writer
+        } catch (supabaseErr) {
+          console.error("Supabase execution failed, falling back to local system:", supabaseErr);
         }
       }
 
-      // Fallback: Local filesystem (Ephemeral in Cloud Run)
-      const filepath = path.join(uploadDir, filename);
-
-      fs.writeFileSync(filepath, finalBuffer);
-
-      const url = `/uploads/${filename}`;
-      res.json({ url });
-    } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Upload failed" });
+      // Store in secure folder structure on disk
+      const storageResult = saveUploadedFileLocally(finalBuffer, secureFilename, isPrivateFile);
+      
+      res.json({ url: storageResult.relativeUrl });
+    } catch (uploadFail) {
+      console.error("File upload operation failed:", uploadFail);
+      res.status(500).json({ error: "An unexpected error occurred during uploading." });
     }
   });
 
@@ -528,11 +684,13 @@ async function startServer() {
   app.use("/api/bookings", bookingRoutes);
   app.use("/api/services", serviceRoutes);
   app.use("/api/wallet", walletRoutes);
+  app.use("/api/escrow", escrowRoutes);
   app.use("/api/artisans", artisanRoutes);
   app.use("/api/sellers", sellerRoutes);
   app.use("/api/companies", companyRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/messages", messageRoutes);
+  app.use("/api/kyc", kycRoutes);
   app.use("/api/simulation", simulationRoutes);
 
   // Custom auth / webhooks
@@ -753,7 +911,14 @@ async function startServer() {
   // Categories & Services
   app.get("/api/categories", async (req, res) => {
     try {
+      const cacheKey = "api_categories_all";
+      const cached = await getCache<any[]>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
       const categories = await prisma.category.findMany();
+      await setCache(cacheKey, categories, 3600); // 1 hour cache
       res.json(categories);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch categories" });
@@ -837,6 +1002,9 @@ async function startServer() {
         type,
         audioUrl,
         imageUrl,
+        fileUrl,
+        fileName,
+        fileSize,
         latitude,
         longitude,
         orderId,
@@ -844,6 +1012,13 @@ async function startServer() {
       const senderId = socket.data.user.id;
       
       try {
+        // Secure check: Verify block status before sending or accepting the message
+        const blockStatus = await BlockService.getPreferences(senderId, receiverId);
+        if (blockStatus.isBlocked) {
+          socket.emit("error", { message: "Messaging is blocked between you and this user." });
+          return;
+        }
+
         const message = await prisma.message.create({
           data: {
             senderId,
@@ -852,6 +1027,9 @@ async function startServer() {
             type: type || "text",
             audioUrl: audioUrl || null,
             imageUrl: imageUrl || null,
+            fileUrl: fileUrl || null,
+            fileName: fileName || null,
+            fileSize: fileSize || null,
             latitude: latitude || null,
             longitude: longitude || null,
             orderId: orderId || null,
@@ -859,37 +1037,50 @@ async function startServer() {
           },
         });
 
-        // Emit to both parties
+        // Emit to both parties (if receiver is online)
         io.to(receiverId).emit("receive_message", message);
         io.to(senderId).emit("receive_message", message);
 
-        // Notify receiver
-        sendNotification(
-          receiverId,
-          "New Message",
-          type === "voice"
-            ? "Sent a voice message"
-            : type === "image"
-              ? "Sent a photo"
-              : type === "location"
-                ? "Shared their location"
-                : content,
-          "push",
-          `/messages/${senderId}`,
-        );
+        // Only trigger push notifications if recipient has NOT muted the sender
+        if (!blockStatus.isMutedByReceiver) {
+          sendNotification(
+            receiverId,
+            "New Message",
+            type === "voice"
+              ? "Sent a voice message"
+              : type === "image"
+                ? "Sent a photo"
+                : type === "file"
+                  ? `Sent an attachment: ${fileName || "File"}`
+                  : type === "location"
+                    ? "Shared their location"
+                    : content,
+            "push",
+            `/messages/${senderId}`,
+          );
+        }
       } catch (error) {
         console.error("Send message error:", error);
       }
     });
 
-    socket.on("typing_start", (data) => {
+    socket.on("typing_start", async (data) => {
       const { to } = data;
-      io.to(to).emit("user_typing", { from: socket.data.user.id, isTyping: true });
+      const senderId = socket.data.user.id;
+      // Do not broadcast typing cues if blocked
+      const blocked = await BlockService.isBlocked(senderId, to);
+      if (!blocked) {
+        io.to(to).emit("user_typing", { from: senderId, isTyping: true });
+      }
     });
 
-    socket.on("typing_stop", (data) => {
+    socket.on("typing_stop", async (data) => {
       const { to } = data;
-      io.to(to).emit("user_typing", { from: socket.data.user.id, isTyping: false });
+      const senderId = socket.data.user.id;
+      const blocked = await BlockService.isBlocked(senderId, to);
+      if (!blocked) {
+        io.to(to).emit("user_typing", { from: senderId, isTyping: false });
+      }
     });
 
     socket.on("mark_delivered", async (data) => {

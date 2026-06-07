@@ -30,6 +30,8 @@ import { SymmetricalIcon } from '../components/common/SymmetricalIcon';
 import { useTranslation } from 'react-i18next';
 import PromoBanner from '../components/common/PromoBanner';
 import { useDirection } from '../hooks/useDirection';
+import { CATEGORIES_DATA } from '../data/categoriesData';
+import CategoryIcon from '../components/common/CategoryIcon';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -40,7 +42,7 @@ interface LandingPageProps {
 }
 
 import { useSettings } from '../context/SettingsContext';
-import premiumLogo from '../assets/images/logo.webp';
+import premiumLogo from '../assets/images/logo.png';
 
 const defaultHeroSlides = [
   {
@@ -73,14 +75,13 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeHeroSlides, setActiveHeroSlides] = useState(defaultHeroSlides);
 
-  const categories = [
-    { id: 'cat_1', name: t('cat_plumbing'), icon: <Droplets />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_plumbing_desc') },
-    { id: 'cat_2', name: t('cat_electricity'), icon: <Zap />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_electricity_desc') },
-    { id: 'cat_3', name: t('cat_carpentry'), icon: <Hammer />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_carpentry_desc') },
-    { id: 'cat_4', name: t('cat_painting'), icon: <Paintbrush />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_painting_desc') },
-    { id: 'cat_5', name: t('cat_cleaning'), icon: <Sparkles />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_cleaning_desc') },
-    { id: 'cat_6', name: t('cat_construction'), icon: <HardHat />, color: 'bg-[var(--accent)]/10 text-[var(--accent)]', desc: t('cat_construction_desc') },
-  ];
+  const categories = CATEGORIES_DATA.slice(0, 6).map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    frenchName: cat.frenchName,
+    desc: cat.description,
+    rawCat: cat
+  }));
 
   const stats = [
     { label: t('stat_active_artisans'), value: '2,500+' },
@@ -328,36 +329,40 @@ export default function LandingPage({ onGetStarted, onAction, isDarkMode, toggle
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories?.map((cat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -8 }}
-                onClick={() => {
-                  onAction?.(`Searching for ${cat.name} services...`);
-                  navigate(`/find-pro?category=${encodeURIComponent(cat.name)}`);
-                }}
-                className="relative bg-[var(--card-bg)] border border-[var(--border)] p-8 md:p-10 rounded-[2rem] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] transition-all cursor-pointer group overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full blur-[40px] -mr-16 -mt-16 transition-all group-hover:bg-[var(--accent)]/10" />
-                
-                <div className="w-14 h-14 bg-[var(--bg)] text-[var(--text)] rounded-2xl flex items-center justify-center mb-8 border border-[var(--border)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] group-hover:rotate-6 transition-all duration-300 shadow-sm relative z-10">
-                  {React.cloneElement(cat.icon as React.ReactElement<any>, { className: "w-6 h-6", strokeWidth: 1.5 })}
-                </div>
-                
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-bold mb-3 tracking-tight">{cat.name}</h3>
-                  <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-8">{cat.desc}</p>
+            {categories?.map((cat, i) => {
+              const translationKey = `cat_${cat.id.replace('web_mobile_dev', 'web_mobile_development')}`;
+              const displayName = t(translationKey, cat.frenchName || cat.name);
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  whileHover={{ y: -8 }}
+                  onClick={() => {
+                    onAction?.(`Searching for ${cat.name} services...`);
+                    navigate(`/find-pro?category=${encodeURIComponent(cat.name)}`);
+                  }}
+                  className="relative bg-[var(--card-bg)] border border-[var(--border)] p-8 md:p-10 rounded-[2rem] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] transition-all cursor-pointer group overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full blur-[40px] -mr-16 -mt-16 transition-all group-hover:bg-[var(--accent)]/10" />
                   
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] opacity-80 group-hover:opacity-100 transition-opacity">
-                    {t('cat_explore')} <SymmetricalIcon icon={ArrowRight} size={14} className="group-hover:translate-x-1" />
+                  <div className="w-14 h-14 bg-[var(--bg)] text-[var(--text)] rounded-2xl flex items-center justify-center mb-8 border border-[var(--border)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] group-hover:rotate-6 transition-all duration-300 shadow-sm relative z-10">
+                    <CategoryIcon name={cat.name} className="w-6 h-6 text-[var(--text)]" />
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                  
+                  <div className="relative z-10">
+                    <h3 className="text-2xl font-bold mb-3 tracking-tight">{displayName}</h3>
+                    <p className="text-[var(--text-muted)] text-sm leading-relaxed mb-8">{cat.desc}</p>
+                    
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] opacity-80 group-hover:opacity-100 transition-opacity">
+                      {t('cat_explore')} <SymmetricalIcon icon={ArrowRight} size={14} className="group-hover:translate-x-1" />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>

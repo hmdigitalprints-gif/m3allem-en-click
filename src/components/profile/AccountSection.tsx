@@ -9,6 +9,7 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import WalletSection from './WalletSection';
+import KycVerificationSection from './KycVerificationSection';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +21,7 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
   const [address, setAddress] = useState(authUser?.address || '');
   const [avatarUrl, setAvatarUrl] = useState(authUser?.avatar_url || '');
   const [showWallet, setShowWallet] = useState(false);
+  const [showKyc, setShowKyc] = useState(false);
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
@@ -88,6 +90,18 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
     );
   }
 
+  if (showKyc) {
+    return (
+      <KycVerificationSection 
+        onBack={() => {
+          onAction('Returning to profile...');
+          setShowKyc(false);
+        }}
+        onAction={onAction}
+      />
+    );
+  }
+
   return (
     <div className="p-6 md:p-12">
       <div className="mb-12">
@@ -116,7 +130,7 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
             </div>
           </div>
 
-          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] p-6 space-y-2">
+          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[32px] p-6 space-y-2 text-start">
             <button onClick={() => {
               onAction('Opening wallet...');
               setShowWallet(true);
@@ -127,19 +141,16 @@ export default function AccountSection({ onAction }: { onAction: (msg: string) =
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors" />
             </button>
-            {/* <button 
-              onClick={() => {
-                onAction('Opening your saved favorites...');
-                // We could navigate to a favorites tab if it existed, but for now we'll just show the toast
-              }} 
-              className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg)] rounded-2xl transition-colors group"
-            >
+            <button onClick={() => {
+              onAction('Opening identity verification...');
+              setShowKyc(true);
+            }} className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg)] rounded-2xl transition-colors group">
               <div className="flex items-center gap-3">
-                <Heart size={20} className="text-[var(--accent)]" />
-                <span className="font-bold">{t('my_favorites')}</span>
+                <ShieldCheck size={20} className="text-[var(--accent)]" />
+                <span className="font-bold">Verify Identity (KYC)</span>
               </div>
               <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors" />
-            </button> */}
+            </button>
           </div>
         </div>
 

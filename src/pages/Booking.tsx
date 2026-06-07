@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calendar, Clock, MapPin, CheckCircle, Star, MessageSquare, Download } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import Layout from '../components/layout/Layout';
 import ReviewModal from '../components/marketplace/ReviewModal';
 import { Booking as MarketplaceBooking } from '../services/marketplaceService';
@@ -21,6 +22,7 @@ interface BookingData {
 
 export default function Booking() {
   const { t } = useTranslation();
+  const toast = useToast();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All');
@@ -58,13 +60,15 @@ export default function Booking() {
       });
 
       if (res.ok) {
+        toast.success(t('booking_review_success_title', 'Review Submitted!'), t('booking_review_success_msg', 'Thank you for your feedback!'));
         fetchBookings();
       } else {
         const error = await res.json();
         throw new Error(error.error || "Failed to submit review");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Review submission error:", error);
+      toast.error(t('booking_review_error_title', 'Submission Failed'), error.message || t('booking_review_error_msg', 'Could not submit your review.'));
       throw error;
     }
   };

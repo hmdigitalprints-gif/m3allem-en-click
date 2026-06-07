@@ -1,16 +1,18 @@
 import express from "express";
 import prisma from "../lib/prisma.ts";
 import { authenticateToken } from "./auth.ts";
+import { bookingIpLimiter, bookingUserLimiter } from "../lib/rateLimiters.ts";
 import { sendNotification, io } from "../services/notificationService.ts";
 import { calculateDistance } from "../lib/utils.ts";
 import { t, getPreferredLanguage } from "../lib/i18n.ts";
 import { auditService } from "../services/auditService.ts";
+import { EscrowService } from "../services/escrowService.ts";
 import { BookingStatus, PaymentMethod, DeliveryMethod, MaterialHandling } from "@prisma/client";
 
 const router = express.Router();
 
 // Create a new booking with initial proof and delivery method
-router.post("/", authenticateToken, async (req: any, res) => {
+router.post("/", authenticateToken, bookingIpLimiter, bookingUserLimiter, async (req: any, res) => {
   try {
     const { 
       artisanId, 
@@ -653,63 +655,40 @@ router.patch("/:id/status", authenticateToken, async (req: any, res) => {
       }
     });
 
-    // Wallet/Payment updates upon transition to 'accepted' or 'en_route' (so it catches proposal_approved to en_route flow)
-    if ((finalStatus === 'accepted' || finalStatus === 'en_route') && booking.paymentStatus !== 'escrow' && booking.paymentStatus !== 'paid') {
-      if (booking.paymentMethod === 'wallet' && booking.clientId && booking.price) {
-        const clientWallet = await prisma.wallet.findUnique({ where: { userId: booking.clientId } });
-        const amount = Number(booking.price);
-        if (clientWallet && Number(clientWallet.balance) >= amount) {
-          await prisma.wallet.update({
-            where: { id: clientWallet.id },
-            data: { balance: { decrement: amount } }
-          });
-          await prisma.transaction.create({
-            data: {
-              walletId: clientWallet.id,
-              amount: amount,
-              type: 'payment',
-              status: 'completed',
-              description: `Payment escrow for booking ${id}`,
-              referenceId: id
-            }
-          });
-          await prisma.booking.update({
-            where: { id },
-            data: { paymentStatus: 'escrow' }
-          });
-        }
+    // ───── Escrow State Machine Transitions ─────
+    try {
+      // 1. Funding Escrow: Transition to 'accepted' or 'en_route'
+      if (
+        (finalStatus === 'accepted' || finalStatus === 'en_route') && 
+        booking.paymentStatus !== 'escrow' && 
+        booking.paymentStatus !== 'paid' &&
+        booking.paymentMethod === 'wallet' &&
+        booking.clientId &&
+        booking.price
+      ) {
+        await EscrowService.holdInEscrow(id, booking.clientId);
       }
-    }
 
-    // Wallet/Payment updates upon transition to 'completed'
-    if ((previousStatus === 'in_progress' || previousStatus === 'client_review') && finalStatus === 'completed') {
-      if (booking.paymentMethod !== 'cash' && booking.artisan?.userId) {
-        const artisanWallet = await prisma.wallet.findUnique({ where: { userId: booking.artisan.userId } });
-        if (artisanWallet) {
-          // If no artisanAmount defined, use a fallback from price
-          const payout = booking.artisanAmount ? Number(booking.artisanAmount) : (booking.price ? Number(booking.price) : 0);
-          if (payout > 0) {
-            await prisma.wallet.update({
-              where: { id: artisanWallet.id },
-              data: { balance: { increment: payout } }
-            });
-            await prisma.transaction.create({
-              data: {
-                walletId: artisanWallet.id,
-                amount: payout,
-                type: 'release',
-                status: 'completed',
-                description: `Payout for completed booking ${id}`,
-                referenceId: id
-              }
-            });
-            await prisma.booking.update({
-              where: { id },
-              data: { paymentStatus: 'paid' }
-            });
-          }
-        }
+      // 2. Releasing Escrow: Transition to 'completed'
+      if (
+        (previousStatus === 'in_progress' || previousStatus === 'client_review') && 
+        finalStatus === 'completed' &&
+        booking.paymentStatus === 'escrow'
+      ) {
+        await EscrowService.releaseFromEscrow(id, userId, isClient ? false : true);
       }
+
+      // 3. Refunding Escrow: Transition to 'cancelled'
+      if (
+        finalStatus === 'cancelled' && 
+        booking.paymentStatus === 'escrow'
+      ) {
+        await EscrowService.refundEscrow(id, userId, isClient || isArtisan ? false : true);
+      }
+    } catch (escrowError: any) {
+      console.error("[ESCROW STATE MACHINE TRANSITION ERROR]:", escrowError.message);
+      // Fail status transition gracefully if financial transaction fails
+      return res.status(400).json({ error: escrowError.message || "Financial transaction failed. State transition aborted for safety." });
     }
 
     // Notify other party

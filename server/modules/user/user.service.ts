@@ -11,7 +11,7 @@ export class UserService {
         phone: true,
         role: true,
         verified: true,
-        profileImage: true,
+        avatarUrl: true,
         city: true,
         createdAt: true,
       }

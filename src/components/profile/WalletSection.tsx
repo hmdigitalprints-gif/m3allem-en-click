@@ -102,9 +102,13 @@ export default function WalletSection({ onAction }: { onAction: (msg: string) =>
         </div>
 
         <div className="bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-[48px] p-10 flex flex-col justify-center text-center">
-          <ShieldCheck size={48} className="mx-auto mb-6 text-[var(--accent)]" />
+          <ShieldCheck size={48} className="mx-auto mb-4 text-[var(--accent)]" />
           <h4 className="text-xl font-bold mb-2">Secure Escrow</h4>
-          <p className="text-sm text-[var(--text-muted)]">Your payments are held securely until the service is completed and verified.</p>
+          <div className="mb-4">
+            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mb-1">Locked in Escrow</p>
+            <p className="text-3xl font-bold tracking-tight text-[var(--accent)]">{Number(walletData?.lockedBalance || 0).toFixed(2)} MAD</p>
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">Funds held safely in escrow, automatically releasing upon successful job verification.</p>
         </div>
       </div>
 

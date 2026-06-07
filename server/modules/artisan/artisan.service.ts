@@ -7,8 +7,8 @@ export class ArtisanService {
       include: {
         user: true,
         services: true,
-        reviews: {
-          include: { client: { select: { name: true, profileImage: true } } }
+        ratings: {
+          include: { client: { select: { name: true, avatarUrl: true } } }
         }
       }
     });

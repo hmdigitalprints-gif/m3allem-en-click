@@ -4,6 +4,7 @@ import { addMinutes, isAfter } from "date-fns";
 import twilio from "twilio";
 import nodemailer from "nodemailer";
 import { OtpChannel } from "@prisma/client";
+import { auditService } from "./auditService.ts";
 
 // Initialize Twilio client lazily
 let twilioClient: twilio.Twilio | null = null;
@@ -79,12 +80,18 @@ export class OtpService {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     if (channel === "sms") {
       if (!user.phone) {
         console.error(`[OTP Service] User ${userId} has no phone number for SMS delivery.`);
         return { success: false, error: "Phone number required for SMS verification" };
       }
       if (!accountSid || !authToken || !phoneNumber) {
+        if (isProduction) {
+          console.error(`[OTP Service] CRITICAL CONFIGURATION ERROR: Live Twilio credentials missing in production environment for User: ${userId}`);
+          return { success: false, error: "SMS sending service is currently misconfigured. Please contact support." };
+        }
         isSimulation = true;
         console.log(`[OTP Service] Twilio credentials incomplete. Falling back to SMS simulation for User: ${userId}`);
       }
@@ -94,6 +101,10 @@ export class OtpService {
         return { success: false, error: "Email address required for email verification" };
       }
       if (!process.env.SMTP_HOST) {
+        if (isProduction) {
+          console.error(`[OTP Service] CRITICAL CONFIGURATION ERROR: Live SMTP credentials missing in production environment for User: ${userId}`);
+          return { success: false, error: "Email sending service is currently misconfigured. Please contact support." };
+        }
         isSimulation = true;
         console.log(`[OTP Service] SMTP credentials incomplete. Falling back to Email simulation for User: ${userId}`);
       }
@@ -128,10 +139,33 @@ export class OtpService {
           await this.sendEmail(user.email, otp);
         }
       }
-      return { success: true, isSimulation, otp: isSimulation ? otp : undefined };
+      
+      // Log successful OTP issue to AuditLog
+      await auditService.log(
+        userId,
+        "OTP_ISSUED",
+        "user",
+        userId,
+        { channel, isSimulation }
+      );
+
+      return { 
+        success: true, 
+        isSimulation, 
+        otp: (isSimulation && !isProduction) ? otp : undefined 
+      };
     } catch (error) {
       console.error(`Error sending OTP via ${channel}:`, error);
-      return { success: false, error: "Failed to send OTP. Please try again." };
+      
+      await auditService.log(
+        userId,
+        "OTP_ISSUANCE_FAILED",
+        "user",
+        userId,
+        { channel, error: String(error) }
+      );
+
+      return { success: false, error: "Failed to send verification code. Please try again." };
     }
   }
 
@@ -224,6 +258,13 @@ export class OtpService {
     
     if (!otp || otp.length !== 6) {
       console.log(`[OTP Verification] Invalid OTP length: ${otp?.length}`);
+      await auditService.log(
+        userId,
+        "OTP_VERIFICATION_SUSPICIOUS",
+        "user",
+        userId,
+        { reason: "Invalid OTP length/format", length: otp?.length || 0 }
+      );
       return { success: false, error: "Verification code must be 6 digits" };
     }
 
@@ -234,17 +275,38 @@ export class OtpService {
       });
 
       if (!latestOtp) {
-        console.log(`[OTP Verification] No OTP found record in DB for userId: ${userId}`);
+        console.warn(`[OTP Verification] Suspicious: No active OTP record in database for userId: ${userId}`);
+        await auditService.log(
+          userId,
+          "OTP_VERIFICATION_FAILED_NO_OTP",
+          "user",
+          userId,
+          { reason: "No OTP code exists in database" }
+        );
         return { success: false, error: "No verification code found. Please request a new one." };
       }
 
       if (latestOtp.attempts >= MAX_OTP_ATTEMPTS) {
-        console.log(`[OTP Verification] Max attempts reached (${latestOtp.attempts}) for userId: ${userId}`);
-        return { success: false, error: "Maximum attempts reached. Please request a new code." };
+        console.warn(`[OTP Verification] Suspicious: OTP verification attempt on a code that exceeded max attempts. userId: ${userId}`);
+        await auditService.log(
+          userId,
+          "OTP_VERIFICATION_SUSPICIOUS_BLOCKED",
+          "user",
+          userId,
+          { reason: "Maximum attempts already reached", attempts: latestOtp.attempts }
+        );
+        return { success: false, error: "Maximum attempts reached. This code has been securely invalidated." };
       }
 
       if (latestOtp.expiresAt && isAfter(new Date(), latestOtp.expiresAt)) {
         console.log(`[OTP Verification] OTP expired. Expiry: ${latestOtp.expiresAt}, Now: ${new Date()}`);
+        await auditService.log(
+          userId,
+          "OTP_VERIFICATION_FAILED_EXPIRED",
+          "user",
+          userId,
+          { reason: "OTP expired", expiresAt: latestOtp.expiresAt }
+        );
         return { success: false, error: "The verification code has expired. Please request a new one." };
       }
 
@@ -252,18 +314,48 @@ export class OtpService {
       
       if (hashedInput !== latestOtp.otpHash) {
         console.log(`[OTP Verification] Hash mismatch for userId: ${userId}`);
-        await prisma.otp.update({
-          where: { id: latestOtp.id },
-          data: { attempts: { increment: 1 } }
-        });
         
-        const remaining = MAX_OTP_ATTEMPTS - (latestOtp.attempts + 1);
-        return { 
-          success: false, 
-          error: remaining > 0 
-            ? `Invalid verification code. ${remaining} attempts remaining.` 
-            : "Invalid code. Maximum attempts reached."
-        };
+        const newAttempts = latestOtp.attempts + 1;
+        
+        if (newAttempts >= MAX_OTP_ATTEMPTS) {
+          // Cascade and delete the OTP record completely so they MUST request a new one (cannot keep guessing)
+          await prisma.otp.delete({
+            where: { id: latestOtp.id }
+          });
+          
+          console.warn(`[OTP Verification] CRITICAL SECURITY ALERT: Maximum attempts reached for user ${userId}. OTP deleted from DB to prevent further guesses.`);
+          await auditService.log(
+            userId,
+            "OTP_BRUTE_FORCE_EXCEEDED",
+            "user",
+            userId,
+            { reason: "Max failed verification attempts exceeded. OTP invalidated.", totalAttempts: newAttempts }
+          );
+          
+          return {
+            success: false,
+            error: "Invalid verification code. Maximum attempts reached. This verification code has been securely invalidated. Please request a new one."
+          };
+        } else {
+          await prisma.otp.update({
+            where: { id: latestOtp.id },
+            data: { attempts: newAttempts }
+          });
+          
+          await auditService.log(
+            userId,
+            "OTP_VERIFICATION_FAILED_WRONG_CODE",
+            "user",
+            userId,
+            { reason: "Incorrect OTP entered", attempt: newAttempts }
+          );
+
+          const remaining = MAX_OTP_ATTEMPTS - newAttempts;
+          return { 
+            success: false, 
+            error: `Invalid verification code. ${remaining} attempts remaining.` 
+          };
+        }
       }
 
       console.log(`[OTP Verification] SUCCESS for userId: ${userId}`);
@@ -282,6 +374,14 @@ export class OtpService {
           where: { userId }
         })
       ]);
+
+      await auditService.log(
+        userId,
+        "OTP_VERIFICATION_SUCCESS",
+        "user",
+        userId,
+        { status: "successful_entry" }
+      );
 
       return { success: true };
     } catch (error) {

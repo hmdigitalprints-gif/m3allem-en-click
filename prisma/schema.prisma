@@ -75,7 +75,13 @@ model User {
   address           String?
   lastVerified      DateTime? @map("last_verified")
   createdAt         DateTime  @default(now()) @map("created_at")
+  isSuspended       Boolean   @default(false) @map("is_suspended")
+  suspensionReason  String?   @map("suspension_reason")
+  suspendedUntil    DateTime? @map("suspended_until")
+  kyc               KycVerification?
 
+  reportsSubmitted     UserReport[]          @relation("ReporterRelation")
+  reportsReceived      UserReport[]          @relation("ReportedRelation")
   stores               Store[]
   companies            Company[]
   otps                 Otp[]
@@ -102,6 +108,9 @@ model User {
 
   @@map("users")
   @@index([createdAt])
+  @@index([role])
+  @@index([verified])
+  @@index([isSuspended])
 }
 
 model Store {
@@ -514,6 +523,9 @@ model Rating {
   order     Order?   @relation(fields: [orderId], references: [id])
   booking   Booking? @relation(fields: [bookingId], references: [id])
   @@map("ratings")
+  @@index([artisanId])
+  @@index([clientId])
+  @@index([createdAt])
 }
 
 enum MessageType {
@@ -521,6 +533,7 @@ enum MessageType {
   voice
   image
   location
+  file
 }
 
 enum MessageStatus {
@@ -538,6 +551,9 @@ model Message {
   type        MessageType?   @default(text)
   audioUrl    String?        @map("audio_url")
   imageUrl    String?        @map("image_url")
+  fileUrl     String?        @map("file_url")
+  fileName    String?        @map("file_name")
+  fileSize    Int?           @map("file_size")
   latitude    Decimal?
   longitude   Decimal?
   status      MessageStatus? @default(sent)
@@ -712,6 +728,8 @@ model FraudAlert {
   user      User?    @relation(fields: [userId], references: [id])
 
   @@map("fraud_alerts")
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model AuditLog {
@@ -726,6 +744,8 @@ model AuditLog {
   user       User?    @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+  @@index([userId])
+  @@index([createdAt])
 }
 
 enum DevisStatus {
@@ -887,4 +907,62 @@ model ProductOrderItem {
   product         Product      @relation(fields: [productId], references: [id])
   
   @@map("product_order_items")
+}
+
+model UserBlockMute {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  targetUserId String   @map("target_user_id")
+  isBlocked    Boolean  @default(false) @map("is_blocked")
+  isMuted      Boolean  @default(false) @map("is_muted")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, targetUserId])
+  @@map("user_block_mutes")
+}
+
+model UserReport {
+  id           String     @id @default(uuid())
+  reporterId   String?    @map("reporter_id")
+  reportedId   String?    @map("reported_id")
+  contentType  String     @map("content_type") // e.g., "user", "message", "review", etc.
+  contentId    String?    @map("content_id")
+  reason       String
+  details      String?
+  status       String     @default("pending") // e.g., "pending", "resolved", "dismissed"
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  reporter     User?      @relation("ReporterRelation", fields: [reporterId], references: [id])
+  reported     User?      @relation("ReportedRelation", fields: [reportedId], references: [id])
+
+  @@map("user_reports")
+  @@index([reporterId])
+  @@index([reportedId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model KycVerification {
+  id                   String             @id @default(uuid())
+  userId               String             @unique @map("user_id")
+  documentType         String             @map("document_type") // ID, Passport, Driver's License
+  documentNumber       String             @map("document_number")
+  documentUrl          String             @map("document_url")
+  idDocumentUrl        String?            @map("id_document_url") // optional back page or photo holding ID
+  companyRegistration  String?            @map("company_registration") // optional business certificate for companies
+  notes                String?
+  status               VerificationStatus @default(pending)
+  rejectionReason      String?            @map("rejection_reason")
+  verifiedAt           DateTime?          @map("verified_at")
+  verifiedBy           String?            @map("verified_by")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_verifications")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

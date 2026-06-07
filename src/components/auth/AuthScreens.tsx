@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, Lock, User, ShieldCheck, ArrowRight, ArrowLeft, CheckCircle, AlertCircle, Loader2, Sparkles, MessageSquare, Mail, ChevronDown } from 'lucide-react';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { SymmetricalIcon } from '../common/SymmetricalIcon';
 import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
@@ -41,6 +42,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   
   const { login, verifyOtp, register, loginWithGoogle, completeGoogleRole } = useAuth();
+  const toast = useToast();
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setIsLoading(true);
@@ -171,11 +173,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
         setSimulationOtp(res.isSimulation ? res.otp : null);
         setPendingAction('login');
         setStep('channel');
+        toast.info(t('auth_otp_sent_title', 'Verification Needed'), t('auth_otp_sent_msg', 'Verification code generated! Please select your channel.'));
       } else if (res.token) {
+        toast.success(t('auth_success_title', 'Welcome back!'), t('auth_success_login', 'You have been successfully logged in.'));
         onSuccess();
       }
     } catch (err: any) {
       setError(err.message);
+      toast.error(t('auth_error_title', 'Login Failed'), err.message);
     } finally {
       setIsLoading(false);
     }
@@ -226,10 +231,13 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ onSuccess, onBack }) =
       console.log(`[AuthScreens] Attempting to verify OTP for user ${userId}`);
       await verifyOtp(userId, otp.trim());
       console.log(`[AuthScreens] OTP verified successfully`);
+      toast.success(t('auth_success_title', 'Welcome!'), t('auth_success_verified', 'Your account has been verified successfully. Welcome to M3allem!'));
       onSuccess();
     } catch (err: any) {
       console.error(`[AuthScreens] OTP verification error:`, err);
-      setError(err.message || t('auth_err_verify_failed', 'Verification failed. Please check the code and try again.'));
+      const errMsg = err.message || t('auth_err_verify_failed', 'Verification failed. Please check the code and try again.');
+      setError(errMsg);
+      toast.error(t('auth_error_title', 'Verification Failed'), errMsg);
     } finally {
       setIsLoading(false);
     }

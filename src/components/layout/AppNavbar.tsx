@@ -12,7 +12,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useSettings } from '../../context/SettingsContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import NotificationBell from './NotificationBell';
-import premiumLogo from '../../assets/images/logo.webp';
+import premiumLogo from '../../assets/images/logo.png';
 
 interface AppNavbarProps {
   onSwitchView?: (view: 'admin' | 'customer' | 'artisan' | 'seller' | 'company') => void;

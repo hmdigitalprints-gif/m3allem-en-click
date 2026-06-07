@@ -3,9 +3,8 @@ import prisma from "../lib/prisma.ts";
 import { authenticateToken } from "./auth.ts";
 import { sendNotification } from "../services/notificationService.ts";
 import { calculateDistance } from "../lib/utils.ts";
-import NodeCache from "node-cache";
+import { getCache, setCache } from "../lib/redis.ts";
 
-const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
 const router = express.Router();
 
 // Get nearby artisans
@@ -17,7 +16,7 @@ router.get("/nearby", async (req, res) => {
     
     // Generate cache key
     const cacheKey = `nearby_${lat || ''}_${lng || ''}_${categoryId || ''}_${city || ''}_${page}_${limit}`;
-    const cachedData = cache.get(cacheKey);
+    const cachedData = await getCache(cacheKey);
     
     if (cachedData) {
       return res.json(cachedData);
@@ -82,11 +81,11 @@ router.get("/nearby", async (req, res) => {
         }
         return false;
       });
-      cache.set(cacheKey, nearbyArtisans);
+      await setCache(cacheKey, nearbyArtisans, 300);
       return res.json(nearbyArtisans);
     }
 
-    cache.set(cacheKey, formatted);
+    await setCache(cacheKey, formatted, 300);
     res.json(formatted);
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') console.error("Fetch nearby artisans error:", error);

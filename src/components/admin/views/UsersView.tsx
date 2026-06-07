@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Loader2, UserCog, AlertTriangle, X, Check, Shield, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, UserCog, AlertTriangle, X, Check, Shield, MoreVertical, Ban, Unlock } from 'lucide-react';
 import { ViewProps } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,6 +11,13 @@ export default function UsersView({ onAction }: ViewProps) {
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'client', password: 'password123' });
   const [submitting, setSubmitting] = useState(false);
+
+  // Suspension states
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [suspendUserId, setSuspendUserId] = useState('');
+  const [suspendUserName, setSuspendUserName] = useState('');
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendDuration, setSuspendDuration] = useState('7');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -26,7 +33,10 @@ export default function UsersView({ onAction }: ViewProps) {
           email: u.email || u.phone || 'No contact',
           role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
           balance: 0,
-          status: u.verified ? 'Verified' : 'Pending',
+          isSuspended: u.isSuspended,
+          suspensionReason: u.suspensionReason,
+          suspendedUntil: u.suspendedUntil,
+          status: u.isSuspended ? 'Suspended' : (u.verified ? 'Verified' : 'Pending'),
           avatar: u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'U')}&background=random`
         })));
       }
@@ -35,6 +45,61 @@ export default function UsersView({ onAction }: ViewProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuspendUser = async () => {
+    if (!suspendUserId) return;
+    try {
+      const untilDate = suspendDuration === 'permanent' 
+        ? null 
+        : new Date(Date.now() + parseInt(suspendDuration) * 24 * 60 * 60 * 1000).toISOString();
+
+      const res = await fetch(`/api/admin/users/${suspendUserId}/suspend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: suspendReason, until: untilDate }),
+        credentials: 'include'
+      });
+      if (res.ok) {
+        onAction?.(`Account of ${suspendUserName} has been suspended`);
+        setShowSuspendModal(false);
+        setSuspendReason('');
+        fetchUsers();
+      } else {
+        onAction?.('Failed to suspend user');
+      }
+    } catch (error) {
+      console.error(error);
+      onAction?.('Error suspending user');
+    }
+  };
+
+  const handleUnsuspendUser = async (userId: string, name: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/unsuspend`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        onAction?.(`Account of ${name} has been unsuspended`);
+        fetchUsers();
+      } else {
+        onAction?.('Failed to unsuspend user');
+      }
+    } catch (error) {
+      console.error(error);
+      onAction?.('Error unsuspending user');
+    }
+  };
+
+  const openSuspendPanel = (userId: string, name: string) => {
+    setSuspendUserId(userId);
+    setSuspendUserName(name);
+    setSuspendReason('Violation of platform community terms.');
+    setSuspendDuration('7');
+    setShowSuspendModal(true);
   };
 
   useEffect(() => {
@@ -193,6 +258,7 @@ export default function UsersView({ onAction }: ViewProps) {
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border items-center justify-center gap-1.5 w-fit shadow-sm ${
                       user.status === 'Verified' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 
+                      user.status === 'Suspended' ? 'text-red-500 bg-red-500/10 border-red-500/25' :
                       'text-[var(--text-muted)] bg-[var(--border)] border-[var(--border)]'
                     }`}>
                       {user.status}
@@ -200,17 +266,35 @@ export default function UsersView({ onAction }: ViewProps) {
                   </td>
                   <td className="px-6 py-4 text-end">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleVerifyUser(user.id, user.status)}
-                        className={`p-2.5 rounded-xl border transition-colors shadow-sm inline-flex items-center justify-center ${
-                          user.status === 'Verified' ? 'text-[var(--text-muted)] hover:bg-[var(--border)] border-[var(--border)] hover:text-[var(--text)]' : 'text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/20'
-                        }`}
-                        title={user.status === 'Verified' ? 'Unverify User' : 'Verify User'}
-                      >
-                        {user.status === 'Verified' ? <X size={18} strokeWidth={2.5} /> : <Check size={18} strokeWidth={2.5} />}
-                      </button>
-                      
-                      
+                      {user.status !== 'Suspended' ? (
+                        <>
+                          <button 
+                            onClick={() => handleVerifyUser(user.id, user.status)}
+                            className={`p-2.5 rounded-xl border transition-colors shadow-sm inline-flex items-center justify-center ${
+                              user.status === 'Verified' ? 'text-[var(--text-muted)] hover:bg-[var(--border)] border-[var(--border)] hover:text-[var(--text)]' : 'text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/20'
+                            }`}
+                            title={user.status === 'Verified' ? 'Unverify User' : 'Verify User'}
+                          >
+                            {user.status === 'Verified' ? <X size={18} strokeWidth={2.5} /> : <Check size={18} strokeWidth={2.5} />}
+                          </button>
+                          
+                          <button 
+                            onClick={() => openSuspendPanel(user.id, user.name)}
+                            className="p-2.5 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10 transition-colors shadow-sm inline-flex items-center justify-center"
+                            title="Suspend Account"
+                          >
+                            <Ban size={18} strokeWidth={2.5} />
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          onClick={() => handleUnsuspendUser(user.id, user.name)}
+                          className="p-2.5 rounded-xl border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10 transition-colors shadow-sm inline-flex items-center justify-center"
+                          title="Lift Suspension"
+                        >
+                          <Unlock size={18} strokeWidth={2.5} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -306,6 +390,82 @@ export default function UsersView({ onAction }: ViewProps) {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Suspend User Modal */}
+      <AnimatePresence>
+        {showSuspendModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-8 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-[60px] pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-orange-500" />
+              
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                <h3 className="text-xl font-black text-red-500 tracking-tight">Suspend Account</h3>
+                <button onClick={() => setShowSuspendModal(false)} className="p-2 hover:bg-[var(--border)] rounded-xl transition-colors">
+                  <X size={20} className="text-[var(--text-muted)] hover:text-[var(--text)]" />
+                </button>
+              </div>
+
+              <div className="space-y-6 relative z-10 text-start">
+                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider">
+                  You are restricting the user account of <strong className="text-white">{suspendUserName}</strong>.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Suspension Duration</label>
+                  <select 
+                    value={suspendDuration}
+                    onChange={(e) => setSuspendDuration(e.target.value)}
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-bold focus:border-[#FFD700]/50 outline-none transition-colors appearance-none cursor-pointer pr-10"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center' }}
+                  >
+                    <option value="1">1 Day</option>
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="30">30 Days</option>
+                    <option value="permanent">Permanent Account Ban</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Explanatory Reason</label>
+                  <textarea 
+                    rows={3}
+                    value={suspendReason}
+                    onChange={(e) => setSuspendReason(e.target.value)}
+                    className="w-full px-5 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text)] font-medium focus:border-red-500/50 outline-none transition-colors shadow-inner resize-none text-sm"
+                    placeholder="Abusive behavior, multiple customer complaints, suspicious listings..."
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4 mt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setShowSuspendModal(false)}
+                    className="flex-1 px-6 py-4 rounded-lg bg-[var(--card-surface)] border border-[var(--border)] text-[var(--text-muted)] font-black uppercase tracking-wider text-sm hover:text-[var(--text)] hover:bg-[var(--border)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSuspendUser}
+                    className="flex-1 px-6 py-4 rounded-lg bg-red-600 text-white font-black uppercase tracking-wider text-sm hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Ban size={18} strokeWidth={2.5} />
+                    Suspend User
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

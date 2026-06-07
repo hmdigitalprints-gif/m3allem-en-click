@@ -248,3 +248,43 @@ export const walletService = {
     });
   }
 };
+
+export const escrowService = {
+  async payBooking(bookingId: string) {
+    return fetchJson('/api/escrow/pay', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ bookingId })
+    });
+  },
+
+  async releaseEscrow(bookingId: string) {
+    return fetchJson('/api/escrow/release', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ bookingId })
+    });
+  },
+
+  async refundEscrow(bookingId: string) {
+    return fetchJson('/api/escrow/refund', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ bookingId })
+    });
+  },
+
+  async resolveDispute(disputeId: string, resolution: "refund_client" | "release_artisan", notes: string) {
+    return fetchJson(`/api/escrow/disputes/${disputeId}/resolve`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ resolution, notes })
+    });
+  },
+
+  async getEscrowStatus(bookingId: string) {
+    return fetchJson(`/api/escrow/booking/${bookingId}/status`, {
+      headers: getHeaders()
+    });
+  }
+};

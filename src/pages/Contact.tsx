@@ -1,11 +1,53 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { Mail, Phone, MapPin, Send, MessageSquare, Clock, Loader2 } from 'lucide-react';
 import PublicLayout from '../components/layout/PublicLayout';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../context/ToastContext';
 
 export default function Contact() {
   const { t, i18n } = useTranslation();
+  const toast = useToast();
+  
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('General Inquiry');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error(t('contact_err_title', 'Missing Information'), t('contact_err_name', 'Please enter your name.'));
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      toast.error(t('contact_err_title', 'Invalid Email'), t('contact_err_email', 'Please enter a valid email address.'));
+      return;
+    }
+    if (!message.trim()) {
+      toast.error(t('contact_err_title', 'Empty Message'), t('contact_err_message', 'Please write a message before sending.'));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Simulate API submit delay
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      toast.success(
+        t('contact_success_title', 'Message Sent!'),
+        t('contact_success_msg', 'Thank you for reaching out. A support coordinator will respond shortly.')
+      );
+      setName('');
+      setEmail('');
+      setMessage('');
+    } catch (err: any) {
+      toast.error(t('contact_error_title', 'Submission Error'), err.message || 'Something went wrong.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <PublicLayout>
       <div className="pt-32 pb-20 bg-[var(--bg)] text-[var(--text)]">
@@ -92,13 +134,15 @@ export default function Contact() {
           <div className="lg:col-span-2">
             <div className="bg-[var(--card-bg)] border border-[var(--border)] p-10 md:p-16 rounded-[48px] shadow-2xl">
               <h3 className="text-3xl font-bold mb-8 text-[var(--text)]">{t('contact_send_msg_title')}</h3>
-              <form className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ms-4">{t('contact_lbl_name')}</label>
                     <input 
                       type="text" 
                       placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-[var(--text)]"
                     />
                   </div>
@@ -107,6 +151,8 @@ export default function Contact() {
                     <input 
                       type="email" 
                       placeholder="john@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all text-[var(--text)]"
                     />
                   </div>
@@ -114,7 +160,11 @@ export default function Contact() {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ms-4">{t('contact_lbl_subject')}</label>
-                  <select className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all appearance-none text-[var(--text)]">
+                  <select 
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all appearance-none text-[var(--text)]"
+                  >
                     <option className="bg-[var(--card-bg)]">General Inquiry</option>
                     <option className="bg-[var(--card-bg)]">Support Request</option>
                     <option className="bg-[var(--card-bg)]">Partnership</option>
@@ -126,16 +176,28 @@ export default function Contact() {
                   <label className="text-[10px] font-bold text-[var(--text-muted)]/30 uppercase tracking-widest ms-4">{t('contact_lbl_msg')}</label>
                   <textarea 
                     placeholder="..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-4 px-6 focus:outline-none focus:border-[var(--accent)]/50 transition-all h-48 resize-none text-[var(--text)]"
                   ></textarea>
                 </div>
 
                 <button 
-                  type="button"
-                  className="bg-[var(--accent)] text-[var(--accent-foreground)] px-12 py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-[var(--accent)]/90 transition-all active:scale-95 shadow-2xl shadow-[var(--accent)]/20 w-full md:w-auto"
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-[var(--accent)] text-[var(--accent-foreground)] px-12 py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 hover:bg-[var(--accent)]/90 transition-all active:scale-95 disabled:scale-100 disabled:opacity-50 shadow-2xl shadow-[var(--accent)]/20 w-full md:w-auto cursor-pointer"
                 >
-                  {t('contact_btn_send')}
-                  <Send size={20} className={i18n.dir() === 'rtl' ? 'rotate-180' : ''} />
+                  {submitting ? (
+                    <>
+                      <span>{t('contact_btn_sending', 'Sending...')}</span>
+                      <Loader2 size={20} className="animate-spin text-white" />
+                    </>
+                  ) : (
+                    <>
+                      <span>{t('contact_btn_send')}</span>
+                      <Send size={20} className={i18n.dir() === 'rtl' ? 'rotate-180' : ''} />
+                    </>
+                  )}
                 </button>
               </form>
             </div>

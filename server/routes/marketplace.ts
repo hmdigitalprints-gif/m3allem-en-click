@@ -2,6 +2,7 @@ import express from "express";
 import prisma from "../lib/prisma.ts";
 import { authenticateToken } from "./auth.ts";
 import { getPreferredLanguage, t } from "../lib/i18n.ts";
+import { getCache, setCache } from "../lib/redis.ts";
 
 const router = express.Router();
 
@@ -9,14 +10,44 @@ const router = express.Router();
 router.get("/artisans", async (req, res) => {
   try {
     const lang = await getPreferredLanguage(req);
-    const { categoryId, city, search, isOnline, minRating, minPrice, maxPrice, page = '1', limit = '20' } = req.query;
+    const { categoryId, category, city, search, isOnline, minRating, minPrice, maxPrice, page = '1', limit = '20' } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
     const take = parseInt(limit as string);
 
     const where: any = {};
 
-    if (categoryId) {
-      where.categoryId = categoryId as string;
+    const selCatVal = (categoryId || category) as string;
+    if (selCatVal && selCatVal !== 'All' && selCatVal !== '') {
+      // If the category value contains spaces, it's likely a name, so let's resolve its ID
+      if (selCatVal.includes(' ') || selCatVal.includes('&')) {
+        const foundCat = await prisma.category.findFirst({
+          where: {
+            OR: [
+              { name: { contains: selCatVal, mode: 'insensitive' } },
+              { id: { contains: selCatVal, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (foundCat) {
+          where.categoryId = foundCat.id;
+        }
+      } else {
+        // Fallback or exact ID lookup or fallback by matching any category starting with/containing the ID
+        const foundCat = await prisma.category.findFirst({
+          where: {
+            OR: [
+              { id: selCatVal },
+              { id: { contains: selCatVal, mode: 'insensitive' } },
+              { name: { contains: selCatVal, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (foundCat) {
+          where.categoryId = foundCat.id;
+        } else {
+          where.categoryId = selCatVal;
+        }
+      }
     }
 
     if (city) {
@@ -282,6 +313,14 @@ router.get("/products", async (req, res) => {
 router.get("/categories", async (req, res) => {
   try {
     const lang = await getPreferredLanguage(req);
+    const cacheKey = `marketplace_categories_${lang}`;
+
+    // Try reading from cache layer
+    const cachedCategories = await getCache<any[]>(cacheKey);
+    if (cachedCategories) {
+      return res.json(cachedCategories);
+    }
+
     const categories = await prisma.category.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" }
@@ -300,6 +339,9 @@ router.get("/categories", async (req, res) => {
       };
     });
     
+    // Save to cache layer
+    await setCache(cacheKey, translatedCategories, 3600);
+
     res.json(translatedCategories);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch categories" });

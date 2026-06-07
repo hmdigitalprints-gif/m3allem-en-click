@@ -452,13 +452,144 @@ router.post("/verifications/:id/reject", authenticateAdmin, async (req, res) => 
   }
 });
 
+// Admin KYC management Router Endpoints
+router.get("/kyc", authenticateAdmin, async (req, res) => {
+  try {
+    const kycRecords = await prisma.kycVerification.findMany({
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            verified: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(kycRecords);
+  } catch (error) {
+    console.error("Fetch admin KYC error:", error);
+    res.status(500).json({ error: "Failed to fetch KYC submissions" });
+  }
+});
+
+router.post("/kyc/:id/approve", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    const kyc = await prisma.kycVerification.findUnique({
+      where: { id }
+    });
+
+    if (!kyc) {
+      return res.status(404).json({ error: "KYC submission not found" });
+    }
+
+    await prisma.$transaction([
+      prisma.kycVerification.update({
+        where: { id },
+        data: {
+          status: "approved",
+          rejectionReason: null,
+          verifiedAt: new Date(),
+          verifiedBy: adminId
+        }
+      }),
+      prisma.user.update({
+        where: { id: kyc.userId },
+        data: { verified: true }
+      })
+    ]);
+
+    // Send a system notification
+    await prisma.notification.create({
+      data: {
+        userId: kyc.userId,
+        title: "KYC Account Verified",
+        message: "Congratulations! Your identity document review is complete and your account is now fully verified.",
+        isRead: false
+      }
+    }).catch(err => console.error("Could not log notification:", err));
+
+    res.json({ success: true, message: "KYC approved and user verified successfully" });
+  } catch (error) {
+    console.error("KYC approval error:", error);
+    res.status(500).json({ error: "Failed to approve KYC verification" });
+  }
+});
+
+router.post("/kyc/:id/reject", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminId = req.user.id;
+
+    if (!reason) {
+      return res.status(400).json({ error: "A rejection explanation is mandatory" });
+    }
+
+    const kyc = await prisma.kycVerification.findUnique({
+      where: { id }
+    });
+
+    if (!kyc) {
+      return res.status(404).json({ error: "KYC submission not found" });
+    }
+
+    await prisma.$transaction([
+      prisma.kycVerification.update({
+        where: { id },
+        data: {
+          status: "rejected",
+          rejectionReason: reason,
+          verifiedAt: new Date(),
+          verifiedBy: adminId
+        }
+      }),
+      prisma.user.update({
+        where: { id: kyc.userId },
+        data: { verified: false }
+      })
+    ]);
+
+    // Send warning notification
+    await prisma.notification.create({
+      data: {
+        userId: kyc.userId,
+        title: "KYC Documents Rejected",
+        message: `Your identity verification documents were rejected. Reason: ${reason}. Please re-submit your files.`,
+        isRead: false
+      }
+    }).catch(err => console.error("Could not log notification:", err));
+
+    res.json({ success: true, message: "KYC rejected successfully" });
+  } catch (error) {
+    console.error("KYC rejection error:", error);
+    res.status(500).json({ error: "Failed to reject KYC verification" });
+  }
+});
+
 // User management
 router.get("/users", authenticateAdmin, async (req, res) => {
   try {
     const { role } = req.query;
     const users = await prisma.user.findMany({
       where: role ? { role: role as Role } : {},
-      select: { id: true, name: true, phone: true, role: true, verified: true, createdAt: true }
+      select: { 
+        id: true, 
+        name: true, 
+        phone: true, 
+        role: true, 
+        verified: true, 
+        createdAt: true,
+        isSuspended: true,
+        suspensionReason: true,
+        suspendedUntil: true
+      }
     });
     res.json(users);
   } catch (error) {
@@ -1471,6 +1602,285 @@ router.patch("/withdrawals/:id", authenticateAdmin, async (req: any, res) => {
   } catch (error: any) {
     console.error("Process withdrawal error:", error);
     res.status(500).json({ error: error?.message || "Failed to process withdrawal" });
+  }
+});
+
+// ==========================================
+// ENTERPRISE MODERATION SYSTEM API ROUTES
+// ==========================================
+
+// 1. Reports System endpoints
+router.get("/reports", authenticateAdmin, async (req, res) => {
+  try {
+    const reports = await prisma.userReport.findMany({
+      include: {
+        reporter: { select: { id: true, name: true, email: true, role: true } },
+        reported: { select: { id: true, name: true, email: true, role: true } },
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(reports);
+  } catch (error) {
+    console.error("Failed to fetch reports:", error);
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+router.patch("/reports/:id", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { status, resolutionDetails } = req.body; // "investigating" | "resolved" | "dismissed"
+    const adminId = req.user.id;
+
+    const report = await prisma.userReport.update({
+      where: { id },
+      data: { 
+        status, 
+        details: resolutionDetails || undefined 
+      },
+      include: { reporter: true, reported: true }
+    });
+
+    await auditService.log(adminId, `REPORT_${status.toUpperCase()}`, "user_report", id, {
+      reportId: id,
+      reporterId: report.reporterId,
+      reportedId: report.reportedId,
+      resolutionDetails
+    });
+
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error("Failed to update report:", error);
+    res.status(500).json({ error: "Failed to update report" });
+  }
+});
+
+router.post("/reports/submit", authenticateToken, async (req: any, res) => {
+  try {
+    const { reportedId, contentType, contentId, reason, details } = req.body;
+    const reporterId = req.user.id;
+
+    const report = await prisma.userReport.create({
+      data: {
+        reporterId,
+        reportedId: reportedId || null,
+        contentType,
+        contentId: contentId || null,
+        reason,
+        details: details || null,
+        status: "pending"
+      }
+    });
+
+    res.status(201).json({ success: true, report });
+  } catch (error) {
+    console.error("Failed to submit report:", error);
+    res.status(500).json({ error: "Failed to submit report" });
+  }
+});
+
+// 2. Account Suspension System endpoints
+router.post("/users/:id/suspend", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, until } = req.body;
+    const adminId = req.user.id;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        isSuspended: true,
+        suspensionReason: reason || "Violation of community rules",
+        suspendedUntil: until ? new Date(until) : null
+      }
+    });
+
+    await auditService.log(adminId, "USER_SUSPENDED", "user", id, {
+      reason,
+      until,
+      userName: user.name
+    });
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error("Failed to suspend user:", error);
+    res.status(500).json({ error: "Failed to suspend user" });
+  }
+});
+
+router.post("/users/:id/unsuspend", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        isSuspended: false,
+        suspensionReason: null,
+        suspendedUntil: null
+      }
+    });
+
+    await auditService.log(adminId, "USER_UNSUSPENDED", "user", id, {
+      userName: user.name
+    });
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error("Failed to unsuspend user:", error);
+    res.status(500).json({ error: "Failed to unsuspend user" });
+  }
+});
+
+// 3. Content Moderation Queue endpoints
+router.get("/moderation/queue", authenticateAdmin, async (req, res) => {
+  try {
+    const lowRatings = await prisma.rating.findMany({
+      where: { stars: { lte: 2 } },
+      include: {
+        client: { select: { name: true, email: true } },
+        artisan: { include: { user: { select: { name: true } } } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    const contentReports = await prisma.userReport.findMany({
+      where: {
+        contentType: { in: ["message", "review", "store", "comment"] }
+      },
+      include: {
+        reporter: { select: { id: true, name: true, email: true } },
+        reported: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.json({
+      lowRatings: lowRatings.map(r => ({
+        id: r.id,
+        type: "review",
+        stars: r.stars,
+        content: r.review,
+        reporter_name: r.client?.name || "System Automated Audit",
+        reported_name: r.artisan?.user?.name || "Artisan Workspace",
+        created_at: r.createdAt
+      })),
+      contentReports
+    });
+  } catch (error) {
+    console.error("Moderation queue fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch moderation queue" });
+  }
+});
+
+router.delete("/moderation/rating/:id", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    await prisma.rating.delete({ where: { id } });
+    await auditService.log(adminId, "DELETE_RATING", "rating", id, { deletedByAdmin: true });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete rating:", error);
+    res.status(500).json({ error: "Failed to delete rating" });
+  }
+});
+
+router.patch("/moderation/rating/:id/censor", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    const rating = await prisma.rating.update({
+      where: { id },
+      data: { review: "[Censored by administration for violating community standards]" }
+    });
+    await auditService.log(adminId, "CENSOR_RATING", "rating", id, { censoredByAdmin: true });
+
+    res.json({ success: true, rating });
+  } catch (error) {
+    console.error("Failed to censor rating:", error);
+    res.status(500).json({ error: "Failed to censor rating" });
+  }
+});
+
+router.delete("/moderation/message/:id", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    await prisma.message.delete({ where: { id } });
+    await auditService.log(adminId, "DELETE_MESSAGE", "message", id, { deletedByAdmin: true });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete message:", error);
+    res.status(500).json({ error: "Failed to delete message" });
+  }
+});
+
+router.patch("/moderation/message/:id/censor", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    const message = await prisma.message.update({
+      where: { id },
+      data: { content: "[This message has been removed by moderators for violating community standards]" }
+    });
+    await auditService.log(adminId, "CENSOR_MESSAGE", "message", id, { censoredByAdmin: true });
+
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error("Failed to censor message:", error);
+    res.status(500).json({ error: "Failed to censor message" });
+  }
+});
+
+// 4. Fraud resolutions and simulation
+router.post("/fraud-alerts/:id/resolve", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+
+    await prisma.fraudAlert.delete({ where: { id } });
+    await auditService.log(adminId, "FRAUD_ALERT_RESOLVED", "fraud_alert", id, {
+      resolvedByAdmin: true
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to resolve fraud alert:", error);
+    res.status(500).json({ error: "Failed to resolve fraud alert" });
+  }
+});
+
+router.post("/fraud-alerts/simulate", authenticateAdmin, async (req: any, res) => {
+  try {
+    const { userId, reason, riskLevel } = req.body;
+    const adminId = req.user.id;
+
+    const alert = await prisma.fraudAlert.create({
+      data: {
+        userId: userId || null,
+        reason: reason || "Suspicious transaction frequency matching patterns of card testing",
+        riskLevel: riskLevel || "high"
+      }
+    });
+
+    await auditService.log(adminId, "FRAUD_ALERT_SIMULATED", "fraud_alert", alert.id, {
+      simulated: true,
+      reason,
+      riskLevel
+    });
+
+    res.status(201).json({ success: true, alert });
+  } catch (error) {
+    console.error("Failed to simulate fraud alert:", error);
+    res.status(500).json({ error: "Failed to simulate fraud alert" });
   }
 });
 

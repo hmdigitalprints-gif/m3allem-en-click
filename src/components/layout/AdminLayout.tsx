@@ -84,7 +84,15 @@ export default function AdminLayout({
         { id: "withdrawals", label: t("nav_withdrawals"), icon: <ArrowDownRight size={18} /> },
         { id: "cash_collections", label: "Cash Collections", icon: <Activity size={18} /> },
         { id: "escrow", label: "Escrow Rules", icon: <ShieldCheck size={18} /> },
+      ],
+    },
+    {
+      label: "Moderation & Safety",
+      items: [
+        { id: "reports", label: "User Reports", icon: <ShieldAlert size={18} /> },
+        { id: "moderation", label: "Content Queue", icon: <Box size={18} /> },
         { id: "fraud", label: "Fraud Monitoring", icon: <ShieldAlert size={18} /> },
+        { id: "kyc_review", label: "KYC Verification", icon: <ShieldCheck size={18} /> },
       ],
     },
     {

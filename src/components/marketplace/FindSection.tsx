@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { marketplaceService, Artisan, Category } from '../../services/marketplaceService';
 import ArtisanCard from '../common/ArtisanCard';
+import CategorySidebarMenu from './CategorySidebarMenu';
 
 import { useFilterStore } from '../../store/filterStore';
 import { useTranslation } from 'react-i18next';
@@ -87,27 +88,11 @@ export default function FindSection({ onAction, onSelectArtisan, onBookArtisan, 
               {t('filters_title')}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6 md:gap-8">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">{t('nav_categories', 'Category')}</label>
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                  <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
-                    onAction('Filtering by all services');
-                    handleFilterChange('category', '');
-                  }}>
-                    <div className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${filters.category === '' ? 'bg-[var(--accent)] border-[var(--accent)] scale-110 shadow-lg shadow-[var(--accent)]/20' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`} />
-                    <span className={`text-sm transition-colors ${filters.category === '' ? 'text-[var(--text)] font-bold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>{t('filter_all_services')}</span>
-                  </label>
-                  {categories?.map(cat => (
-                    <label key={cat.id} className="flex items-center gap-3 cursor-pointer group" onClick={() => {
-                      onAction(`Filtering by ${cat.name}`);
-                      handleFilterChange('category', cat.id);
-                    }}>
-                      <div className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${filters.category === cat.id ? 'bg-[var(--accent)] border-[var(--accent)] scale-110 shadow-lg shadow-[var(--accent)]/20' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`} />
-                      <span className={`text-sm transition-colors ${filters.category === cat.id ? 'text-[var(--text)] font-bold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>{cat.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CategorySidebarMenu 
+                activeCategoryId={filters.category} 
+                onSelectCategory={(id) => handleFilterChange('category', id)} 
+                onAction={onAction} 
+              />
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">{t('filter_city', 'City')}</label>

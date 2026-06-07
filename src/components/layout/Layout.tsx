@@ -9,7 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useSettings } from '../../context/SettingsContext';
 import { Sun, Moon } from 'lucide-react';
 
-import premiumLogo from '../../assets/images/logo.webp';
+import premiumLogo from '../../assets/images/logo.png';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();

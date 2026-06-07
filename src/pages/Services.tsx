@@ -70,6 +70,23 @@ export default function Services() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'local' | 'digital'>('all');
   const [selectedCategory, setSelectedCategory] = useState<CategoryData | null>(null);
+  const [subQuery, setSubQuery] = useState('');
+
+  const handleSelectCategory = (cat: CategoryData | null) => {
+    setSelectedCategory(cat);
+    setSubQuery('');
+  };
+
+  const filteredSubcategories = useMemo(() => {
+    if (!selectedCategory) return [];
+    if (!subQuery.trim()) return selectedCategory.subcategories;
+    const query = subQuery.toLowerCase();
+    return selectedCategory.subcategories.filter(sub => 
+      sub.name.toLowerCase().includes(query) || 
+      sub.description.toLowerCase().includes(query) ||
+      sub.popularServices.some(s => s.toLowerCase().includes(query))
+    );
+  }, [selectedCategory, subQuery]);
 
   // Filter Categories
   const filteredCategories = useMemo(() => {
@@ -196,7 +213,7 @@ export default function Services() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.03 }}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => handleSelectCategory(cat)}
                   className="bg-[var(--card-bg)] border border-[var(--border)] p-8 rounded-[40px] hover:bg-black/5 dark:hover:bg-white/5 transition-all group shadow-sm hover:shadow-xl cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[320px]"
                 >
                   {/* Subtle decorative background gradient based on category color flag */}
@@ -222,7 +239,7 @@ export default function Services() {
                   </div>
 
                   <div className="border-t border-[var(--border)] pt-4 mt-auto flex items-center justify-between text-xs font-bold text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors">
-                    <span>Voir les 5 sous-catégories</span>
+                    <span>Voir les {cat.subcategories.length} sous-catégories</span>
                     <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </motion.div>
@@ -239,7 +256,7 @@ export default function Services() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={() => setSelectedCategory(null)}
+                  onClick={() => handleSelectCategory(null)}
                   className="fixed inset-0 bg-black/80 backdrop-blur-md"
                 />
 
@@ -248,7 +265,7 @@ export default function Services() {
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="w-full max-w-4xl bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto outline-none flex flex-col"
+                  className="w-full max-w-5xl bg-[var(--card-bg)] border border-[var(--border)] rounded-[48px] shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto outline-none flex flex-col"
                 >
                   {/* Modal Header */}
                   <div className="p-8 pb-4 border-b border-[var(--border)] flex justify-between items-start sticky top-0 bg-[var(--card-bg)] z-10">
@@ -268,7 +285,7 @@ export default function Services() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => setSelectedCategory(null)}
+                      onClick={() => handleSelectCategory(null)}
                       className="p-3 hover:bg-[var(--border)] transition-colors rounded-full text-[var(--text-muted)] hover:text-[var(--text)] active:scale-90"
                     >
                       <X size={20} />
@@ -284,57 +301,94 @@ export default function Services() {
                     </div>
 
                     <div className="space-y-6">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--accent)]">
-                        Sous-catégories & Prestations Disponibles
-                      </h4>
-
-                      <div className="grid grid-cols-1 gap-6">
-                        {selectedCategory.subcategories.map((sub, sIdx) => (
-                          <div 
-                            key={sIdx} 
-                            className="bg-[var(--bg)] border border-[var(--border)] p-6 rounded-3xl flex flex-col md:flex-row justify-between gap-6 hover:border-[var(--accent)]/30 transition-all"
-                          >
-                            <div className="space-y-2 max-w-xl text-start">
-                              <h5 className="text-lg font-bold text-[var(--text)]">{sub.name}</h5>
-                              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{sub.description}</p>
-                              
-                              {/* Popular services pill tags */}
-                              <div className="flex flex-wrap gap-1.5 pt-3">
-                                {sub.popularServices.map((srv, srvIdx) => (
-                                  <button
-                                    key={srvIdx}
-                                    onClick={() => handleQuickSearch(srv)}
-                                    className="text-[11px] font-semibold bg-white/5 hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] text-[var(--text-muted)] px-3 py-1.5 rounded-lg border border-[var(--border)] transition-all flex items-center gap-1"
-                                  >
-                                    <span>{srv}</span>
-                                    <ArrowUpRight size={10} />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-end">
-                              <button
-                                onClick={() => {
-                                  setSelectedCategory(null);
-                                  navigate(`/find-pro?category=${encodeURIComponent(selectedCategory.name)}`);
-                                }}
-                                className="w-full md:w-auto bg-white hover:bg-[var(--accent)] text-black font-bold text-xs py-3 px-5 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap shadow-sm"
-                              >
-                                <span>Rechercher</span>
-                                <ArrowRight size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                      {/* Interactive Search inside the modal */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[var(--bg)]/60 border border-[var(--border)] p-4 rounded-3xl">
+                        <div className="relative flex-1">
+                          <Search className="absolute start-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={18} />
+                          <input
+                            type="text"
+                            placeholder="Rechercher une sous-catégorie ou un service..."
+                            value={subQuery}
+                            onChange={(e) => setSubQuery(e.target.value)}
+                            className="w-full bg-transparent py-2 ps-12 pe-8 text-sm text-[var(--text)] focus:outline-none placeholder-[var(--text-muted)]/60"
+                          />
+                          {subQuery && (
+                            <button
+                              onClick={() => setSubQuery('')}
+                              className="absolute end-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-[var(--text-muted)]"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] font-black uppercase tracking-wider px-3 py-1 shrink-0">
+                          {filteredSubcategories.length} sous-catégorie{filteredSubcategories.length !== 1 ? 's' : ''} disponible{filteredSubcategories.length !== 1 ? 's' : ''}
+                        </div>
                       </div>
+
+                      {filteredSubcategories.length === 0 ? (
+                        <div className="text-center py-12 bg-[var(--bg)]/35 rounded-3xl border border-dashed border-[var(--border)]">
+                          <Layers size={32} className="mx-auto text-[var(--text-muted)]/40 mb-2 stroke-[1.5]" />
+                          <p className="text-sm text-[var(--text-muted)]">Aucune sous-catégorie ne correspond à votre recherche.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
+                          {filteredSubcategories.map((sub, sIdx) => (
+                            <motion.div 
+                              key={sIdx} 
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: Math.min(sIdx * 0.02, 0.4) }}
+                              className="bg-[var(--bg)] border border-[var(--border)] p-6 rounded-[2rem] flex flex-col justify-between gap-5 hover:border-[var(--accent)]/40 hover:shadow-lg dark:hover:shadow-black/20 group/card transition-all duration-300"
+                            >
+                              <div className="space-y-3 text-start">
+                                <h5 className="text-lg font-bold text-[var(--text)] group-hover/card:text-[var(--accent)] transition-colors flex items-center gap-2">
+                                  <span className="w-1.5 h-6 bg-[var(--accent)] rounded-full shrink-0" />
+                                  {sub.name}
+                                </h5>
+                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{sub.description}</p>
+                                
+                                {/* Popular services pill tags */}
+                                <div className="space-y-2 pt-2">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]/60 block">Exemples de prestations :</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {sub.popularServices.map((srv, srvIdx) => (
+                                      <button
+                                        key={srvIdx}
+                                        onClick={() => handleQuickSearch(srv)}
+                                        className="text-[11px] font-semibold bg-[var(--card-bg)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] text-[var(--text-muted)] px-3 py-1.5 rounded-xl border border-[var(--border)] group-hover/card:border-[var(--text-muted)]/20 transition-all flex items-center gap-1 hover:scale-105 active:scale-95"
+                                      >
+                                        <span>{srv}</span>
+                                        <ArrowUpRight size={10} className="opacity-65" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-end border-t border-[var(--border)]/60 pt-4 mt-auto">
+                                <button
+                                  onClick={() => {
+                                    handleSelectCategory(null);
+                                    navigate(`/find-pro?category=${encodeURIComponent(selectedCategory.name)}&search=${encodeURIComponent(sub.name)}`);
+                                  }}
+                                  className="w-full sm:w-auto bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] hover:border-transparent text-[var(--text)] font-semibold text-xs py-3 px-5 rounded-2xl transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                  <span>Rechercher des spécialistes</span>
+                                  <ArrowRight size={14} className="group-hover/card:translate-x-1 transition-transform" />
+                                </button>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Modal Footer */}
                   <div className="p-8 border-t border-[var(--border)] flex justify-end gap-3 sticky bottom-0 bg-[var(--card-bg)] z-10">
                     <button
-                      onClick={() => setSelectedCategory(null)}
+                      onClick={() => handleSelectCategory(null)}
                       className="px-6 py-3 rounded-xl border border-[var(--border)] text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text)] transition-all"
                     >
                       Fermer
@@ -343,7 +397,7 @@ export default function Services() {
                       to={`/find-pro?category=${encodeURIComponent(selectedCategory.name)}`}
                       className="bg-[var(--accent)] text-[var(--accent-foreground)] px-6 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all flex items-center gap-2"
                     >
-                      <span>Tous les prestataires</span>
+                      <span>Tous les prestataires de la catégorie</span>
                       <ArrowRight size={16} />
                     </Link>
                   </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, Star, Filter, ChevronDown, MessageSquare, ShieldCheck, ArrowLeft, Plus, Map as MapIcon, Grid } from 'lucide-react';
 import { SymmetricalIcon } from '../components/common/SymmetricalIcon';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ChatModal from '../components/marketplace/ChatModal';
 import BookingModal from '../components/marketplace/BookingModal';
@@ -14,30 +14,9 @@ import { useAuth } from '../context/AuthContext';
 import NearbyArtisansMap from '../components/marketplace/NearbyArtisansMap';
 
 import { LanguageSwitcher } from '../components/layout/LanguageSwitcher';
+import CategorySidebarMenu from '../components/marketplace/CategorySidebarMenu';
+import { CATEGORIES_DATA } from '../data/categoriesData';
 
-const categories = [
-  "All", 
-  "Home & Construction", 
-  "Repair & Maintenance", 
-  "Automotive", 
-  "IT & Technology", 
-  "Web & Mobile Development", 
-  "Design & Creative", 
-  "Digital Marketing", 
-  "Training & Coaching", 
-  "Health & Wellness", 
-  "Professional Services", 
-  "Transport & Logistics", 
-  "Home Services", 
-  "Events", 
-  "Photography & Video", 
-  "Beauty", 
-  "Pets", 
-  "Crafts", 
-  "Finance & Accounting", 
-  "Legal", 
-  "Translation & Writing"
-];
 const cities = ["All", "Casablanca", "Rabat", "Marrakech", "Tangier", "Agadir", "Fes", "Meknes", "Oujda", "Tetouan"];
 
 export default function FindM3allem() {
@@ -47,8 +26,38 @@ export default function FindM3allem() {
   const [artisans, setArtisans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
   const { filters, setFilters } = useFilterStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    const searchParam = searchParams.get('search');
+    const cityParam = searchParams.get('city');
+
+    if (categoryParam !== null || searchParam !== null || cityParam !== null) {
+      let resolvedCategoryId = '';
+      if (categoryParam) {
+        const matchingCat = CATEGORIES_DATA.find(
+          (cat) =>
+            cat.id.toLowerCase() === categoryParam.toLowerCase() ||
+            cat.name.toLowerCase() === categoryParam.toLowerCase() ||
+            cat.frenchName.toLowerCase() === categoryParam.toLowerCase()
+        );
+        resolvedCategoryId = matchingCat ? matchingCat.id : categoryParam;
+      }
+
+      setFilters({
+        category: resolvedCategoryId,
+        search: searchParam || '',
+        city: cityParam || '',
+      });
+
+      // Clear search parameters from the URL safely
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setFilters, setSearchParams]);
   
   const [chatArtisan, setChatArtisan] = useState<any | null>(null);
   const [bookingArtisan, setBookingArtisan] = useState<any | null>(null);
@@ -137,116 +146,155 @@ export default function FindM3allem() {
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
-          <div className="lg:col-span-2 relative">
-            <Search className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={24} />
-            <input 
-              type="text" 
-              placeholder={t('find_ar_search')} 
-              value={filters.search}
-              onChange={(e) => setFilters({ search: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-xl text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all shadow-sm"
-            />
-          </div>
-          
-          <div className="relative group">
-            <Filter className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={20} />
-            <select 
-              value={filters.category}
-              onChange={(e) => setFilters({ category: e.target.value })}
-              className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
-            >
-              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all')}</option>
-              {categories?.filter(c => c !== 'All').map(cat => <option key={cat} value={cat} className="bg-[var(--card-bg)]">{t(`cat_${cat.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_')}`, cat)}</option>)}
-            </select>
-            <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
-          </div>
-
-          <div className="relative group">
-            <MapPin className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={20} />
-            <select 
-              value={filters.city}
-              onChange={(e) => setFilters({ city: e.target.value })}
-              className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-6 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
-            >
-              <option value="" className="bg-[var(--card-bg)]">{t('find_ar_all')}</option>
-              {cities?.filter(c => c !== 'All').map(city => <option key={city} value={city} className="bg-[var(--card-bg)]">{t(`city_${city.toLowerCase()}`, city)}</option>)}
-            </select>
-            <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
-          </div>
+        {/* Mobile Filter Button */}
+        <div className="lg:hidden mb-6">
+          <button 
+            type="button"
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            className="flex items-center justify-center gap-2 w-full py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text)] active:scale-[0.98] transition-all"
+          >
+            <Filter size={20} className="text-[var(--accent)]" />
+            {isFiltersOpen ? t('hide_filters', 'Hide Filters') : t('show_filters', 'Show Filters')}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <div className="relative group">
-            <Star className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={20} />
-            <select 
-              value={filters.minRating}
-              onChange={(e) => setFilters({ minRating: Number(e.target.value) })}
-              className="w-full appearance-none bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[32px] py-4 ps-16 pe-8 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all cursor-pointer"
-            >
-              <option value={0} className="bg-[var(--card-bg)]">{t('find_ar_rating_any')}</option>
-              <option value={3} className="bg-[var(--card-bg)]">{t('find_ar_rating_3')}</option>
-              <option value={4} className="bg-[var(--card-bg)]">{t('find_ar_rating_4')}</option>
-              <option value={4.5} className="bg-[var(--card-bg)]">{t('find_ar_rating_45')}</option>
-            </select>
-            <ChevronDown className="absolute end-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50 pointer-events-none" size={20} />
-          </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Persistent Filters Sidebar */}
+          <div className={`w-full lg:w-80 shrink-0 space-y-6 md:space-y-8 ${isFiltersOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="hynex-card p-6 md:p-8">
+              <h3 className="font-black mb-6 md:mb-8 flex items-center gap-3 text-[var(--text)] text-lg tracking-tight">
+                <Filter size={20} className="text-[var(--accent)]" />
+                {t('filters_title', 'Filters')}
+              </h3>
 
-          <div className="flex gap-2">
-            <input 
-              type="number" 
-              placeholder={t('find_ar_min_price')} 
-              value={filters.minPrice}
-              onChange={(e) => setFilters({ minPrice: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
-            />
-            <input 
-              type="number" 
-              placeholder={t('find_ar_max_price')} 
-              value={filters.maxPrice}
-              onChange={(e) => setFilters({ maxPrice: e.target.value })}
-              className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6 text-base text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all"
-            />
-          </div>
+              <div className="space-y-6 md:space-y-8">
+                {/* Unified Persistent Categories Menu */}
+                <CategorySidebarMenu 
+                  activeCategoryId={filters.category} 
+                  onSelectCategory={(id) => setFilters({ category: id })} 
+                />
 
-          <div className="flex items-center justify-center bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] py-4 px-6">
-            <label className="flex items-center gap-3 cursor-pointer group w-full justify-center" onClick={() => setFilters({ isOnline: !filters.isOnline })}>
-              <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center ${filters.isOnline ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`}>
-                {filters.isOnline && <div className="w-2 h-2 bg-[var(--accent-foreground)] rounded-full" />}
+                {/* City Filter */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">
+                    {t('filter_city', 'City')}
+                  </label>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                    <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({ city: '' })}>
+                      <div className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${filters.city === '' ? 'bg-[var(--accent)] border-[var(--accent)] scale-110 shadow-lg shadow-[var(--accent)]/10' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`} />
+                      <span className={`text-sm transition-colors ${filters.city === '' ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>
+                        {t('find_ar_all', 'All')}
+                      </span>
+                    </label>
+                    {cities.filter(c => c !== 'All').map(city => (
+                      <label key={city} className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({ city: city })}>
+                        <div className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${filters.city === city ? 'bg-[var(--accent)] border-[var(--accent)] scale-110 shadow-lg shadow-[var(--accent)]/10' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`} />
+                        <span className={`text-sm transition-colors ${filters.city === city ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'}`}>
+                          {t(`city_${city.toLowerCase()}`, city)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rating Filter */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">
+                    {t('filter_min_rating', 'Minimum Rating')}
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[0, 3, 4, 4.5].map(ratingValue => (
+                      <button 
+                        key={ratingValue}
+                        type="button"
+                        onClick={() => setFilters({ minRating: ratingValue })}
+                        className={`py-2 rounded-xl border text-[10px] font-bold transition-all ${
+                          filters.minRating === ratingValue 
+                            ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-lg' 
+                            : 'border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--accent)]/50 hover:text-[var(--text)]'
+                        }`}
+                      >
+                        {ratingValue === 0 ? t('find_ar_rating_any', 'Any') : `${ratingValue}★`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Filter */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">
+                    {t('filter_starting_price', 'Starting Price')} (MAD)
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" 
+                      placeholder={t('filter_min', 'Min')} 
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-3 px-3 text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text)]"
+                      value={filters.minPrice}
+                      onChange={(e) => setFilters({ minPrice: e.target.value })}
+                    />
+                    <input 
+                      type="number" 
+                      placeholder={t('filter_max', 'Max')} 
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-3 px-3 text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text)]"
+                      value={filters.maxPrice}
+                      onChange={(e) => setFilters({ maxPrice: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Extra switches */}
+                <div className="space-y-3 pt-2">
+                  <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({ isOnline: !filters.isOnline })}>
+                    <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center ${filters.isOnline ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'}`}>
+                      {filters.isOnline && <div className="w-2 h-2 bg-[var(--accent-foreground)] rounded-full" />}
+                    </div>
+                    <span className="text-sm text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors">{t('find_ar_online_only', 'Online Now Only')}</span>
+                  </label>
+                </div>
               </div>
-              <span className="text-base text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors">{t('find_ar_online_only')}</span>
-            </label>
+            </div>
           </div>
-        </div>
 
-        {/* Results */}
-        {viewMode === 'map' ? (
-          <div className="h-[600px] mb-16 relative z-0">
-            <NearbyArtisansMap 
-              artisans={artisans} 
-              center={artisans.length > 0 && artisans[0].latitude ? [Number(artisans[0].latitude), Number(artisans[0].longitude)] : undefined} 
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {loading ? (
-              <div className="col-span-full flex justify-center py-24">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
+          {/* Results Area */}
+          <div className="flex-1 space-y-6 md:space-y-8">
+            <div className="relative">
+              <Search className="absolute start-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]/50" size={24} />
+              <input 
+                type="text" 
+                placeholder={t('find_ar_search')} 
+                value={filters.search}
+                onChange={(e) => setFilters({ search: e.target.value })}
+                className="w-full bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-2xl py-5 ps-16 pe-8 text-lg text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/50 transition-all shadow-sm"
+              />
+            </div>
+
+            {viewMode === 'map' ? (
+              <div className="h-[600px] mb-16 relative z-0">
+                <NearbyArtisansMap 
+                  artisans={artisans} 
+                  center={artisans.length > 0 && artisans[0].latitude ? [Number(artisans[0].latitude), Number(artisans[0].longitude)] : undefined} 
+                />
               </div>
             ) : (
-              <AnimatePresence mode="popLayout">
-                {artisans?.map((artisan) => (
-                  <motion.div 
-                    key={artisan.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    whileHover={{ y: -10 }}
-                    onClick={() => setSelectedArtisan(artisan)}
-                    className="bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] overflow-hidden group hover:border-[#FFD700]/30 transition-all cursor-pointer shadow-lg"
-                  >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {loading ? (
+                  <div className="col-span-full flex justify-center py-24">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
+                  </div>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {artisans?.map((artisan) => (
+                      <motion.div 
+                        key={artisan.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        whileHover={{ y: -10 }}
+                        onClick={() => setSelectedArtisan(artisan)}
+                        className="bg-[var(--card-bg)]/50 border border-[var(--border)] rounded-[40px] overflow-hidden group hover:border-[#FFD700]/30 transition-all cursor-pointer shadow-lg"
+                      >
                     <div className="h-64 relative overflow-hidden">
                       <img src={artisan.avatar_url || artisan.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={artisan.name} referrerPolicy="no-referrer" />
                       <div className="absolute top-6 start-6 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 text-[var(--accent)] text-xs font-bold border border-[var(--border)]">
@@ -295,14 +343,16 @@ export default function FindM3allem() {
         )}
 
         {!loading && artisans?.length === 0 && (
-          <div className="text-center py-24">
-            <div className="inline-flex p-6 rounded-full bg-[var(--card-bg)]/50 mb-6 font-display">
-              <Search size={48} className="text-[var(--text-muted)]/20" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{t('find_ar_no_pros')}</h3>
-            <p className="text-[var(--text-muted)]">{t('find_ar_no_pros_desc')}</p>
+              <div className="text-center py-24">
+                <div className="inline-flex p-6 rounded-full bg-[var(--card-bg)]/50 mb-6 font-display">
+                  <Search size={48} className="text-[var(--text-muted)]/20" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2 text-[var(--text)]">{t('find_ar_no_pros')}</h3>
+                <p className="text-[var(--text-muted)]">{t('find_ar_no_pros_desc')}</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <AnimatePresence>

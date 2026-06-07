@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, MapPin, CreditCard, CheckCircle2, AlertCircle, Wallet, ShieldCheck, Banknote, ShoppingCart, Plus, MessageSquare, Navigation, Sparkles, BrainCircuit, Video, ChevronRight } from 'lucide-react';
 import { AddressInput } from '../ui/AddressInput';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { bookingService, Artisan } from '../../services/marketplaceService';
 import { aiService } from '../../services/aiService';
 import LiveDiagnostic from './LiveDiagnostic';
@@ -21,6 +22,17 @@ const RECOMMENDED_MATERIALS: Record<string, any[]> = {
     { id: 'm2', name: 'Sealant Tape', price: 25, image: 'https://picsum.photos/seed/tape/100/100' },
     { id: 'm3', name: 'Bathroom Faucet', price: 450, image: 'https://picsum.photos/seed/faucet/100/100' }
   ],
+  'Repair & Maintenance': [
+    { id: 'm1', name: 'PVC Pipes Set', price: 150, image: 'https://picsum.photos/seed/pipes/100/100' },
+    { id: 'm2', name: 'Sealant Tape', price: 25, image: 'https://picsum.photos/seed/tape/100/100' },
+    { id: 'm35', name: 'Screws & Wall Anchors Pack', price: 45, image: 'https://picsum.photos/seed/screws/100/100' },
+    { id: 'm36', name: 'WD-40 Lubricant Spray', price: 65, image: 'https://picsum.photos/seed/wd40/100/100' }
+  ],
+  'Home & Construction': [
+    { id: 'm30', name: 'Portland Cement Bag 50kg', price: 80, image: 'https://picsum.photos/seed/cement/100/100' },
+    { id: 'm31', name: 'Building Sand (by kg)', price: 3, image: 'https://picsum.photos/seed/sand/100/100' },
+    { id: 'm32', name: 'Pre-mixed Mortar 25kg', price: 60, image: 'https://picsum.photos/seed/mortar/100/100' }
+  ],
   'Electrical': [
     { id: 'm4', name: 'Copper Wire 50m', price: 300, image: 'https://picsum.photos/seed/wire/100/100' },
     { id: 'm5', name: 'Circuit Breaker', price: 120, image: 'https://picsum.photos/seed/breaker/100/100' },
@@ -30,11 +42,17 @@ const RECOMMENDED_MATERIALS: Record<string, any[]> = {
     { id: 'm7', name: 'White Paint 20L', price: 400, image: 'https://picsum.photos/seed/paint/100/100' },
     { id: 'm8', name: 'Roller Set', price: 60, image: 'https://picsum.photos/seed/roller/100/100' },
     { id: 'm9', name: 'Masking Tape', price: 15, image: 'https://picsum.photos/seed/masking/100/100' }
+  ],
+  'Automotive': [
+    { id: 'm40', name: 'Engine Oil 5W30 4L', price: 350, image: 'https://picsum.photos/seed/oil/100/100' },
+    { id: 'm41', name: 'Brake Fluid', price: 75, image: 'https://picsum.photos/seed/brakefluid/100/100' },
+    { id: 'm42', name: 'Car Microfiber Cloth Pack', price: 40, image: 'https://picsum.photos/seed/microfiber/100/100' }
   ]
 };
 
 export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess, onAction }: BookingModalProps) {
   const { user: authUser } = useAuth();
+  const toast = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,18 +233,37 @@ export default function BookingModal({ artisan, isQuickBook, onClose, onSuccess,
 
       if (res.error) {
         setError(res.error);
+        toast.error('Booking Failed', res.error);
       } else {
+        toast.success(
+          'Booking Confirmed!',
+          `Your appointment with ${artisan.name} has been successfully scheduled.`
+        );
         setStep(4);
       }
     } catch (err) {
-      setError('Failed to create booking. Please try again.');
+      const errMsg = 'Failed to create booking. Please try again.';
+      setError(errMsg);
+      toast.error('Booking Error', errMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const selectedService = services.find(s => s.id === formData.serviceId);
-  const categoryMaterials = RECOMMENDED_MATERIALS[artisan.category_name] || RECOMMENDED_MATERIALS['Plumbing'];
+  const findBestMaterialCategory = () => {
+    if (!artisan.category_name) return 'Plumbing';
+    const normName = artisan.category_name.toLowerCase();
+    
+    if (normName.includes('home') || normName.includes('construct') || normName.includes('bâti') || normName.includes('œuvre')) return 'Home & Construction';
+    if (normName.includes('repair') || normName.includes('mainten') || normName.includes('dépann') || normName.includes('splumb')) return 'Repair & Maintenance';
+    if (normName.includes('elec') || normName.includes('élec')) return 'Electrical';
+    if (normName.includes('paint') || normName.includes('peint')) return 'Painting';
+    if (normName.includes('auto')) return 'Automotive';
+    if (normName.includes('plumb')) return 'Plumbing';
+    return 'Repair & Maintenance';
+  };
+  const categoryMaterials = RECOMMENDED_MATERIALS[artisan.category_name] || RECOMMENDED_MATERIALS[findBestMaterialCategory()];
 
   const toggleMaterial = (id: string) => {
     setSelectedMaterials(prev => 
